@@ -747,6 +747,11 @@ textarea {
   color: var(--pid-danger-text);
 }
 
+.pid-alert--info {
+  background: var(--pid-info-bg);
+  color: var(--pid-text);
+}
+
 .pid-placeholder {
   display: grid;
   gap: 12px;

@@ -22,6 +22,8 @@
 - Review feedback: Use `node:path` helpers such as `join()` for portable file paths in JS helpers, rather than embedding platform-specific separators.
 - React shell slice: extracting shared primitives early makes later request/detail/configuration pages cheaper to build and keeps the shell from becoming a single oversized component.
 - React shell slice: `JsonViewer` should guard clipboard writes so the viewer still renders cleanly in environments where `navigator.clipboard` is missing.
+- Requests workflow slice: the manual review page should keep `manual_review_required=true` in the effective filter state and in the URL, not just in the fetch call.
+- Requests workflow slice: add new filter controls only when the backend already accepts them, then cover them in the RTL smoke test so the shell stays aligned with the contract.
 - API client slice: error normalization is easier to test when the response parsing and message extraction are separated from the fetch wrapper.
 - Requests slice: route order matters when a static route such as `/requests/search` sits beside a wildcard like `/requests/{request}`; register the static route first or the wildcard will swallow it.
 - Requests slice: initialize URL-driven filter state synchronously in `useState` instead of in a follow-up effect, or the page can fetch once with defaults and then immediately overwrite its own results.

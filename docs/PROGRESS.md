@@ -96,3 +96,19 @@
   - `npm run build`
   - `npm run e2e`
   - `C:\\Users\\lopad\\.config\\herd\\bin\\php84\\php.exe vendor\\bin\\phpunit --configuration phpunit.xml`
+
+## 2026-04-30 - Requests Workflow Slice 2
+
+- Expanded the Requests/Manual Review shell with the next batch of workflow filters:
+  - client, ERP model, ERP model color, EAN/barcode, rejection reason
+  - candidate/selected-image toggles
+  - created/updated date bounds
+- Switched the request event timeline to the shared `Timeline` primitive.
+- Kept `manual_review_required=true` pinned in the effective review filter state and the browser URL on the review page.
+- Added a manual review banner so the pinned filter is visible in the UI.
+- Added RTL coverage for the extra filters and the review-page pinned-filter behavior.
+- Verification passed after this slice:
+  - `npm run test`
+  - `npm run build`
+  - `npm run e2e`
+  - `C:\\Users\\lopad\\.config\\herd\\bin\\php84\\php.exe vendor\\bin\\phpunit --configuration phpunit.xml`

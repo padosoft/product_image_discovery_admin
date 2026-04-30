@@ -7,6 +7,7 @@ import { FilterBar } from './components/FilterBar';
 import { JsonViewer } from './components/JsonViewer';
 import { ScorePill } from './components/ScorePill';
 import { StatusBadge } from './components/StatusBadge';
+import { Timeline } from './components/Timeline';
 import {
   createDefaultRequestFilters,
   requestFiltersFromSearchParams,
@@ -404,6 +405,10 @@ function RequestFilters({ filters, onChange, onReset, activeChips, loading }) {
       </div>
       <div className="pid-filters">
         <label>
+          <span>Client</span>
+          <input value={filters.client_id} onChange={(event) => update('client_id', event.target.value)} placeholder="1" />
+        </label>
+        <label>
           <span>Brand</span>
           <input value={filters.brand} onChange={(event) => update('brand', event.target.value)} placeholder="Herno" />
         </label>
@@ -416,8 +421,28 @@ function RequestFilters({ filters, onChange, onReset, activeChips, loading }) {
           <input value={filters.status} onChange={(event) => update('status', event.target.value)} placeholder="manual_review" />
         </label>
         <label>
+          <span>ERP model</span>
+          <input value={filters.erp_model_id} onChange={(event) => update('erp_model_id', event.target.value)} placeholder="MODEL-123" />
+        </label>
+        <label>
+          <span>ERP model color</span>
+          <input
+            value={filters.erp_model_color_id}
+            onChange={(event) => update('erp_model_color_id', event.target.value)}
+            placeholder="MODEL-123-BLACK"
+          />
+        </label>
+        <label>
+          <span>EAN / barcode</span>
+          <input value={filters.ean} onChange={(event) => update('ean', event.target.value)} placeholder="8001234567890" />
+        </label>
+        <label>
           <span>Source domain</span>
           <input value={filters.source_domain} onChange={(event) => update('source_domain', event.target.value)} placeholder="cdn.example.com" />
+        </label>
+        <label>
+          <span>Rejection reason</span>
+          <input value={filters.rejection_reason} onChange={(event) => update('rejection_reason', event.target.value)} placeholder="wrong_color" />
         </label>
         <label>
           <span>Min score</span>
@@ -453,6 +478,38 @@ function RequestFilters({ filters, onChange, onReset, activeChips, loading }) {
             <option value="false">No</option>
           </select>
         </label>
+        <label>
+          <span>Has candidates</span>
+          <select value={filters.has_candidates} onChange={(event) => update('has_candidates', event.target.value)}>
+            <option value="">Any</option>
+            <option value="true">Yes</option>
+            <option value="false">No</option>
+          </select>
+        </label>
+        <label>
+          <span>Has selected image</span>
+          <select value={filters.has_selected_image} onChange={(event) => update('has_selected_image', event.target.value)}>
+            <option value="">Any</option>
+            <option value="true">Yes</option>
+            <option value="false">No</option>
+          </select>
+        </label>
+        <label>
+          <span>Created from</span>
+          <input type="date" value={filters.created_from} onChange={(event) => update('created_from', event.target.value)} />
+        </label>
+        <label>
+          <span>Created to</span>
+          <input type="date" value={filters.created_to} onChange={(event) => update('created_to', event.target.value)} />
+        </label>
+        <label>
+          <span>Updated from</span>
+          <input type="date" value={filters.updated_from} onChange={(event) => update('updated_from', event.target.value)} />
+        </label>
+        <label>
+          <span>Updated to</span>
+          <input type="date" value={filters.updated_to} onChange={(event) => update('updated_to', event.target.value)} />
+        </label>
       </div>
       <div className="pid-filter-actions">
         <FilterBar label="Active filters" filters={activeChips} onClear={onReset} />
@@ -465,6 +522,11 @@ function RequestDetailDrawer({ open, detail, events, candidates, loading, error,
   const detailSummary = buildDetailSummary(detail);
   const selectedCandidate = detail?.selected_candidate ?? null;
   const bestCandidate = detail?.best_candidate ?? null;
+  const eventTimeline = events.map((event) => ({
+    id: event.id,
+    title: event.event_type,
+    detail: `${event.message}${event.level ? ` • ${event.level}` : ''}`,
+  }));
 
   return (
     <Drawer open={open} title={detail ? `Request ${detail.id}` : 'Request detail'} onClose={onClose}>
@@ -517,15 +579,7 @@ function RequestDetailDrawer({ open, detail, events, candidates, loading, error,
               {events.length === 0 ? (
                 <EmptyState title="No events" description="The selected request has no events yet." />
               ) : (
-                <ul className="pid-timeline">
-                  {events.map((event) => (
-                    <li key={event.id} className="pid-timeline__item">
-                      <strong>{event.event_type}</strong>
-                      <span>{event.message}</span>
-                      <span className="pid-muted">{formatUpdatedAt(event.created_at)}</span>
-                    </li>
-                  ))}
-                </ul>
+                <Timeline items={eventTimeline} />
               )}
             </div>
           </section>
@@ -548,6 +602,7 @@ function Requests({
   onOpenRequest,
   detailState,
   error,
+  manualReviewOnly = false,
 }) {
   const requestSummary = summarizeRequests(requests);
   const columns = [
@@ -574,6 +629,11 @@ function Requests({
       {error ? (
         <div className="pid-alert pid-alert--danger" role="alert">
           {error}
+        </div>
+      ) : null}
+      {manualReviewOnly ? (
+        <div className="pid-alert pid-alert--info">
+          Manual review is pinned on this view.
         </div>
       ) : null}
       <RequestFilters
@@ -674,11 +734,21 @@ export default function App() {
   }, [theme]);
 
   useEffect(() => {
-    const params = requestFiltersToSearchParams(requestFilters);
+    const params = requestFiltersToSearchParams(
+      page === 'review' ? { ...requestFilters, manual_review_required: 'true' } : requestFilters,
+    );
     const query = params.toString();
     const nextUrl = `${window.location.pathname}${query ? `?${query}` : ''}${window.location.hash}`;
     window.history.replaceState({}, '', nextUrl);
-  }, [requestFilters]);
+  }, [page, requestFilters]);
+
+  const effectiveRequestFilters = useMemo(() => {
+    if (page === 'review') {
+      return { ...requestFilters, manual_review_required: 'true' };
+    }
+
+    return requestFilters;
+  }, [page, requestFilters]);
 
   useEffect(() => {
     let cancelled = false;
@@ -740,12 +810,8 @@ export default function App() {
       setRequestLoading(true);
       setRequestError('');
 
-      const effectiveFilters = page === 'review'
-        ? { ...requestFilters, manual_review_required: 'true' }
-        : requestFilters;
-
       try {
-        const result = await pidFetch(buildRequestSearchPath(effectiveFilters), { signal: controller.signal });
+        const result = await pidFetch(buildRequestSearchPath(effectiveRequestFilters), { signal: controller.signal });
 
         if (!cancelled) {
           setRequestRows(normalizeLaravelPagination(result).data);
@@ -765,7 +831,7 @@ export default function App() {
       controller.abort();
       window.clearTimeout(timeout);
     };
-  }, [page, requestFilters]);
+  }, [effectiveRequestFilters]);
 
   async function openRequest(request) {
     setDetailOpen(true);
@@ -796,7 +862,6 @@ export default function App() {
   }
 
   const currentPage = pageIndex[page] ?? pageIndex.overview;
-  const activeRequestFilters = useMemo(() => requestFiltersToActiveChips(requestFilters), [requestFilters]);
 
   const body = useMemo(() => {
     if (page === 'overview') {
@@ -809,9 +874,9 @@ export default function App() {
           requests={requestRows}
           loading={requestLoading}
           title="Latest Requests"
-          filters={requestFilters}
+          filters={effectiveRequestFilters}
           onFiltersChange={setRequestFilters}
-          activeChips={activeRequestFilters}
+          activeChips={requestFiltersToActiveChips(effectiveRequestFilters)}
           onClearFilters={clearFilters}
           onOpenRequest={openRequest}
           error={requestError}
@@ -840,9 +905,9 @@ export default function App() {
           requests={requestRows.filter((request) => request.status === 'manual_review')}
           loading={requestLoading}
           title="Manual Review Queue"
-          filters={{ ...requestFilters, manual_review_required: 'true' }}
+          filters={effectiveRequestFilters}
           onFiltersChange={(next) => setRequestFilters({ ...next, manual_review_required: next.manual_review_required || 'true' })}
-          activeChips={requestFiltersToActiveChips({ ...requestFilters, manual_review_required: 'true' })}
+          activeChips={requestFiltersToActiveChips(effectiveRequestFilters)}
           onClearFilters={clearFilters}
           onOpenRequest={openRequest}
           error={requestError}
@@ -867,7 +932,7 @@ export default function App() {
     }
 
     return <PlaceholderPage page={currentPage} />;
-  }, [activeRequestFilters, clearFilters, currentPage, detailCandidates, detailError, detailEvents, detailLoading, detailRequest, error, loading, openRequest, page, requestFilters, requestLoading, requestRows, summary, overviewRequests]);
+  }, [clearFilters, currentPage, detailCandidates, detailError, detailEvents, detailLoading, detailRequest, effectiveRequestFilters, error, loading, openRequest, page, requestLoading, requestRows, summary, overviewRequests]);
 
   return (
     <div className="pid-app">

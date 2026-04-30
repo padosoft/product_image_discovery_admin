@@ -153,7 +153,46 @@ describe('admin product image discovery shell', () => {
 
     expect(await screen.findByRole('heading', { name: 'Search Filters' })).toBeVisible();
     expect(screen.getByLabelText('Brand')).toHaveValue('Herno');
+    expect(screen.getByLabelText('Client')).toBeVisible();
+    expect(screen.getByLabelText('Created from')).toBeVisible();
     expect(screen.getByRole('button', { name: 'Clear' })).toBeVisible();
+  });
+
+  it('pins manual review filtering and shows the review banner on the review page', async () => {
+    window.history.replaceState({}, '', '/admin/product-image-discovery/review?brand=Herno');
+    vi.stubGlobal(
+      'fetch',
+      vi
+        .fn()
+        .mockResolvedValueOnce(
+          mockJsonResponse({
+            counts: { total: 1, manual_review: 1, ready_to_publish: 0, failed: 0, no_candidates_found: 0 },
+            provider_status: [],
+          }),
+        )
+        .mockResolvedValueOnce(
+          mockJsonResponse({
+            data: [
+              {
+                id: 55,
+                status: 'manual_review',
+                final_score: 64,
+                brand: 'Herno',
+                supplier: 'Herno',
+                erp_model_color_id: 'HERO-002-BLK',
+                updated_at: '2026-04-30T10:00:00Z',
+              },
+            ],
+          }),
+        ),
+    );
+
+    render(<App />);
+
+    expect(await screen.findByRole('heading', { name: 'Manual Review Queue' })).toBeVisible();
+    expect(screen.getByText('Manual review is pinned on this view.')).toBeVisible();
+
+    await waitFor(() => expect(window.location.search).toContain('manual_review_required=true'));
   });
 
   it('keeps the request detail drawer open while loading selected request data', async () => {
