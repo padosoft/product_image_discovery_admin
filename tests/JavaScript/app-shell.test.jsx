@@ -1,0 +1,102 @@
+import '@testing-library/jest-dom/vitest';
+import React from 'react';
+import { fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import App from '../../resources/js/admin-product-image-discovery/App';
+
+function mockJsonResponse(payload) {
+  return {
+    ok: true,
+    status: 200,
+    json: vi.fn().mockResolvedValue(payload),
+  };
+}
+
+describe('admin product image discovery shell', () => {
+  beforeEach(() => {
+    const store = new Map();
+    vi.stubGlobal('localStorage', {
+      getItem: vi.fn((key) => store.get(key) ?? null),
+      setItem: vi.fn((key, value) => {
+        store.set(key, String(value));
+      }),
+      clear: vi.fn(() => {
+        store.clear();
+      }),
+    });
+    document.documentElement.dataset.theme = 'light';
+    document.head.innerHTML = '<meta name="csrf-token" content="test-token">';
+    window.PID_ADMIN = { apiBase: '/admin/product-image-discovery' };
+  });
+
+  afterEach(() => {
+    vi.restoreAllMocks();
+    vi.unstubAllGlobals();
+    delete window.PID_ADMIN;
+  });
+
+  it('renders the shell, exposes accessible navigation labels, and toggles theme', async () => {
+    vi.stubGlobal(
+      'fetch',
+      vi
+        .fn()
+        .mockResolvedValueOnce(
+          mockJsonResponse({
+            counts: {
+              total: 12,
+              manual_review: 2,
+              ready_to_publish: 5,
+              failed: 1,
+              no_candidates_found: 3,
+            },
+            provider_status: [
+              { code: 'serpapi', driver: 'serpapi', active: true, has_api_key: true },
+            ],
+          }),
+        )
+        .mockResolvedValueOnce(
+          mockJsonResponse({
+            data: [
+              {
+                id: 11,
+                status: 'manual_review',
+                final_score: 67,
+                brand: 'Acme',
+                supplier: 'Primary',
+                erp_model_color_id: 'ERP-11',
+                updated_at: '2026-04-30T09:30:00Z',
+              },
+            ],
+          }),
+        ),
+    );
+
+    render(<App />);
+
+    expect(await screen.findByRole('navigation', { name: 'Product image discovery sections' })).toBeVisible();
+    expect(screen.getByRole('button', { name: 'Overview section' })).toHaveAttribute('aria-current', 'page');
+    expect(screen.getByRole('button', { name: 'Switch to dark theme' })).toBeVisible();
+
+    fireEvent.click(screen.getByRole('button', { name: 'Switch to dark theme' }));
+
+    await waitFor(() => expect(document.documentElement).toHaveAttribute('data-theme', 'dark'));
+    expect(screen.getByRole('heading', { name: 'Overview' })).toBeVisible();
+    expect(screen.getByText('Provider Health')).toBeVisible();
+  });
+
+  it('keeps the shell mounted when API calls fail', async () => {
+    vi.stubGlobal(
+      'fetch',
+      vi
+        .fn()
+        .mockRejectedValueOnce(new Error('summary failed'))
+        .mockRejectedValueOnce(new Error('requests failed')),
+    );
+
+    render(<App />);
+
+    expect(await screen.findByRole('heading', { name: 'Overview' })).toBeVisible();
+    expect(await screen.findByRole('alert')).toHaveTextContent('Dashboard summary is unavailable.');
+    expect(screen.getByText('Queue Snapshot')).toBeVisible();
+  });
+});
