@@ -9,6 +9,12 @@ const phpBinary = process.env.PHP_BINARY
 const database = resolve('database/playwright.sqlite');
 const appKey = 'base64:YWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWE=';
 
+const manifest = resolve('public/build/manifest.json');
+if (!existsSync(manifest)) {
+  console.error('[prepare-e2e] Vite assets not found. Run "npm run build" before "npm run e2e".');
+  process.exit(1);
+}
+
 mkdirSync(dirname(database), { recursive: true });
 
 if (!existsSync(database)) {

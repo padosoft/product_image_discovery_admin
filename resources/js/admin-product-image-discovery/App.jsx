@@ -713,7 +713,8 @@ export default function App() {
     load().catch((err) => {
       if (!cancelled && err.name !== 'AbortError') {
         setSummary(DEFAULT_SUMMARY);
-        setRequests([]);
+        setOverviewRequests([]);
+        setRequestRows([]);
         setError(err.message || 'Unable to load admin data.');
         setLoading(false);
       }

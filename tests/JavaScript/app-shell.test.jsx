@@ -9,7 +9,9 @@ function mockJsonResponse(payload) {
   return {
     ok: true,
     status: 200,
+    headers: { get: () => 'application/json' },
     json: vi.fn().mockResolvedValue(payload),
+    text: vi.fn().mockResolvedValue(JSON.stringify(payload)),
   };
 }
 
