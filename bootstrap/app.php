@@ -21,11 +21,12 @@ return Application::configure(basePath: dirname(__DIR__))
     })
     ->withExceptions(function (Exceptions $exceptions): void {
         $exceptions->shouldRenderJsonWhen(static function ($request): bool {
+            $adminPrefix = trim((string) config('pid-admin.route_prefix', 'admin/product-image-discovery'), '/');
+
             return $request->expectsJson()
                 || $request->is('api/*')
-                || $request->is('admin/product-image-discovery/dashboard-summary')
-                || $request->is('admin/product-image-discovery/requests/*')
-                || $request->is('admin/product-image-discovery/candidates/*');
+                || $request->is($adminPrefix)
+                || $request->is($adminPrefix.'/*');
         });
     })
     ->create();

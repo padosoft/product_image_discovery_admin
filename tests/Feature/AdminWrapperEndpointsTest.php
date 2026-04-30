@@ -75,6 +75,41 @@ final class AdminWrapperEndpointsTest extends TestCase
             ->assertJsonPath('data.0.final_score', 0);
     }
 
+    public function test_request_search_date_to_filters_include_the_full_day(): void
+    {
+        $included = $this->createDiscoveryRequest([
+            'brand' => 'Included',
+        ]);
+        $included->forceFill([
+            'created_at' => CarbonImmutable::parse('2026-04-30 18:45:00'),
+            'updated_at' => CarbonImmutable::parse('2026-04-30 21:15:00'),
+        ])->save();
+
+        $excluded = $this->createDiscoveryRequest([
+            'brand' => 'Excluded',
+        ]);
+        $excluded->forceFill([
+            'created_at' => CarbonImmutable::parse('2026-05-01 00:00:00'),
+            'updated_at' => CarbonImmutable::parse('2026-05-01 00:00:00'),
+        ])->save();
+
+        $this->getJson('/admin/product-image-discovery/requests/search?created_to=2026-04-30&updated_to=2026-04-30')
+            ->assertOk()
+            ->assertJsonCount(1, 'data')
+            ->assertJsonPath('data.0.id', $included->getKey())
+            ->assertJsonPath('data.0.brand', 'Included');
+    }
+
+    public function test_custom_admin_prefix_still_returns_json_errors(): void
+    {
+        config(['pid-admin.route_prefix' => 'custom/pid-admin']);
+
+        $this->get('/custom/pid-admin/requests/not-a-number/events')
+            ->assertNotFound()
+            ->assertHeader('Content-Type', 'application/json')
+            ->assertJsonStructure(['message']);
+    }
+
     public function test_request_events_are_isolated_and_chronological(): void
     {
         $requestRecord = $this->createDiscoveryRequest();

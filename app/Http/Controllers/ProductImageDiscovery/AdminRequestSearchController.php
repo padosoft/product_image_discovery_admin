@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Http\Controllers\ProductImageDiscovery;
 
+use Carbon\CarbonImmutable;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\AnonymousResourceCollection;
@@ -65,10 +66,10 @@ final class AdminRequestSearchController extends Controller
         }
 
         $query
-            ->when($filters['created_from'] ?? null, static fn (Builder $builder, string $date): Builder => $builder->where('created_at', '>=', $date))
-            ->when($filters['created_to'] ?? null, static fn (Builder $builder, string $date): Builder => $builder->where('created_at', '<=', $date))
-            ->when($filters['updated_from'] ?? null, static fn (Builder $builder, string $date): Builder => $builder->where('updated_at', '>=', $date))
-            ->when($filters['updated_to'] ?? null, static fn (Builder $builder, string $date): Builder => $builder->where('updated_at', '<=', $date));
+            ->when($filters['created_from'] ?? null, fn (Builder $builder, string $date): Builder => $builder->where('created_at', '>=', $this->dateBoundary($date, endOfDay: false)))
+            ->when($filters['created_to'] ?? null, fn (Builder $builder, string $date): Builder => $builder->where('created_at', '<=', $this->dateBoundary($date, endOfDay: true)))
+            ->when($filters['updated_from'] ?? null, fn (Builder $builder, string $date): Builder => $builder->where('updated_at', '>=', $this->dateBoundary($date, endOfDay: false)))
+            ->when($filters['updated_to'] ?? null, fn (Builder $builder, string $date): Builder => $builder->where('updated_at', '<=', $this->dateBoundary($date, endOfDay: true)));
 
         if (($filters['manual_review_required'] ?? null) !== null) {
             (bool) $filters['manual_review_required']
@@ -100,5 +101,16 @@ final class AdminRequestSearchController extends Controller
         return ProductImageDiscoveryRequestSummaryResource::collection(
             $query->orderBy($sortBy, $sortDirection)->paginate($filters['per_page'] ?? 15)
         );
+    }
+
+    private function dateBoundary(string $value, bool $endOfDay): string
+    {
+        $date = CarbonImmutable::parse($value);
+
+        if (preg_match('/^\d{4}-\d{2}-\d{2}$/', $value) === 1) {
+            $date = $endOfDay ? $date->endOfDay() : $date->startOfDay();
+        }
+
+        return $date->toDateTimeString();
     }
 }

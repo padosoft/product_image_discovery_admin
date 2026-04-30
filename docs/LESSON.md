@@ -13,3 +13,6 @@
 - `public/index.php` must not call `send()` after `Application::handleRequest()`, because Laravel already sends the response; double-sending caused fatal header errors in Playwright.
 - Playwright WebKit was not installed locally, so the tablet smoke uses Chromium with a tablet-sized viewport.
 - The candidate image wrapper should use raw provider secret columns only for booleans and must not expose decrypted or partial secrets.
+- Review feedback: E2E helper scripts must not default to machine-specific Herd paths on non-Windows. Use a platform-aware default: local Herd PHP on Windows, `php` elsewhere, and still allow `PHP_BINARY` override.
+- Review feedback: Admin `*_to` date filters must include the full day for date-only inputs. Convert `YYYY-MM-DD` upper bounds to `endOfDay()` and lower bounds to `startOfDay()` before querying timestamp columns.
+- Review feedback: JSON rendering rules must honor configurable route prefixes. Avoid hard-coded `admin/product-image-discovery/*` checks when routes are configured through `pid-admin.route_prefix`.

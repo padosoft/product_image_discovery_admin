@@ -2,7 +2,10 @@ import { existsSync, mkdirSync, closeSync, openSync } from 'node:fs';
 import { dirname, resolve } from 'node:path';
 import { spawnSync } from 'node:child_process';
 
-const phpBinary = process.env.PHP_BINARY || 'C:\\Users\\lopad\\.config\\herd\\bin\\php84\\php.exe';
+const defaultPhpBinary = process.platform === 'win32'
+  ? 'C:\\Users\\lopad\\.config\\herd\\bin\\php84\\php.exe'
+  : 'php';
+const phpBinary = process.env.PHP_BINARY || defaultPhpBinary;
 const database = resolve('database/playwright.sqlite');
 const appKey = 'base64:YWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWE=';
 
