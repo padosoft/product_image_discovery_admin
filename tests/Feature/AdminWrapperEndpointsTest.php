@@ -226,6 +226,36 @@ final class AdminWrapperEndpointsTest extends TestCase
             ->assertJsonPath('message', 'Candidate image is not available.');
     }
 
+    public function test_candidate_image_blocks_localhost_remote_redirects(): void
+    {
+        Storage::fake('pid-images');
+        config(['product-image-discovery.storage.disk' => 'pid-images']);
+
+        $candidate = $this->createCandidate($this->createDiscoveryRequest(), [
+            'image_url' => 'http://127.0.0.1/internal-image.jpg',
+            'local_original_path' => null,
+        ]);
+
+        $this->getJson('/admin/product-image-discovery/candidates/'.$candidate->getKey().'/image')
+            ->assertNotFound()
+            ->assertJsonPath('message', 'Candidate image is not available.');
+    }
+
+    public function test_candidate_image_redirects_to_public_remote_images(): void
+    {
+        Storage::fake('pid-images');
+        config(['product-image-discovery.storage.disk' => 'pid-images']);
+
+        $candidate = $this->createCandidate($this->createDiscoveryRequest(), [
+            'image_url' => 'https://cdn.example.com/product.jpg',
+            'local_original_path' => null,
+        ]);
+
+        $this->get('/admin/product-image-discovery/candidates/'.$candidate->getKey().'/image')
+            ->assertRedirect('https://cdn.example.com/product.jpg')
+            ->assertHeader('X-PID-Image-Source', 'remote');
+    }
+
     /**
      * @param array<string, mixed> $overrides
      */

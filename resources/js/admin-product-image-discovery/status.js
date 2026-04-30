@@ -28,6 +28,10 @@ export function scoreTone(score) {
 
   const numericScore = Number(score);
 
+  if (Number.isNaN(numericScore)) {
+    return 'neutral';
+  }
+
   if (numericScore >= 80) {
     return 'ok';
   }

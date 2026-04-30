@@ -17,7 +17,7 @@ Read these files before editing application code:
 The canonical plan is saved at:
 
 ```text
-C:\Users\lopad\Downloads\productimagesearch-admin\plan.md
+%USERPROFILE%\Downloads\productimagesearch-admin\plan.md
 ```
 
 If that file is unavailable, use the repo docs and the latest `docs/PROGRESS.md` entry to continue from the last completed slice.
@@ -27,7 +27,7 @@ If that file is unavailable, use the repo docs and the latest `docs/PROGRESS.md`
 - Headless package: `..\product_image_discovery`
 - Package README/API contract: `..\product_image_discovery\README.md`
 - Package admin UX guide: `..\product_image_discovery\docs\ADMIN_UI_UX_GUIDELINES.md`
-- React prototype: `C:\Users\lopad\Downloads\productimagesearch-admin\project`
+- React prototype: `%USERPROFILE%\Downloads\productimagesearch-admin\project`
 
 ## Procedure
 

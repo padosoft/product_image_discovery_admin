@@ -1,11 +1,14 @@
 import { defineConfig, devices } from '@playwright/test';
+import { existsSync } from 'node:fs';
+import { homedir } from 'node:os';
+import { join, resolve } from 'node:path';
 
-const defaultPhpBinary = process.platform === 'win32'
-  ? 'C:\\Users\\lopad\\.config\\herd\\bin\\php84\\php.exe'
-  : 'php';
-const phpBinary = process.env.PHP_BINARY || defaultPhpBinary;
+const phpBinary = process.env.PHP_BINARY
+  || (process.platform === 'win32' && existsSync(join(homedir(), '.config', 'herd', 'bin', 'php84', 'php.exe'))
+    ? join(homedir(), '.config', 'herd', 'bin', 'php84', 'php.exe')
+    : 'php');
 const port = Number(process.env.PLAYWRIGHT_PORT || 8067);
-const database = process.env.DB_DATABASE || `${process.cwd()}\\database\\playwright.sqlite`;
+const database = process.env.DB_DATABASE || resolve('database/playwright.sqlite');
 const appKey = process.env.APP_KEY || 'base64:YWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWE=';
 
 export default defineConfig({

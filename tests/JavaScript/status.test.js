@@ -11,4 +11,8 @@ describe('status mapping', () => {
     expect(scoreTone(65)).toBe('warn');
     expect(scoreTone(95)).toBe('ok');
   });
+
+  it('treats non-numeric scores as neutral', () => {
+    expect(scoreTone('N/A')).toBe('neutral');
+  });
 });

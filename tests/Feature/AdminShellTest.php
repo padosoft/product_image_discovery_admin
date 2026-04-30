@@ -18,4 +18,12 @@ final class AdminShellTest extends TestCase
             ->assertSee('product-image-discovery-admin')
             ->assertSee('Product Image Discovery Admin');
     }
+
+    public function test_root_redirect_uses_configured_admin_prefix(): void
+    {
+        config(['pid-admin.route_prefix' => 'custom/pid-admin']);
+
+        $this->get('/')
+            ->assertRedirect('/custom/pid-admin');
+    }
 }

@@ -1,11 +1,11 @@
 import { existsSync, mkdirSync, closeSync, openSync } from 'node:fs';
-import { dirname, resolve } from 'node:path';
+import { homedir } from 'node:os';
+import { dirname, join, resolve } from 'node:path';
 import { spawnSync } from 'node:child_process';
 
-const defaultPhpBinary = process.platform === 'win32'
-  ? 'C:\\Users\\lopad\\.config\\herd\\bin\\php84\\php.exe'
-  : 'php';
-const phpBinary = process.env.PHP_BINARY || defaultPhpBinary;
+const herdPhp = join(homedir(), '.config', 'herd', 'bin', 'php84', 'php.exe');
+const phpBinary = process.env.PHP_BINARY
+  || (process.platform === 'win32' && existsSync(herdPhp) ? herdPhp : 'php');
 const database = resolve('database/playwright.sqlite');
 const appKey = 'base64:YWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWE=';
 

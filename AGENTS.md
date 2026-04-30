@@ -3,13 +3,13 @@
 This repository is the Laravel admin/demo application for the headless package at:
 
 ```text
-C:\Users\lopad\Documents\DocLore\Visual Basic\Ai\product_image_discovery
+..\product_image_discovery
 ```
 
 The durable implementation plan is saved at:
 
 ```text
-C:\Users\lopad\Downloads\productimagesearch-admin\plan.md
+%USERPROFILE%\Downloads\productimagesearch-admin\plan.md
 ```
 
 If context is missing, read that plan first, then read:
@@ -28,10 +28,10 @@ If context is missing, read that plan first, then read:
 - Add admin JSON wrappers under `/admin/product-image-discovery/...`.
 - Use SQLite by default for local development and tests.
 - Use Blade + Vite + React for the admin UI because the approved prototype is React.
-- Reuse the exported prototype at `C:\Users\lopad\Downloads\productimagesearch-admin\project` as the visual/product baseline.
+- Reuse the exported prototype at `%USERPROFILE%\Downloads\productimagesearch-admin\project` as the visual/product baseline.
 - Never expose secrets. Provider credentials are write-only and JSON responses must expose only configured/missing booleans.
 - Keep UI dense and operational: no landing page, no marketing hero, no nested cards, radius <= 8px.
-- Use `lucide-react` icons where available.
+- Use inline SVG icon buttons or the existing project icon set until an icon package is explicitly added.
 - Update `docs/PROGRESS.md` after meaningful implementation steps.
 - Update `docs/LESSON.md` when discovering anything that would save the next agent time.
 

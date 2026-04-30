@@ -2,10 +2,10 @@
 
 ## Source Of Truth
 
-- The canonical plan lives at `C:\Users\lopad\Downloads\productimagesearch-admin\plan.md`.
+- The canonical plan lives at `%USERPROFILE%\Downloads\productimagesearch-admin\plan.md`.
 - The headless package contract lives in `../product_image_discovery/README.md`.
 - Admin UX rules live in `../product_image_discovery/docs/ADMIN_UI_UX_GUIDELINES.md`.
-- The React prototype baseline lives in `C:\Users\lopad\Downloads\productimagesearch-admin\project`.
+- The React prototype baseline lives at `%USERPROFILE%\Downloads\productimagesearch-admin\project`.
 
 ## Implementation Defaults
 

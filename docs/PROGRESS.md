@@ -2,7 +2,7 @@
 
 ## 2026-04-30
 
-- User confirmed the full implementation plan is saved at `C:\Users\lopad\Downloads\productimagesearch-admin\plan.md`.
+- User confirmed the full implementation plan is saved at `%USERPROFILE%\Downloads\productimagesearch-admin\plan.md`.
 - Created process docs before application code, per user instruction.
 - Added durable repo instructions in `AGENTS.md`.
 - Added a local skill at `skills/product-image-discovery-admin-plan/SKILL.md`.

@@ -7,9 +7,12 @@ use App\Http\Controllers\ProductImageDiscovery\AdminDashboardSummaryController;
 use App\Http\Controllers\ProductImageDiscovery\AdminRequestEventsController;
 use App\Http\Controllers\ProductImageDiscovery\AdminRequestSearchController;
 use App\Http\Controllers\ProductImageDiscovery\AdminShellController;
+use Illuminate\Http\RedirectResponse;
 use Illuminate\Support\Facades\Route;
 
-Route::redirect('/', '/admin/product-image-discovery');
+Route::get('/', static function (): RedirectResponse {
+    return redirect('/'.trim((string) config('pid-admin.route_prefix', 'admin/product-image-discovery'), '/'));
+});
 
 Route::prefix(config('pid-admin.route_prefix', 'admin/product-image-discovery'))
     ->middleware(config('pid-admin.route_middleware', ['web']))

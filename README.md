@@ -31,7 +31,7 @@ php artisan serve
 If `php` is not on PATH, the current machine has Herd PHP at:
 
 ```text
-C:\Users\lopad\.config\herd\bin\php84\php.exe
+%USERPROFILE%\.config\herd\bin\php84\php.exe
 ```
 
 ## Tests
@@ -48,5 +48,5 @@ npm run e2e
 Read `AGENTS.md` first when resuming this project. The durable implementation plan is saved at:
 
 ```text
-C:\Users\lopad\Downloads\productimagesearch-admin\plan.md
+%USERPROFILE%\Downloads\productimagesearch-admin\plan.md
 ```
