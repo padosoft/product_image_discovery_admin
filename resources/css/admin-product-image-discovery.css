@@ -904,6 +904,33 @@ textarea {
   padding: 12px;
 }
 
+.pid-compare-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+  padding: 12px;
+}
+
+.pid-compare-card {
+  display: grid;
+  gap: 10px;
+  border: 1px solid var(--pid-border);
+  border-radius: var(--pid-radius);
+  background: var(--pid-surface-2);
+  padding: 10px;
+}
+
+.pid-compare-card h3 {
+  margin: 0;
+  font-size: 13px;
+}
+
+.pid-compare-card__actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
 .pid-table__action {
   width: 72px;
 }
@@ -948,6 +975,10 @@ textarea {
   .pid-request-summary,
   .pid-metric-grid {
     grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .pid-compare-grid {
+    grid-template-columns: 1fr;
   }
 }
 

@@ -279,6 +279,8 @@ describe('admin product image discovery shell', () => {
 
     expect(await screen.findByRole('dialog', { name: 'Request 44' })).toBeVisible();
     expect(screen.getByText('Summary')).toBeVisible();
+    expect(screen.getByRole('heading', { name: 'Compare mode' })).toBeVisible();
+    expect(screen.getByRole('button', { name: 'Open source' })).toBeVisible();
   });
 
   it('renders the json viewer and copies content', async () => {

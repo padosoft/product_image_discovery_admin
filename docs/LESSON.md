@@ -6,6 +6,8 @@
 - The request detail drawer is easier to keep honest when it loads candidates from the dedicated candidates endpoint instead of relying only on the `show` payload.
 - When adding action modals to the shell, keep a single source of truth for transient action state so approve/reject/retry closures can reset the drawer and the modal cleanly.
 - Risky reject reasons need notes in both backend validation and the UI, otherwise the shell can drift from the package rule set.
+- Compare mode works better when the drawer carries the current candidate selection in state and falls back to the first loaded candidate after a refresh.
+- Candidate comparison needs a direct source/open/copy path in the drawer, not only in the table row actions, or the operator has to jump between surfaces.
 
 ## 2026-04-30
 

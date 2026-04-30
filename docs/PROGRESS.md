@@ -11,6 +11,8 @@
 - Extended the Requests/Manual Review drawer to load candidate rows from the dedicated wrapper endpoint and expose approve/reject/retry actions.
 - Added a reject modal with note requirements for risky reasons and a toast for mutation feedback.
 - Added feature coverage for candidate index sorting, approve/reject behavior, reject validation, and request retry.
+- Extended the request drawer with compare mode, selected-vs-under-review candidate cards, image previews, and source/open/copy actions.
+- Added RTL coverage for the compare-mode branch in the request drawer.
 
 ## 2026-04-30
 

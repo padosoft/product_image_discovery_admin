@@ -638,10 +638,15 @@ function RequestDetailDrawer({
   onApproveCandidate,
   onRejectCandidate,
   onRetryRequest,
+  compareCandidateId,
+  onCompareCandidateIdChange,
 }) {
   const detailSummary = buildDetailSummary(detail);
   const selectedCandidate = detail?.selected_candidate ?? null;
   const bestCandidate = detail?.best_candidate ?? null;
+  const compareCandidate = candidates.find((candidate) => String(candidate.id) === String(compareCandidateId))
+    ?? candidates[0]
+    ?? null;
   const requestCanRetry = detail && !['published', 'ready_to_publish'].includes(detail.status);
   const eventTimeline = events.map((event) => ({
     id: event.id,
@@ -722,6 +727,90 @@ function RequestDetailDrawer({
               ))}
             </div>
           </section>
+
+          {compareCandidate ? (
+            <section className="pid-panel pid-panel--flat">
+              <div className="pid-panel__header">
+                <h2>Compare mode</h2>
+                <select
+                  aria-label="Compare candidate"
+                  value={String(compareCandidate.id)}
+                  onChange={(event) => onCompareCandidateIdChange(event.target.value)}
+                >
+                  {candidates.map((candidate) => (
+                    <option key={candidate.id} value={candidate.id}>
+                      Candidate {candidate.id}
+                    </option>
+                  ))}
+                </select>
+              </div>
+              <div className="pid-compare-grid">
+                <article className="pid-compare-card">
+                  <div className="pid-panel__header">
+                    <h3>Selected</h3>
+                    <StatusBadge status={selectedCandidate?.status ?? detail.status} />
+                  </div>
+                  {selectedCandidate ? (
+                    <>
+                      <ImageTile
+                        src={candidateImageUrl(selectedCandidate.id)}
+                        alt={`Selected candidate ${selectedCandidate.id} preview`}
+                        status={selectedCandidate.status}
+                        caption={`${selectedCandidate.source_domain} • ${selectedCandidate.final_score ?? '-'} score`}
+                      />
+                      <div className="pid-detail-candidate__meta">
+                        <strong>{selectedCandidate.source_domain}</strong>
+                        <span>{selectedCandidate.source_page_url}</span>
+                        <span className="pid-muted">Rejection: {fieldValue(selectedCandidate.rejection_reason)}</span>
+                      </div>
+                    </>
+                  ) : (
+                    <EmptyState title="No selected candidate" description="Nothing has been approved yet." />
+                  )}
+                </article>
+                <article className="pid-compare-card">
+                  <div className="pid-panel__header">
+                    <h3>Under review</h3>
+                    <StatusBadge status={compareCandidate.status} />
+                  </div>
+                  <ImageTile
+                    src={candidateImageUrl(compareCandidate.id)}
+                    alt={`Candidate ${compareCandidate.id} preview`}
+                    status={compareCandidate.status}
+                    caption={`${compareCandidate.source_domain} • ${compareCandidate.final_score ?? '-'} score`}
+                  />
+                  <div className="pid-detail-candidate__meta">
+                    <strong>{compareCandidate.source_domain}</strong>
+                    <span>{compareCandidate.source_page_url}</span>
+                    <span className="pid-muted">Rejection: {fieldValue(compareCandidate.rejection_reason)}</span>
+                    <span className="pid-muted">Mime: {fieldValue(compareCandidate.mime_type)} • {fieldValue(compareCandidate.width)} x {fieldValue(compareCandidate.height)}</span>
+                  </div>
+                  <div className="pid-compare-card__actions">
+                    <button
+                      type="button"
+                      className="pid-chip-button"
+                      onClick={() => window.open(compareCandidate.source_page_url, '_blank', 'noopener,noreferrer')}
+                    >
+                      Open source
+                    </button>
+                    <button
+                      type="button"
+                      className="pid-chip-button"
+                      onClick={async () => {
+                        try {
+                          await navigator.clipboard.writeText(compareCandidate.image_url);
+                        } catch (err) {
+                          void err;
+                        }
+                      }}
+                    >
+                      Copy image URL
+                    </button>
+                  </div>
+                </article>
+              </div>
+            </section>
+          ) : null}
 
           <section className="pid-panel pid-panel--flat">
             <div className="pid-panel__header">
@@ -878,6 +967,7 @@ export default function App() {
   const [detailEvents, setDetailEvents] = useState([]);
   const [detailLoading, setDetailLoading] = useState(false);
   const [detailError, setDetailError] = useState('');
+  const [compareCandidateId, setCompareCandidateId] = useState(null);
   const [approveCandidate, setApproveCandidate] = useState(null);
   const [rejectCandidate, setRejectCandidate] = useState(null);
   const [rejectReason, setRejectReason] = useState('');
@@ -1010,6 +1100,7 @@ export default function App() {
     setDetailRequest(null);
     setDetailCandidates([]);
     setDetailEvents([]);
+    setCompareCandidateId(null);
     setApproveCandidate(null);
     setRejectCandidate(null);
     setRejectReason('');
@@ -1023,6 +1114,13 @@ export default function App() {
       setDetailRequest(result.detail);
       setDetailCandidates(result.candidates);
       setDetailEvents(result.events);
+      setCompareCandidateId((current) => {
+        if (current && result.candidates.some((candidate) => String(candidate.id) === String(current))) {
+          return current;
+        }
+
+        return result.candidates[0]?.id ?? null;
+      });
     } catch (err) {
       setDetailError(err.message || 'Unable to load request detail.');
     } finally {
@@ -1060,6 +1158,13 @@ export default function App() {
       setDetailRequest(result.detail);
       setDetailCandidates(result.candidates);
       setDetailEvents(result.events);
+      setCompareCandidateId((current) => {
+        if (current && result.candidates.some((candidate) => String(candidate.id) === String(current))) {
+          return current;
+        }
+
+        return result.candidates[0]?.id ?? null;
+      });
     } catch (err) {
       setDetailError(err.message || 'Unable to refresh request detail.');
     } finally {
@@ -1213,6 +1318,8 @@ export default function App() {
               setActionError('');
             },
             onRetryRequest: setRetryRequest,
+            compareCandidateId,
+            onCompareCandidateIdChange: setCompareCandidateId,
           }}
         />
       );
@@ -1246,6 +1353,8 @@ export default function App() {
               setActionError('');
             },
             onRetryRequest: setRetryRequest,
+            compareCandidateId,
+            onCompareCandidateIdChange: setCompareCandidateId,
           }}
           manualReviewOnly
         />
