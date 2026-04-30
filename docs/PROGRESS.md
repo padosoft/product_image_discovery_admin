@@ -55,3 +55,30 @@
   - `npm run test`
   - `npm run build`
   - `npm run e2e`
+
+## 2026-04-30 - Requests Workflow Slice
+
+- Added `GET /admin/product-image-discovery/requests/{request}` for request detail payloads with loaded best/selected candidates and candidate collection data.
+- Reordered admin routes so `/requests/search` stays ahead of `/requests/{request}` and is not captured by the wildcard route.
+- Added request filter helpers for query-string sync and active chip rendering.
+- The Requests page now initializes filter state from the URL, keeps the query string in sync, and renders a filter bar plus detail drawer scaffolding.
+- Added tests for request detail, request filter serialization, and the URL-driven Requests page state.
+- Verification passed after the Requests slice fixes:
+  - `vendor\bin\phpunit --configuration phpunit.xml`
+  - `npm run test`
+  - `npm run build`
+  - `npm run e2e`
+
+## 2026-04-30 - Toolchain Recovery
+
+- Upgraded the frontend toolchain to the current major line:
+  - `vite` `^8.0.10`
+  - `@vitejs/plugin-react` `^6.0.1`
+  - `laravel-vite-plugin` `^3.1.0`
+  - `vitest` `^4.1.5`
+- Added a small Node preload at `scripts/no-net-use.cjs` to neutralize the Windows `net use` call that was breaking Vite bootstrap.
+- Forced Vitest to use `pool: 'threads'` so it stops spawning the failing forks worker on this machine.
+- Verification passed after the toolchain recovery:
+  - `npm run test`
+  - `npm run build`
+  - `npm run e2e`

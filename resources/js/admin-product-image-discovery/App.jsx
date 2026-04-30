@@ -1,10 +1,18 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import { pidFetch, normalizeLaravelPagination } from './api';
+import { pidFetch, normalizeLaravelPagination, buildRequestSearchPath } from './api';
 import { DataTable } from './components/DataTable';
+import { Drawer } from './components/Drawer';
+import { EmptyState } from './components/EmptyState';
 import { FilterBar } from './components/FilterBar';
 import { JsonViewer } from './components/JsonViewer';
 import { ScorePill } from './components/ScorePill';
 import { StatusBadge } from './components/StatusBadge';
+import {
+  createDefaultRequestFilters,
+  requestFiltersFromSearchParams,
+  requestFiltersToActiveChips,
+  requestFiltersToSearchParams,
+} from './request-filters';
 
 const DEFAULT_SUMMARY = {
   counts: {},
@@ -204,6 +212,34 @@ function summarizeRequests(requests) {
   );
 }
 
+function buildDetailSummary(detail) {
+  if (!detail) {
+    return [];
+  }
+
+  return [
+    ['Request', detail.id],
+    ['Status', detail.status],
+    ['Brand', detail.brand ?? '-'],
+    ['Supplier', detail.supplier ?? '-'],
+    ['Score', detail.final_score ?? '-'],
+    ['Best candidate', detail.best_candidate?.id ?? '-'],
+    ['Selected candidate', detail.selected_candidate?.id ?? '-'],
+  ];
+}
+
+function fieldValue(value) {
+  if (value === null || value === undefined || value === '') {
+    return '-';
+  }
+
+  if (typeof value === 'object') {
+    return JSON.stringify(value);
+  }
+
+  return String(value);
+}
+
 function Sidebar({ page, onPage }) {
   return (
     <aside className="pid-sidebar" aria-label="Product image discovery sidebar" data-testid="pid-shell-sidebar">
@@ -355,9 +391,175 @@ function Overview({ summary, requests, loading, error }) {
   );
 }
 
-function Requests({ requests, loading, title = 'Latest Requests' }) {
+function RequestFilters({ filters, onChange, onReset, activeChips, loading }) {
+  const update = (name, value) => {
+    onChange({ ...filters, [name]: value });
+  };
+
+  return (
+    <section className="pid-panel">
+      <div className="pid-panel__header">
+        <h2>Search Filters</h2>
+        <span>{loading ? 'Syncing' : `${activeChips.length} active`}</span>
+      </div>
+      <div className="pid-filters">
+        <label>
+          <span>Brand</span>
+          <input value={filters.brand} onChange={(event) => update('brand', event.target.value)} placeholder="Herno" />
+        </label>
+        <label>
+          <span>Supplier</span>
+          <input value={filters.supplier} onChange={(event) => update('supplier', event.target.value)} placeholder="Supplier name" />
+        </label>
+        <label>
+          <span>Status</span>
+          <input value={filters.status} onChange={(event) => update('status', event.target.value)} placeholder="manual_review" />
+        </label>
+        <label>
+          <span>Source domain</span>
+          <input value={filters.source_domain} onChange={(event) => update('source_domain', event.target.value)} placeholder="cdn.example.com" />
+        </label>
+        <label>
+          <span>Min score</span>
+          <input type="number" min="0" max="100" value={filters.min_score} onChange={(event) => update('min_score', event.target.value)} />
+        </label>
+        <label>
+          <span>Max score</span>
+          <input type="number" min="0" max="100" value={filters.max_score} onChange={(event) => update('max_score', event.target.value)} />
+        </label>
+        <label>
+          <span>Per page</span>
+          <select value={filters.per_page} onChange={(event) => update('per_page', event.target.value)}>
+            {['10', '15', '25', '50'].map((value) => <option key={value} value={value}>{value}</option>)}
+          </select>
+        </label>
+        <label>
+          <span>Sort by</span>
+          <select value={filters.sort_by} onChange={(event) => update('sort_by', event.target.value)}>
+            {['created_at', 'updated_at', 'final_score', 'status', 'brand', 'supplier', 'client_id'].map((value) => <option key={value} value={value}>{value}</option>)}
+          </select>
+        </label>
+        <label>
+          <span>Direction</span>
+          <select value={filters.sort_direction} onChange={(event) => update('sort_direction', event.target.value)}>
+            {['desc', 'asc'].map((value) => <option key={value} value={value}>{value}</option>)}
+          </select>
+        </label>
+        <label>
+          <span>Manual review only</span>
+          <select value={filters.manual_review_required} onChange={(event) => update('manual_review_required', event.target.value)}>
+            <option value="">Any</option>
+            <option value="true">Yes</option>
+            <option value="false">No</option>
+          </select>
+        </label>
+      </div>
+      <div className="pid-filter-actions">
+        <FilterBar label="Active filters" filters={activeChips} onClear={onReset} />
+      </div>
+    </section>
+  );
+}
+
+function RequestDetailDrawer({ detail, events, candidates, loading, error, onClose }) {
+  const detailSummary = buildDetailSummary(detail);
+  const selectedCandidate = detail?.selected_candidate ?? null;
+  const bestCandidate = detail?.best_candidate ?? null;
+
+  return (
+    <Drawer open={Boolean(detail)} title={detail ? `Request ${detail.id}` : 'Request detail'} onClose={onClose}>
+      {loading ? <EmptyState title="Loading request detail" description="Fetching request, candidates, and events." /> : null}
+      {error ? <div className="pid-alert pid-alert--danger" role="alert">{error}</div> : null}
+      {!loading && detail ? (
+        <div className="pid-detail-grid">
+          <section className="pid-panel pid-panel--flat">
+            <div className="pid-panel__header">
+              <h2>Summary</h2>
+              <StatusBadge status={detail.status} />
+            </div>
+            <div className="pid-detail-summary">
+              {detailSummary.map(([label, value]) => (
+                <div key={label}>
+                  <span>{label}</span>
+                  <strong>{fieldValue(value)}</strong>
+                </div>
+              ))}
+            </div>
+          </section>
+
+          <section className="pid-panel pid-panel--flat">
+            <div className="pid-panel__header">
+              <h2>Candidates</h2>
+              <span>{candidates.length} rows</span>
+            </div>
+            <div className="pid-detail-candidates">
+              {candidates.length === 0 ? (
+                <EmptyState title="No candidates" description="This request has no candidate rows yet." />
+              ) : candidates.map((candidate) => (
+                <div className="pid-detail-candidate" key={candidate.id}>
+                  <div>
+                    <strong>{candidate.source_domain}</strong>
+                    <span>{candidate.source_page_url}</span>
+                  </div>
+                  <ScorePill score={candidate.final_score} />
+                  <StatusBadge status={candidate.id === selectedCandidate?.id ? 'published' : candidate.id === bestCandidate?.id ? 'ready_to_publish' : candidate.status} />
+                </div>
+              ))}
+            </div>
+          </section>
+
+          <section className="pid-panel pid-panel--flat">
+            <div className="pid-panel__header">
+              <h2>Events</h2>
+              <span>{events.length} items</span>
+            </div>
+            <div className="pid-detail-events">
+              {events.length === 0 ? (
+                <EmptyState title="No events" description="The selected request has no events yet." />
+              ) : (
+                <ul className="pid-timeline">
+                  {events.map((event) => (
+                    <li key={event.id} className="pid-timeline__item">
+                      <strong>{event.event_type}</strong>
+                      <span>{event.message}</span>
+                      <span className="pid-muted">{formatUpdatedAt(event.created_at)}</span>
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </div>
+          </section>
+
+          <JsonViewer value={detail} label="Request payload" />
+        </div>
+      ) : null}
+    </Drawer>
+  );
+}
+
+function Requests({
+  requests,
+  loading,
+  title = 'Latest Requests',
+  filters,
+  onFiltersChange,
+  activeChips,
+  onClearFilters,
+  onOpenRequest,
+  detailState,
+}) {
   const requestSummary = summarizeRequests(requests);
   const columns = [
+    {
+      key: 'open',
+      label: '',
+      className: 'pid-table__action',
+      render: (request) => (
+        <button type="button" className="pid-chip-button" onClick={() => onOpenRequest(request)}>
+          Open
+        </button>
+      ),
+    },
     { key: 'status', label: 'Status', render: (request) => <StatusBadge status={request.status} /> },
     { key: 'score', label: 'Score', render: (request) => <ScorePill score={request.final_score} /> },
     { key: 'brand', label: 'Brand' },
@@ -368,9 +570,12 @@ function Requests({ requests, loading, title = 'Latest Requests' }) {
 
   return (
     <div className="pid-stack">
-      <FilterBar
-        label="Active filters"
-        filters={[]}
+      <RequestFilters
+        filters={filters}
+        onChange={onFiltersChange}
+        onReset={onClearFilters}
+        activeChips={activeChips}
+        loading={loading}
       />
       <section className="pid-request-summary" aria-label="Request summary">
         {[
@@ -400,6 +605,7 @@ function Requests({ requests, loading, title = 'Latest Requests' }) {
           emptyDescription="The shell is connected, but no discovery requests were returned."
         />
       </section>
+      <RequestDetailDrawer {...detailState} onClose={detailState.onClose} />
     </div>
   );
 }
@@ -427,10 +633,31 @@ function PlaceholderPage({ page }) {
 }
 
 export default function App() {
-  const [page, setPage] = useState('overview');
+  const [page, setPage] = useState(() => {
+    const path = window.location.pathname;
+
+    if (path.includes('/review')) {
+      return 'review';
+    }
+
+    if (path.includes('/requests')) {
+      return 'requests';
+    }
+
+    return 'overview';
+  });
   const [theme, setTheme] = useState(() => localStorage.getItem('pid-admin-theme') || 'light');
   const [summary, setSummary] = useState(DEFAULT_SUMMARY);
-  const [requests, setRequests] = useState([]);
+  const [overviewRequests, setOverviewRequests] = useState([]);
+  const [requestRows, setRequestRows] = useState([]);
+  const [requestFilters, setRequestFilters] = useState(() => requestFiltersFromSearchParams(new URLSearchParams(window.location.search)));
+  const [requestLoading, setRequestLoading] = useState(true);
+  const [requestError, setRequestError] = useState('');
+  const [detailRequest, setDetailRequest] = useState(null);
+  const [detailCandidates, setDetailCandidates] = useState([]);
+  const [detailEvents, setDetailEvents] = useState([]);
+  const [detailLoading, setDetailLoading] = useState(false);
+  const [detailError, setDetailError] = useState('');
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
 
@@ -438,6 +665,13 @@ export default function App() {
     document.documentElement.dataset.theme = theme;
     localStorage.setItem('pid-admin-theme', theme);
   }, [theme]);
+
+  useEffect(() => {
+    const params = requestFiltersToSearchParams(requestFilters);
+    const query = params.toString();
+    const nextUrl = `${window.location.pathname}${query ? `?${query}` : ''}${window.location.hash}`;
+    window.history.replaceState({}, '', nextUrl);
+  }, [requestFilters]);
 
   useEffect(() => {
     let cancelled = false;
@@ -466,9 +700,9 @@ export default function App() {
       }
 
       if (requestsResult.status === 'fulfilled') {
-        setRequests(normalizeLaravelPagination(requestsResult.value).data);
+        setOverviewRequests(normalizeLaravelPagination(requestsResult.value).data);
       } else {
-        setRequests([]);
+        setOverviewRequests([]);
         warnings.push('Requests list is unavailable.');
       }
 
@@ -491,29 +725,124 @@ export default function App() {
     };
   }, []);
 
+  useEffect(() => {
+    let cancelled = false;
+    const controller = new AbortController();
+    const timeout = window.setTimeout(async () => {
+      setRequestLoading(true);
+      setRequestError('');
+
+      const effectiveFilters = page === 'review'
+        ? { ...requestFilters, manual_review_required: 'true' }
+        : requestFilters;
+
+      try {
+        const result = await pidFetch(buildRequestSearchPath(effectiveFilters), { signal: controller.signal });
+
+        if (!cancelled) {
+          setRequestRows(normalizeLaravelPagination(result).data);
+          setRequestLoading(false);
+        }
+      } catch (err) {
+        if (!cancelled && err.name !== 'AbortError') {
+          setRequestRows([]);
+          setRequestError(err.message || 'Unable to load requests.');
+          setRequestLoading(false);
+        }
+      }
+    }, 280);
+
+    return () => {
+      cancelled = true;
+      controller.abort();
+      window.clearTimeout(timeout);
+    };
+  }, [page, requestFilters]);
+
+  async function openRequest(request) {
+    setDetailLoading(true);
+    setDetailError('');
+    setDetailRequest(null);
+    setDetailCandidates([]);
+    setDetailEvents([]);
+
+    try {
+      const [detailResult, eventsResult] = await Promise.all([
+        pidFetch(`/requests/${request.id}`),
+        pidFetch(`/requests/${request.id}/events`),
+      ]);
+
+      setDetailRequest(detailResult.data ?? detailResult);
+      setDetailCandidates(detailResult.candidates ?? []);
+      setDetailEvents(normalizeLaravelPagination(eventsResult).data);
+    } catch (err) {
+      setDetailError(err.message || 'Unable to load request detail.');
+    } finally {
+      setDetailLoading(false);
+    }
+  }
+
+  function clearFilters() {
+    setRequestFilters(createDefaultRequestFilters());
+  }
+
   const currentPage = pageIndex[page] ?? pageIndex.overview;
+  const activeRequestFilters = useMemo(() => requestFiltersToActiveChips(requestFilters), [requestFilters]);
 
   const body = useMemo(() => {
     if (page === 'overview') {
-      return <Overview summary={summary} requests={requests} loading={loading} error={error} />;
+      return <Overview summary={summary} requests={overviewRequests} loading={loading} error={error} />;
     }
 
     if (page === 'requests') {
-      return <Requests requests={requests} loading={loading} title="Latest Requests" />;
+      return (
+        <Requests
+          requests={requestRows}
+          loading={requestLoading}
+          title="Latest Requests"
+          filters={requestFilters}
+          onFiltersChange={setRequestFilters}
+          activeChips={activeRequestFilters}
+          onClearFilters={clearFilters}
+          onOpenRequest={openRequest}
+          detailState={{
+            detail: detailRequest,
+            events: detailEvents,
+            candidates: detailCandidates,
+            loading: detailLoading,
+            error: detailError,
+            onClose: () => setDetailRequest(null),
+          }}
+        />
+      );
     }
 
     if (page === 'review') {
       return (
         <Requests
-          requests={requests.filter((request) => request.status === 'manual_review')}
-          loading={loading}
+          requests={requestRows.filter((request) => request.status === 'manual_review')}
+          loading={requestLoading}
           title="Manual Review Queue"
+          filters={{ ...requestFilters, manual_review_required: 'true' }}
+          onFiltersChange={(next) => setRequestFilters({ ...next, manual_review_required: next.manual_review_required || 'true' })}
+          activeChips={requestFiltersToActiveChips({ ...requestFilters, manual_review_required: 'true' })}
+          onClearFilters={clearFilters}
+          onOpenRequest={openRequest}
+          detailState={{
+            detail: detailRequest,
+            events: detailEvents,
+            candidates: detailCandidates,
+            loading: detailLoading,
+            error: detailError,
+            onClose: () => setDetailRequest(null),
+          }}
+          manualReviewOnly
         />
       );
     }
 
     return <PlaceholderPage page={currentPage} />;
-  }, [currentPage, error, loading, page, requests, summary]);
+  }, [activeRequestFilters, clearFilters, currentPage, detailCandidates, detailError, detailEvents, detailLoading, detailRequest, error, loading, openRequest, page, requestFilters, requestLoading, requestRows, summary, overviewRequests]);
 
   return (
     <div className="pid-app">
@@ -524,7 +853,7 @@ export default function App() {
           theme={theme}
           onTheme={() => setTheme(theme === 'dark' ? 'light' : 'dark')}
           loading={loading}
-          requests={requests}
+          requests={overviewRequests}
         />
         <main className="pid-content" data-testid="pid-shell-content">{body}</main>
       </div>

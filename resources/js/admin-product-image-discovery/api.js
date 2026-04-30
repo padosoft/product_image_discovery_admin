@@ -24,6 +24,22 @@ export function normalizeLaravelPagination(payload) {
   };
 }
 
+export function buildRequestSearchPath(filters) {
+  const params = new URLSearchParams();
+
+  Object.entries(filters).forEach(([key, value]) => {
+    if (value === '' || value === null || value === undefined) {
+      return;
+    }
+
+    params.set(key, String(value));
+  });
+
+  const query = params.toString();
+
+  return query ? `/requests/search?${query}` : '/requests/search';
+}
+
 async function readResponsePayload(response) {
   if (response.status === 204) {
     return null;

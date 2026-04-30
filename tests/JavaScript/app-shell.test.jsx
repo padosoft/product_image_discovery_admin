@@ -28,9 +28,11 @@ describe('admin product image discovery shell', () => {
     document.documentElement.dataset.theme = 'light';
     document.head.innerHTML = '<meta name="csrf-token" content="test-token">';
     window.PID_ADMIN = { apiBase: '/admin/product-image-discovery' };
+    window.history.replaceState({}, '', '/admin/product-image-discovery/');
   });
 
   afterEach(() => {
+    vi.useRealTimers();
     vi.restoreAllMocks();
     vi.unstubAllGlobals();
     delete window.PID_ADMIN;
@@ -99,6 +101,57 @@ describe('admin product image discovery shell', () => {
     expect(await screen.findByRole('heading', { name: 'Overview' })).toBeVisible();
     expect(await screen.findByRole('alert')).toHaveTextContent('Dashboard summary is unavailable.');
     expect(screen.getByText('Queue Snapshot')).toBeVisible();
+  });
+
+  it('loads request filters from the url and shows the filter bar', async () => {
+    window.history.replaceState({}, '', '/admin/product-image-discovery/requests?brand=Herno');
+    vi.stubGlobal(
+      'fetch',
+      vi
+        .fn()
+        .mockResolvedValueOnce(
+          mockJsonResponse({
+            counts: { total: 1, manual_review: 1, ready_to_publish: 0, failed: 0, no_candidates_found: 0 },
+            provider_status: [],
+          }),
+        )
+        .mockResolvedValueOnce(
+          mockJsonResponse({
+            data: [
+              {
+                id: 44,
+                status: 'manual_review',
+                final_score: 61,
+                brand: 'Herno',
+                supplier: 'Herno',
+                erp_model_color_id: 'HERO-001-BLK',
+                updated_at: '2026-04-30T09:30:00Z',
+              },
+            ],
+          }),
+        )
+        .mockResolvedValueOnce(
+          mockJsonResponse({
+            data: [
+              {
+                id: 44,
+                status: 'manual_review',
+                final_score: 61,
+                brand: 'Herno',
+                supplier: 'Herno',
+                erp_model_color_id: 'HERO-001-BLK',
+                updated_at: '2026-04-30T09:30:00Z',
+              },
+            ],
+          }),
+        ),
+    );
+
+    render(<App />);
+
+    expect(await screen.findByRole('heading', { name: 'Search Filters' })).toBeVisible();
+    expect(screen.getByLabelText('Brand')).toHaveValue('Herno');
+    expect(screen.getByRole('button', { name: 'Clear' })).toBeVisible();
   });
 
   it('renders the json viewer and copies content', async () => {

@@ -365,6 +365,10 @@ textarea {
   overflow: hidden;
 }
 
+.pid-panel--flat {
+  border-radius: 0;
+}
+
 .pid-chip-button {
   display: inline-flex;
   min-height: 30px;
@@ -754,6 +758,93 @@ textarea {
   gap: 8px;
   margin: 0;
   padding-left: 18px;
+}
+
+.pid-filters {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 10px;
+  padding: 12px;
+}
+
+.pid-filters label {
+  display: grid;
+  gap: 6px;
+}
+
+.pid-filters span {
+  color: var(--pid-muted);
+  font-size: 12px;
+}
+
+.pid-filters input,
+.pid-filters select {
+  min-height: 34px;
+  border: 1px solid var(--pid-border);
+  border-radius: 6px;
+  background: var(--pid-surface);
+  color: var(--pid-text);
+  padding: 6px 8px;
+}
+
+.pid-filter-actions {
+  padding: 0 12px 12px;
+}
+
+.pid-detail-grid {
+  display: grid;
+  gap: 12px;
+}
+
+.pid-detail-summary {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+  padding: 12px;
+}
+
+.pid-detail-summary div {
+  display: grid;
+  gap: 4px;
+}
+
+.pid-detail-summary span {
+  color: var(--pid-muted);
+  font-size: 12px;
+}
+
+.pid-detail-candidates,
+.pid-detail-events {
+  display: grid;
+  gap: 8px;
+  padding: 12px;
+}
+
+.pid-detail-candidate {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto auto;
+  gap: 8px;
+  align-items: center;
+  border: 1px solid var(--pid-border);
+  border-radius: 6px;
+  padding: 8px 10px;
+}
+
+.pid-detail-candidate > div {
+  display: grid;
+  gap: 2px;
+  min-width: 0;
+}
+
+.pid-detail-candidate span {
+  overflow: hidden;
+  color: var(--pid-muted);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.pid-table__action {
+  width: 72px;
 }
 
 @media (max-width: 1180px) {
