@@ -24,6 +24,34 @@ export function normalizeLaravelPagination(payload) {
   };
 }
 
+async function readResponsePayload(response) {
+  if (response.status === 204) {
+    return null;
+  }
+
+  const contentType = response.headers.get('content-type') ?? '';
+
+  if (contentType.includes('application/json')) {
+    return response.json().catch(() => null);
+  }
+
+  const text = await response.text().catch(() => '');
+
+  if (!text) {
+    return null;
+  }
+
+  return { message: text };
+}
+
+export function normalizeApiError(response, payload) {
+  const message = payload?.message
+    || payload?.error
+    || `Request failed with status ${response.status}`;
+
+  return new ApiError(message, response.status, payload);
+}
+
 export async function pidFetch(path, options = {}) {
   const controller = options.signal ? null : new AbortController();
   const signal = options.signal ?? controller?.signal;
@@ -40,11 +68,10 @@ export async function pidFetch(path, options = {}) {
     },
   });
 
-  const payload = response.status === 204 ? null : await response.json().catch(() => null);
+  const payload = await readResponsePayload(response);
 
   if (!response.ok) {
-    const message = payload?.message || `Request failed with status ${response.status}`;
-    throw new ApiError(message, response.status, payload);
+    throw normalizeApiError(response, payload);
   }
 
   return payload;

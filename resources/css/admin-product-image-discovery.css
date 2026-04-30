@@ -365,6 +365,31 @@ textarea {
   overflow: hidden;
 }
 
+.pid-chip-button {
+  display: inline-flex;
+  min-height: 30px;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid var(--pid-border);
+  border-radius: 6px;
+  background: var(--pid-surface-2);
+  color: var(--pid-text);
+  cursor: pointer;
+  padding: 4px 10px;
+}
+
+.pid-chip-button--accent {
+  border-color: var(--pid-accent);
+  background: var(--pid-accent-soft);
+  color: var(--pid-accent);
+}
+
+.pid-chip-button:hover,
+.pid-chip-button:focus-visible {
+  border-color: var(--pid-accent);
+  outline: none;
+}
+
 .pid-panel__header {
   display: flex;
   min-height: 44px;
@@ -514,6 +539,198 @@ textarea {
   color: var(--pid-muted);
   padding: 16px;
   text-align: center;
+}
+
+.pid-empty-state,
+.pid-loading-state {
+  display: grid;
+  gap: 8px;
+  align-items: center;
+  justify-items: center;
+  min-height: 160px;
+  padding: 20px;
+  text-align: center;
+  color: var(--pid-muted);
+}
+
+.pid-loading-state__spinner {
+  width: 20px;
+  height: 20px;
+  border: 2px solid var(--pid-border);
+  border-top-color: var(--pid-accent);
+  border-radius: 50%;
+  animation: pid-spin 1s linear infinite;
+}
+
+.pid-json-viewer {
+  border: 1px solid var(--pid-border);
+  border-radius: var(--pid-radius);
+  background: var(--pid-surface);
+  overflow: hidden;
+}
+
+.pid-json-viewer__bar,
+.pid-drawer__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  border-bottom: 1px solid var(--pid-border);
+  padding: 10px 12px;
+}
+
+.pid-json-viewer__code {
+  margin: 0;
+  overflow: auto;
+  padding: 12px;
+  font-family: var(--pid-mono);
+  font-size: 12px;
+  line-height: 1.5;
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+
+.pid-filter-bar {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  border: 1px solid var(--pid-border);
+  border-radius: var(--pid-radius);
+  background: var(--pid-surface);
+  padding: 10px 12px;
+}
+
+.pid-filter-bar__label {
+  font-size: 12px;
+  font-weight: 700;
+  text-transform: uppercase;
+  color: var(--pid-muted);
+}
+
+.pid-filter-bar__chips {
+  display: flex;
+  flex: 1;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.pid-filter-chip {
+  display: inline-flex;
+  gap: 8px;
+  border-radius: 999px;
+  background: var(--pid-surface-2);
+  padding: 5px 10px;
+}
+
+.pid-drawer,
+.pid-modal {
+  position: fixed;
+  inset: 0;
+  z-index: 20;
+}
+
+.pid-drawer__backdrop,
+.pid-modal {
+  background: rgb(15 20 27 / 48%);
+}
+
+.pid-drawer__panel,
+.pid-modal__panel {
+  position: absolute;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  width: min(480px, 100%);
+  background: var(--pid-surface);
+  border-left: 1px solid var(--pid-border);
+  box-shadow: -20px 0 40px rgb(0 0 0 / 16%);
+}
+
+.pid-drawer__backdrop {
+  position: absolute;
+  inset: 0;
+}
+
+.pid-drawer__body,
+.pid-modal__panel {
+  padding: 12px;
+}
+
+.pid-modal {
+  display: grid;
+  place-items: center;
+  padding: 18px;
+}
+
+.pid-modal__panel {
+  position: relative;
+  inset: auto;
+  width: min(420px, 100%);
+  border: 1px solid var(--pid-border);
+  border-radius: var(--pid-radius);
+}
+
+.pid-modal__actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+  margin-top: 16px;
+}
+
+.pid-toast {
+  position: fixed;
+  right: 16px;
+  bottom: 16px;
+  z-index: 30;
+  border: 1px solid var(--pid-border);
+  border-radius: var(--pid-radius);
+  background: var(--pid-surface);
+  padding: 10px 12px;
+  box-shadow: 0 14px 30px rgb(0 0 0 / 14%);
+}
+
+.pid-toast--neutral {
+  color: var(--pid-text);
+}
+
+.pid-timeline {
+  display: grid;
+  gap: 12px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.pid-timeline__item {
+  display: grid;
+  gap: 4px;
+  border-left: 2px solid var(--pid-border);
+  padding-left: 12px;
+}
+
+.pid-image-tile {
+  display: grid;
+  gap: 8px;
+  margin: 0;
+}
+
+.pid-image-tile__frame {
+  overflow: hidden;
+  border: 1px solid var(--pid-border);
+  border-radius: var(--pid-radius);
+  background: var(--pid-surface-2);
+}
+
+.pid-image-tile__frame img {
+  display: block;
+  width: 100%;
+  height: auto;
+}
+
+@keyframes pid-spin {
+  to {
+    transform: rotate(360deg);
+  }
 }
 
 .pid-alert {

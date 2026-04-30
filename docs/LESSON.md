@@ -20,3 +20,6 @@
 - Review feedback: Remote image redirects must reject localhost, private, and reserved literal IP targets unless the URL is explicitly trusted.
 - Review feedback: Root redirects should follow `pid-admin.route_prefix` instead of hard-coding the admin path.
 - Review feedback: Use `node:path` helpers such as `join()` for portable file paths in JS helpers, rather than embedding platform-specific separators.
+- React shell slice: extracting shared primitives early makes later request/detail/configuration pages cheaper to build and keeps the shell from becoming a single oversized component.
+- React shell slice: `JsonViewer` should guard clipboard writes so the viewer still renders cleanly in environments where `navigator.clipboard` is missing.
+- API client slice: error normalization is easier to test when the response parsing and message extraction are separated from the fetch wrapper.

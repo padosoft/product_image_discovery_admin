@@ -3,6 +3,7 @@ import React from 'react';
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import App from '../../resources/js/admin-product-image-discovery/App';
+import { JsonViewer } from '../../resources/js/admin-product-image-discovery/components/JsonViewer';
 
 function mockJsonResponse(payload) {
   return {
@@ -98,5 +99,22 @@ describe('admin product image discovery shell', () => {
     expect(await screen.findByRole('heading', { name: 'Overview' })).toBeVisible();
     expect(await screen.findByRole('alert')).toHaveTextContent('Dashboard summary is unavailable.');
     expect(screen.getByText('Queue Snapshot')).toBeVisible();
+  });
+
+  it('renders the json viewer and copies content', async () => {
+    const writeText = vi.fn().mockResolvedValue(undefined);
+    vi.stubGlobal('navigator', {
+      clipboard: { writeText },
+    });
+
+    render(<JsonViewer value={{ alpha: 1, beta: 'two' }} label="Preview" />);
+
+    expect(screen.getByRole('region', { name: 'Preview' })).toBeVisible();
+    expect(screen.getByText(/"alpha": 1/)).toBeVisible();
+
+    fireEvent.click(screen.getByRole('button', { name: 'Copy' }));
+
+    expect(writeText).toHaveBeenCalledWith(JSON.stringify({ alpha: 1, beta: 'two' }, null, 2));
+    expect(await screen.findByRole('button', { name: 'Copied' })).toBeVisible();
   });
 });

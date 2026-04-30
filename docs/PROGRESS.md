@@ -35,3 +35,23 @@
   - wait for CI/review comments
   - fix until green
 - Continue Macro Task 2 after Macro 1 PR loop, unless the user explicitly wants to keep implementing locally first.
+
+## 2026-04-30 - Macro 2 Slice
+
+- Began Macro Task 2 by extracting shared React primitives from the shell:
+  - `DataTable`
+  - `EmptyState`
+  - `LoadingState`
+  - `JsonViewer`
+  - `FilterBar`
+  - `Drawer`
+  - `ConfirmModal`
+  - `Toast`
+  - `Timeline`
+  - `ImageTile`
+- Improved the API client with shared error normalization and safer payload parsing.
+- Updated the shell to consume the shared table/filter/viewer primitives instead of rendering everything inline.
+- Verification passed for this slice:
+  - `npm run test`
+  - `npm run build`
+  - `npm run e2e`

@@ -1,5 +1,8 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { pidFetch, normalizeLaravelPagination } from './api';
+import { DataTable } from './components/DataTable';
+import { FilterBar } from './components/FilterBar';
+import { JsonViewer } from './components/JsonViewer';
 import { ScorePill } from './components/ScorePill';
 import { StatusBadge } from './components/StatusBadge';
 
@@ -354,9 +357,21 @@ function Overview({ summary, requests, loading, error }) {
 
 function Requests({ requests, loading, title = 'Latest Requests' }) {
   const requestSummary = summarizeRequests(requests);
+  const columns = [
+    { key: 'status', label: 'Status', render: (request) => <StatusBadge status={request.status} /> },
+    { key: 'score', label: 'Score', render: (request) => <ScorePill score={request.final_score} /> },
+    { key: 'brand', label: 'Brand' },
+    { key: 'supplier', label: 'Supplier' },
+    { key: 'erp_model_color_id', label: 'ERP model color', render: (request) => <code>{request.erp_model_color_id}</code> },
+    { key: 'updated_at', label: 'Updated', render: (request) => formatUpdatedAt(request.updated_at) },
+  ];
 
   return (
     <div className="pid-stack">
+      <FilterBar
+        label="Active filters"
+        filters={[]}
+      />
       <section className="pid-request-summary" aria-label="Request summary">
         {[
           ['Tracked', requestSummary.total],
@@ -376,36 +391,14 @@ function Requests({ requests, loading, title = 'Latest Requests' }) {
           <h2>{title}</h2>
           <span>{loading ? 'Loading' : `${requests.length} rows`}</span>
         </div>
-        <div className="pid-table-wrap">
-          <table className="pid-table">
-            <thead>
-              <tr>
-                <th>Status</th>
-                <th>Score</th>
-                <th>Brand</th>
-                <th>Supplier</th>
-                <th>ERP model color</th>
-                <th>Updated</th>
-              </tr>
-            </thead>
-            <tbody>
-              {requests.length === 0 ? (
-                <tr>
-                  <td colSpan="6" className="pid-empty">No discovery requests yet.</td>
-                </tr>
-              ) : requests.map((request) => (
-                <tr key={request.id}>
-                  <td><StatusBadge status={request.status} /></td>
-                  <td><ScorePill score={request.final_score} /></td>
-                  <td>{request.brand ?? '-'}</td>
-                  <td>{request.supplier ?? '-'}</td>
-                  <td><code>{request.erp_model_color_id}</code></td>
-                  <td>{formatUpdatedAt(request.updated_at)}</td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
+        <DataTable
+          ariaLabel="Discovery requests"
+          columns={columns}
+          rows={requests}
+          loading={loading}
+          emptyTitle="No discovery requests yet"
+          emptyDescription="The shell is connected, but no discovery requests were returned."
+        />
       </section>
     </div>
   );
@@ -413,20 +406,23 @@ function Requests({ requests, loading, title = 'Latest Requests' }) {
 
 function PlaceholderPage({ page }) {
   return (
-    <section className="pid-panel">
-      <div className="pid-panel__header">
-        <h2>{page.label}</h2>
-        <span>Next slice</span>
-      </div>
-      <div className="pid-placeholder">
-        <p className="pid-muted">{page.meta}</p>
-        <ul className="pid-placeholder__list">
-          <li>Keep the wrapper response shape visible inside the shell.</li>
-          <li>Favor dense tables, filters, and diagnostics over broad explanatory text.</li>
-          <li>Use this section as a stable mount point for the next Macro 1 frontend step.</li>
-        </ul>
-      </div>
-    </section>
+    <div className="pid-stack">
+      <section className="pid-panel">
+        <div className="pid-panel__header">
+          <h2>{page.label}</h2>
+          <span>Next slice</span>
+        </div>
+        <div className="pid-placeholder">
+          <p className="pid-muted">{page.meta}</p>
+          <ul className="pid-placeholder__list">
+            <li>Keep the wrapper response shape visible inside the shell.</li>
+            <li>Favor dense tables, filters, and diagnostics over broad explanatory text.</li>
+            <li>Use this section as a stable mount point for the next Macro 1 frontend step.</li>
+          </ul>
+        </div>
+      </section>
+      <JsonViewer value={{ page, hint: 'Diagnostics surfaces land in the next slice.' }} label="Page payload preview" />
+    </div>
   );
 }
 
