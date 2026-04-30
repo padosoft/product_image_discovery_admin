@@ -1,5 +1,17 @@
 # Progress
 
+## 2026-05-01
+
+- Continued `task/request-review-workflows` with candidate review wrappers.
+- Added admin routes for:
+  - request candidates index
+  - candidate approve
+  - candidate reject
+  - request retry
+- Extended the Requests/Manual Review drawer to load candidate rows from the dedicated wrapper endpoint and expose approve/reject/retry actions.
+- Added a reject modal with note requirements for risky reasons and a toast for mutation feedback.
+- Added feature coverage for candidate index sorting, approve/reject behavior, reject validation, and request retry.
+
 ## 2026-04-30
 
 - User confirmed the full implementation plan is saved at `%USERPROFILE%\Downloads\productimagesearch-admin\plan.md`.

@@ -256,6 +256,19 @@ describe('admin product image discovery shell', () => {
           mockJsonResponse({
             data: [{ id: 1, event_type: 'pipeline.started', message: 'Pipeline started.', created_at: '2026-04-30T09:30:00Z' }],
           }),
+        )
+        .mockResolvedValueOnce(
+          mockJsonResponse({
+            data: [
+              {
+                id: 301,
+                status: 'candidate',
+                final_score: 91,
+                source_domain: 'cdn.example.test',
+                source_page_url: 'https://cdn.example.test/products/model.html',
+              },
+            ],
+          }),
         ),
     );
 

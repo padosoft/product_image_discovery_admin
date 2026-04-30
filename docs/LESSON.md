@@ -1,5 +1,12 @@
 # Lessons
 
+## 2026-05-01
+
+- Admin candidate review wrappers should mirror the package endpoints exactly: `GET /requests/{request}/candidates`, `POST /requests/{request}/candidates/{candidate}/approve`, `POST /requests/{request}/candidates/{candidate}/reject`, and `POST /requests/{request}/retry`.
+- The request detail drawer is easier to keep honest when it loads candidates from the dedicated candidates endpoint instead of relying only on the `show` payload.
+- When adding action modals to the shell, keep a single source of truth for transient action state so approve/reject/retry closures can reset the drawer and the modal cleanly.
+- Risky reject reasons need notes in both backend validation and the UI, otherwise the shell can drift from the package rule set.
+
 ## 2026-04-30
 
 - `php` and `composer` may not be available on PATH; set `PHP_BINARY` to your PHP executable and use `composer` on PATH where possible instead of baking in one workstation path.

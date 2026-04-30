@@ -674,6 +674,38 @@ textarea {
   border-radius: var(--pid-radius);
 }
 
+.pid-modal__form {
+  display: grid;
+  gap: 12px;
+  margin-top: 12px;
+}
+
+.pid-modal__form label {
+  display: grid;
+  gap: 6px;
+}
+
+.pid-modal__form span,
+.pid-modal__help {
+  color: var(--pid-muted);
+  font-size: 12px;
+}
+
+.pid-modal__form select,
+.pid-modal__form textarea {
+  min-height: 34px;
+  border: 1px solid var(--pid-border);
+  border-radius: 6px;
+  background: var(--pid-surface);
+  color: var(--pid-text);
+  padding: 6px 8px;
+}
+
+.pid-modal__form textarea {
+  min-height: 92px;
+  resize: vertical;
+}
+
 .pid-modal__actions {
   display: flex;
   justify-content: flex-end;
@@ -695,6 +727,16 @@ textarea {
 
 .pid-toast--neutral {
   color: var(--pid-text);
+}
+
+.pid-toast--success {
+  background: var(--pid-ok-bg);
+  color: var(--pid-ok-text);
+}
+
+.pid-toast--danger {
+  background: var(--pid-danger-bg);
+  color: var(--pid-danger-text);
 }
 
 .pid-timeline {
@@ -827,7 +869,7 @@ textarea {
 
 .pid-detail-candidate {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) auto auto;
+  grid-template-columns: minmax(120px, 140px) minmax(0, 1fr) auto auto auto;
   gap: 8px;
   align-items: center;
   border: 1px solid var(--pid-border);
@@ -835,7 +877,8 @@ textarea {
   padding: 8px 10px;
 }
 
-.pid-detail-candidate > div {
+.pid-detail-candidate > div,
+.pid-detail-candidate__meta {
   display: grid;
   gap: 2px;
   min-width: 0;
@@ -846,6 +889,19 @@ textarea {
   color: var(--pid-muted);
   text-overflow: ellipsis;
   white-space: nowrap;
+}
+
+.pid-detail-candidate__actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  justify-content: flex-end;
+}
+
+.pid-detail-actions {
+  display: flex;
+  gap: 8px;
+  padding: 12px;
 }
 
 .pid-table__action {
