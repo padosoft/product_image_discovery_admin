@@ -51,7 +51,7 @@ async function readResponsePayload(response) {
     return response.json().catch(() => null);
   }
 
-  const text = await response.text?.().catch(() => '') ?? '';
+  const text = await response.text().catch(() => '') ?? '';
 
   if (!text) {
     return null;
@@ -71,9 +71,9 @@ export function normalizeApiError(response, payload) {
 export async function pidFetch(path, options = {}) {
   const controller = options.signal ? null : new AbortController();
   const signal = options.signal ?? controller?.signal;
-  const isAbsolute = /^https?:\/\//i.test(path);
-  const url = isAbsolute ? path : `${window.PID_ADMIN?.apiBase ?? '/admin/product-image-discovery'}${path}`;
-  const token = isAbsolute ? null : (document.querySelector('meta[name="csrf-token"]')?.content ?? '');
+  const isExternalUrl = /^https?:\/\//i.test(path);
+  const url = isExternalUrl ? path : `${window.PID_ADMIN?.apiBase ?? '/admin/product-image-discovery'}${path}`;
+  const token = isExternalUrl ? null : (document.querySelector('meta[name="csrf-token"]')?.content ?? '');
   const csrfHeader = token ? { 'X-CSRF-TOKEN': token } : {};
 
   const response = await fetch(url, {
