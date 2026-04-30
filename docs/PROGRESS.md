@@ -82,3 +82,17 @@
   - `npm run test`
   - `npm run build`
   - `npm run e2e`
+
+## 2026-04-30 - PR Review Fixes
+
+- Addressed remaining Copilot comments on the active PR:
+  - `pidFetch()` now rejects cross-origin absolute URLs and handles non-JSON responses without assuming `response.text()` exists.
+  - Request detail drawers stay open while loading or after a load failure, instead of closing as soon as the fetch starts.
+  - Request detail event payloads are paginated with a default limit instead of loading the full event list.
+  - `npm run e2e` now builds the Vite assets before it starts the bootstrap and browser smoke.
+- Added regression coverage for the fetch safety changes and the request detail drawer behavior.
+- Verification passed after the review fixes:
+  - `npm run test`
+  - `npm run build`
+  - `npm run e2e`
+  - `C:\\Users\\lopad\\.config\\herd\\bin\\php84\\php.exe vendor\\bin\\phpunit --configuration phpunit.xml`

@@ -156,6 +156,79 @@ describe('admin product image discovery shell', () => {
     expect(screen.getByRole('button', { name: 'Clear' })).toBeVisible();
   });
 
+  it('keeps the request detail drawer open while loading selected request data', async () => {
+    window.history.replaceState({}, '', '/admin/product-image-discovery/requests');
+    vi.stubGlobal(
+      'fetch',
+      vi
+        .fn()
+        .mockResolvedValueOnce(
+          mockJsonResponse({
+            counts: { total: 1, manual_review: 1, ready_to_publish: 0, failed: 0, no_candidates_found: 0 },
+            provider_status: [],
+          }),
+        )
+        .mockResolvedValueOnce(
+          mockJsonResponse({
+            data: [
+              {
+                id: 44,
+                status: 'manual_review',
+                final_score: 61,
+                brand: 'Herno',
+                supplier: 'Herno',
+                erp_model_color_id: 'HERO-001-BLK',
+                updated_at: '2026-04-30T09:30:00Z',
+              },
+            ],
+          }),
+        )
+        .mockResolvedValueOnce(
+          mockJsonResponse({
+            data: [
+              {
+                id: 44,
+                status: 'manual_review',
+                final_score: 61,
+                brand: 'Herno',
+                supplier: 'Herno',
+                erp_model_color_id: 'HERO-001-BLK',
+                updated_at: '2026-04-30T09:30:00Z',
+              },
+            ],
+          }),
+        )
+        .mockResolvedValueOnce(
+          mockJsonResponse({
+            data: {
+              id: 44,
+              status: 'manual_review',
+              final_score: 61,
+              brand: 'Herno',
+              supplier: 'Herno',
+              erp_model_color_id: 'HERO-001-BLK',
+              best_candidate: { id: 301 },
+              selected_candidate: null,
+              candidates: [],
+            },
+          }),
+        )
+        .mockResolvedValueOnce(
+          mockJsonResponse({
+            data: [{ id: 1, event_type: 'pipeline.started', message: 'Pipeline started.', created_at: '2026-04-30T09:30:00Z' }],
+          }),
+        ),
+    );
+
+    render(<App />);
+
+    await screen.findByRole('button', { name: 'Open' });
+    fireEvent.click(screen.getByRole('button', { name: 'Open' }));
+
+    expect(await screen.findByRole('dialog', { name: 'Request 44' })).toBeVisible();
+    expect(screen.getByText('Summary')).toBeVisible();
+  });
+
   it('renders the json viewer and copies content', async () => {
     const writeText = vi.fn().mockResolvedValue(undefined);
     vi.stubGlobal('navigator', {

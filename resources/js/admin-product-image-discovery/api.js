@@ -45,13 +45,17 @@ async function readResponsePayload(response) {
     return null;
   }
 
-  const contentType = response.headers?.get?.('content-type') ?? '';
+  const contentType = typeof response.headers?.get === 'function'
+    ? response.headers.get('content-type') ?? ''
+    : '';
 
   if (contentType.includes('application/json')) {
-    return response.json().catch(() => null);
+    return typeof response.json === 'function' ? response.json().catch(() => null) : null;
   }
 
-  const text = await response.text().catch(() => '') ?? '';
+  const text = typeof response.text === 'function'
+    ? await response.text().catch(() => '')
+    : '';
 
   if (!text) {
     return null;
@@ -71,12 +75,19 @@ export function normalizeApiError(response, payload) {
 export async function pidFetch(path, options = {}) {
   const controller = options.signal ? null : new AbortController();
   const signal = options.signal ?? controller?.signal;
-  const isExternalUrl = /^https?:\/\//i.test(path);
-  const url = isExternalUrl ? path : `${window.PID_ADMIN?.apiBase ?? '/admin/product-image-discovery'}${path}`;
-  const token = isExternalUrl ? null : (document.querySelector('meta[name="csrf-token"]')?.content ?? '');
+  const rawUrl = /^https?:\/\//i.test(path)
+    ? path
+    : `${window.PID_ADMIN?.apiBase ?? '/admin/product-image-discovery'}${path}`;
+  const url = new URL(rawUrl, window.location.origin);
+
+  if (url.origin !== window.location.origin) {
+    throw new TypeError('Cross-origin admin requests are not allowed.');
+  }
+
+  const token = document.querySelector('meta[name="csrf-token"]')?.content ?? '';
   const csrfHeader = token ? { 'X-CSRF-TOKEN': token } : {};
 
-  const response = await fetch(url, {
+  const response = await fetch(url.toString(), {
     ...options,
     signal,
     headers: {

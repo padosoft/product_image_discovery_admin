@@ -19,10 +19,13 @@ final class AdminRequestEventsController extends Controller
 
         $record = ProductImageDiscoveryRequest::query()->findOrFail($request);
 
+        $perPage = max(1, min((int) request('per_page', 100), 100));
+
         $events = $record->events()
             ->chronological()
-            ->get()
-            ->map(static fn (ProductImageDiscoveryEvent $event): array => [
+            ->paginate($perPage);
+
+        $events->setCollection($events->getCollection()->map(static fn (ProductImageDiscoveryEvent $event): array => [
                 'id' => $event->getKey(),
                 'request_id' => $event->getAttribute('request_id'),
                 'candidate_id' => $event->getAttribute('candidate_id'),
@@ -31,9 +34,8 @@ final class AdminRequestEventsController extends Controller
                 'message' => $event->getAttribute('message'),
                 'context' => $event->getAttribute('context') ?? [],
                 'created_at' => $event->getAttribute('created_at'),
-            ])
-            ->values();
+            ])->values());
 
-        return response()->json(['data' => $events]);
+        return response()->json($events);
     }
 }

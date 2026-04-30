@@ -1,5 +1,5 @@
-import { describe, expect, it } from 'vitest';
-import { ApiError, normalizeApiError, normalizeLaravelPagination } from '../../resources/js/admin-product-image-discovery/api';
+import { describe, expect, it, vi } from 'vitest';
+import { ApiError, normalizeApiError, normalizeLaravelPagination, pidFetch } from '../../resources/js/admin-product-image-discovery/api';
 
 describe('api client helpers', () => {
   it('normalizes laravel pagination payloads', () => {
@@ -19,5 +19,25 @@ describe('api client helpers', () => {
     expect(error.message).toBe('Forbidden');
     expect(error.status).toBe(403);
     expect(error.payload).toEqual({ message: 'Forbidden' });
+  });
+
+  it('rejects cross-origin absolute urls before sending a fetch request', async () => {
+    vi.stubGlobal('fetch', vi.fn());
+    window.PID_ADMIN = { apiBase: '/admin/product-image-discovery' };
+
+    await expect(pidFetch('https://evil.example.com/requests/1')).rejects.toThrow('Cross-origin admin requests are not allowed.');
+    expect(fetch).not.toHaveBeenCalled();
+  });
+
+  it('handles non-json responses without a text helper', async () => {
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue({
+      ok: true,
+      status: 200,
+      headers: { get: () => 'text/plain' },
+      json: vi.fn(),
+    }));
+    window.PID_ADMIN = { apiBase: '/admin/product-image-discovery' };
+
+    await expect(pidFetch('/health')).resolves.toBeNull();
   });
 });

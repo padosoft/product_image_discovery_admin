@@ -4,6 +4,7 @@
 
 - `php` and `composer` may not be available on PATH; set `PHP_BINARY` to your PHP executable and use `composer` on PATH where possible instead of baking in one workstation path.
 - On this machine, Herd PHP and Composer were available under `%USERPROFILE%\.config\herd\bin\`, but future sessions should prefer portable overrides instead of hard-coded local binaries.
+- When the shell cannot resolve `php`, call Herd's concrete `php.exe` directly from `%USERPROFILE%\.config\herd\bin\php84\php.exe` for local PHPUnit runs instead of relying on `vendor\\bin\\phpunit` to resolve the interpreter.
 - The neighboring package already had a populated `vendor` directory with Laravel 13 framework packages.
 - Creating `.agents/skills/product-image-discovery-admin-plan` was blocked by the sandbox, so the repo-local skill was created under `skills/product-image-discovery-admin-plan`.
 - The plan path in Downloads can be slow or blocked to read through the sandbox; `AGENTS.md` records the path so a future session can retry or use the plan already pasted in chat.

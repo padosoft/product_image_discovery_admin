@@ -461,13 +461,13 @@ function RequestFilters({ filters, onChange, onReset, activeChips, loading }) {
   );
 }
 
-function RequestDetailDrawer({ detail, events, candidates, loading, error, onClose }) {
+function RequestDetailDrawer({ open, detail, events, candidates, loading, error, onClose }) {
   const detailSummary = buildDetailSummary(detail);
   const selectedCandidate = detail?.selected_candidate ?? null;
   const bestCandidate = detail?.best_candidate ?? null;
 
   return (
-    <Drawer open={Boolean(detail)} title={detail ? `Request ${detail.id}` : 'Request detail'} onClose={onClose}>
+    <Drawer open={open} title={detail ? `Request ${detail.id}` : 'Request detail'} onClose={onClose}>
       {loading ? <EmptyState title="Loading request detail" description="Fetching request, candidates, and events." /> : null}
       {error ? <div className="pid-alert pid-alert--danger" role="alert">{error}</div> : null}
       {!loading && detail ? (
@@ -547,6 +547,7 @@ function Requests({
   onClearFilters,
   onOpenRequest,
   detailState,
+  error,
 }) {
   const requestSummary = summarizeRequests(requests);
   const columns = [
@@ -570,6 +571,11 @@ function Requests({
 
   return (
     <div className="pid-stack">
+      {error ? (
+        <div className="pid-alert pid-alert--danger" role="alert">
+          {error}
+        </div>
+      ) : null}
       <RequestFilters
         filters={filters}
         onChange={onFiltersChange}
@@ -653,6 +659,7 @@ export default function App() {
   const [requestFilters, setRequestFilters] = useState(() => requestFiltersFromSearchParams(new URLSearchParams(window.location.search)));
   const [requestLoading, setRequestLoading] = useState(true);
   const [requestError, setRequestError] = useState('');
+  const [detailOpen, setDetailOpen] = useState(false);
   const [detailRequest, setDetailRequest] = useState(null);
   const [detailCandidates, setDetailCandidates] = useState([]);
   const [detailEvents, setDetailEvents] = useState([]);
@@ -761,6 +768,7 @@ export default function App() {
   }, [page, requestFilters]);
 
   async function openRequest(request) {
+    setDetailOpen(true);
     setDetailLoading(true);
     setDetailError('');
     setDetailRequest(null);
@@ -806,13 +814,21 @@ export default function App() {
           activeChips={activeRequestFilters}
           onClearFilters={clearFilters}
           onOpenRequest={openRequest}
+          error={requestError}
           detailState={{
+            open: detailOpen,
             detail: detailRequest,
             events: detailEvents,
             candidates: detailCandidates,
             loading: detailLoading,
             error: detailError,
-            onClose: () => setDetailRequest(null),
+            onClose: () => {
+              setDetailOpen(false);
+              setDetailRequest(null);
+              setDetailCandidates([]);
+              setDetailEvents([]);
+              setDetailError('');
+            },
           }}
         />
       );
@@ -829,13 +845,21 @@ export default function App() {
           activeChips={requestFiltersToActiveChips({ ...requestFilters, manual_review_required: 'true' })}
           onClearFilters={clearFilters}
           onOpenRequest={openRequest}
+          error={requestError}
           detailState={{
+            open: detailOpen,
             detail: detailRequest,
             events: detailEvents,
             candidates: detailCandidates,
             loading: detailLoading,
             error: detailError,
-            onClose: () => setDetailRequest(null),
+            onClose: () => {
+              setDetailOpen(false);
+              setDetailRequest(null);
+              setDetailCandidates([]);
+              setDetailEvents([]);
+              setDetailError('');
+            },
           }}
           manualReviewOnly
         />
