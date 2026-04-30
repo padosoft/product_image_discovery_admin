@@ -13,6 +13,17 @@
 - Added feature coverage for candidate index sorting, approve/reject behavior, reject validation, and request retry.
 - Extended the request drawer with compare mode, selected-vs-under-review candidate cards, image previews, and source/open/copy actions.
 - Added RTL coverage for the compare-mode branch in the request drawer.
+- Completed the local deterministic demo data slice for Macro Task 3:
+  - Added `pid-admin:seed-demo` with `--fresh` support.
+  - Added Herno, Nike, and New Balance demo scenarios for manual review, selected-image, and retry/no-candidate workflows.
+  - Seeded a no-secret `fake-demo` provider plus trusted demo sources to keep the dataset offline.
+  - Added generated inline PNG candidate images so image previews work without live URLs.
+  - Added `npm run phpunit` as a Herd-aware PHP runner for this Windows setup.
+- Verification passed after the demo data slice:
+  - `npm run phpunit`
+  - `npm run test`
+  - `npm run build`
+  - `npm run e2e`
 
 ## 2026-04-30
 

@@ -47,6 +47,10 @@ npm run test
 npm run e2e
 ```
 
+- On this Windows/Herd machine, use `npm run phpunit` for the PHPUnit gate. It routes through `scripts/run-php.mjs` and Herd PHP 8.4.20, avoiding stale PATH resolution and avoiding XAMPP PHP.
+- Do not use XAMPP PHP for this repo; its installed versions/extensions do not match the Laravel 13/PHP 8.3+ requirement.
+- If a direct Herd PHP PowerShell command fails with access or trust errors, rerun the approved prefix or use `npm run phpunit` before marking the PHP gate blocked.
+
 If a tool is unavailable, blocked by sandbox/network, or requires remote CI, record the exact blocker in `docs/PROGRESS.md`.
 
 ## Documentation Rules

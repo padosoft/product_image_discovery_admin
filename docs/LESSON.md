@@ -8,6 +8,9 @@
 - Risky reject reasons need notes in both backend validation and the UI, otherwise the shell can drift from the package rule set.
 - Compare mode works better when the drawer carries the current candidate selection in state and falls back to the first loaded candidate after a refresh.
 - Candidate comparison needs a direct source/open/copy path in the drawer, not only in the table row actions, or the operator has to jump between surfaces.
+- For this Windows/Herd setup, direct PowerShell calls to `C:\Users\lopad\.config\herd\bin\php84\php.exe` or `php84.bat` may fail until the command prefix is trusted. Running PHP through the repo wrapper `npm run phpunit` consistently resolves Herd PHP 8.4.20 after approval and avoids falling back to XAMPP.
+- Deterministic admin demo data is safer as direct seeded rows than as a shared fake-provider pipeline run because the package fake provider does not filter multi-product image results by product identity.
+- Inline generated PNG data URIs are enough for candidate preview smoke data and avoid remote image downloads while still exercising the protected admin image endpoint.
 
 ## 2026-04-30
 
