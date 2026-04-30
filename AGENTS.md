@@ -56,6 +56,8 @@ For each subtask, the intended process is:
 6. Fix until green and comments are resolved.
 7. Merge, then repeat for the macro PR into `main`.
 
+Do not stop after a push or review request. Keep polling PR status, CI, and review comments until the loop is resolved or GitHub access is unavailable.
+
 If GitHub/Copilot access is unavailable in the current session, do not fake the loop. Record the local status and next required remote step in `docs/PROGRESS.md`.
 
 ## Background Agent Strategy

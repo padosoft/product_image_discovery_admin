@@ -2,9 +2,9 @@
 
 ## 2026-04-30
 
-- `php` and `composer` may not be available on PATH; set the `PHP_BINARY` env var to your PHP executable (e.g. the Herd `php.exe` under `%USERPROFILE%\.config\herd\bin\<version>\php.exe` on Windows) before running e2e or prepare scripts.
-- Herd Composer is available at `%USERPROFILE%\.config\herd\bin\composer.bat` on Windows; use `composer` on PATH otherwise.
-- The neighboring package already has a populated `vendor` directory with Laravel 13 framework packages.
+- `php` and `composer` may not be available on PATH; set `PHP_BINARY` to your PHP executable and use `composer` on PATH where possible instead of baking in one workstation path.
+- On this machine, Herd PHP and Composer were available under `%USERPROFILE%\.config\herd\bin\`, but future sessions should prefer portable overrides instead of hard-coded local binaries.
+- The neighboring package already had a populated `vendor` directory with Laravel 13 framework packages.
 - Creating `.agents/skills/product-image-discovery-admin-plan` was blocked by the sandbox, so the repo-local skill was created under `skills/product-image-discovery-admin-plan`.
 - The plan path in Downloads can be slow or blocked to read through the sandbox; `AGENTS.md` records the path so a future session can retry or use the plan already pasted in chat.
 - `composer validate --strict` rejects unbound constraints, so the path package is pinned as `padosoft/product-image-discovery: dev-main`.
