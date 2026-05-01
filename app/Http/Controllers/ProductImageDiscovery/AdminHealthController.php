@@ -116,18 +116,22 @@ final class AdminHealthController extends Controller
         return ProductImageSearchProvider::query()
             ->ordered()
             ->get()
-            ->map(static fn (ProductImageSearchProvider $provider): array => [
-                'id' => $provider->getKey(),
-                'code' => $provider->getAttribute('code'),
-                'driver' => $provider->getAttribute('driver'),
-                'active' => (bool) $provider->getAttribute('is_active'),
-                'has_api_key' => filled($provider->getRawOriginal('api_key_encrypted')),
-                'has_api_secret' => filled($provider->getRawOriginal('api_secret_encrypted')),
-                'timeout_seconds' => (int) $provider->getAttribute('timeout_seconds'),
-                'rate_limit_per_minute' => $provider->getAttribute('rate_limit_per_minute'),
-                'last_test_status' => null,
-                'last_test_at' => null,
-            ])
+            ->map(static function (ProductImageSearchProvider $provider): array {
+                $timeoutSeconds = $provider->getAttribute('timeout_seconds');
+
+                return [
+                    'id' => $provider->getKey(),
+                    'code' => $provider->getAttribute('code'),
+                    'driver' => $provider->getAttribute('driver'),
+                    'active' => (bool) $provider->getAttribute('is_active'),
+                    'has_api_key' => filled($provider->getRawOriginal('api_key_encrypted')),
+                    'has_api_secret' => filled($provider->getRawOriginal('api_secret_encrypted')),
+                    'timeout_seconds' => $timeoutSeconds === null ? null : (int) $timeoutSeconds,
+                    'rate_limit_per_minute' => $provider->getAttribute('rate_limit_per_minute'),
+                    'last_test_status' => null,
+                    'last_test_at' => null,
+                ];
+            })
             ->values()
             ->all();
     }
