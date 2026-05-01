@@ -135,15 +135,24 @@ final class AdminRequestCandidateController extends Controller
                     ProductImageDiscoveryRequestStatus::ReadyToPublish->value,
                     ProductImageDiscoveryRequestStatus::Published->value,
                 ], true);
+            $selectedCandidateIdAfterReject = $hasRemainingCandidates
+                ? ($candidateWasSelected ? null : $selectedCandidateId)
+                : null;
+            $bestCandidateIdAfterReject = $hasRemainingCandidates
+                ? ($candidateWasBest ? $remainingBestCandidate?->getKey() : $bestCandidateId)
+                : null;
+            $finalScoreAfterReject = $hasRemainingCandidates
+                ? ($candidateWasBest ? $remainingBestCandidate?->getAttribute('final_score') : $record->getAttribute('final_score'))
+                : null;
 
             $record->fill([
                 'status' => $shouldKeepPublishReadyStatus
                     ? $currentStatusValue
                     : ($hasRemainingCandidates ? 'manual_review' : 'rejected'),
                 'rejection_reason' => $hasRemainingCandidates ? null : $payload['reason'],
-                'selected_candidate_id' => $candidateWasSelected ? null : $selectedCandidateId,
-                'best_candidate_id' => $candidateWasBest ? $remainingBestCandidate?->getKey() : $bestCandidateId,
-                'final_score' => $candidateWasBest ? $remainingBestCandidate?->getAttribute('final_score') : $record->getAttribute('final_score'),
+                'selected_candidate_id' => $selectedCandidateIdAfterReject,
+                'best_candidate_id' => $bestCandidateIdAfterReject,
+                'final_score' => $finalScoreAfterReject,
             ]);
             $record->save();
 

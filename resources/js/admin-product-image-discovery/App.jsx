@@ -466,7 +466,7 @@ function Overview({ summary, requests, loading, error }) {
   );
 }
 
-function RequestFilters({ filters, onChange, onReset, activeChips, loading }) {
+function RequestFilters({ filters, onChange, onReset, activeChips, loading, manualReviewLocked = false }) {
   const update = (name, value) => {
     onChange({ ...filters, [name]: value });
   };
@@ -553,7 +553,12 @@ function RequestFilters({ filters, onChange, onReset, activeChips, loading }) {
         </label>
         <label>
           <span>Manual review only</span>
-          <select value={filters.manual_review_required} onChange={(event) => update('manual_review_required', event.target.value)}>
+          <select
+            value={manualReviewLocked ? 'true' : filters.manual_review_required}
+            onChange={(event) => update('manual_review_required', event.target.value)}
+            disabled={manualReviewLocked}
+            title={manualReviewLocked ? 'Manual review is pinned on this view' : undefined}
+          >
             <option value="">Any</option>
             <option value="true">Yes</option>
             <option value="false">No</option>
@@ -922,6 +927,7 @@ function Requests({
         onReset={onClearFilters}
         activeChips={activeChips}
         loading={loading}
+        manualReviewLocked={manualReviewOnly}
       />
       <section className="pid-request-summary" aria-label="Request summary">
         {[

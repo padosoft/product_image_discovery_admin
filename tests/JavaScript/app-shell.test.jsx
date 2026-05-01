@@ -208,6 +208,8 @@ describe('admin product image discovery shell', () => {
 
     expect(await screen.findByRole('heading', { name: 'Manual Review Queue' })).toBeVisible();
     expect(screen.getByText('Manual review is pinned on this view.')).toBeVisible();
+    expect(screen.getByLabelText('Manual review only')).toHaveValue('true');
+    expect(screen.getByLabelText('Manual review only')).toBeDisabled();
 
     await waitFor(() => expect(window.location.search).toContain('manual_review_required=true'));
   });

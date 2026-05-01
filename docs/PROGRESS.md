@@ -133,6 +133,16 @@
   - `npm run test` => 4 files, 19 tests
   - `npm run build`
   - `npm run e2e` => 4 Playwright tests
+- Pushed the source URL safety fix as `69f9245`, requested a fresh Copilot Code Review with GraphQL, and resolved the addressed review thread.
+- Copilot reviewed `69f9245` and generated 2 additional comments.
+- Addressed the latest Copilot comments:
+  - rejecting the last remaining non-rejected candidate now clears stale selected/best candidate pointers and `final_score` regardless of whether the rejected row was the current best
+  - the Manual Review page now renders the pinned manual-review filter as disabled/read-only so the UI matches the enforced query state
+- Verification passed after the latest Copilot PR #2 fixes:
+  - `npm run phpunit` => 28 tests, 181 assertions
+  - `npm run test` => 4 files, 19 tests
+  - `npm run build`
+  - `npm run e2e` => 4 Playwright tests
 
 ## 2026-04-30
 
@@ -162,7 +172,7 @@
 
 ## Open Items
 
-- Push the latest source URL safety fix, request a fresh Copilot Code Review, and continue polling until new comments/checks are resolved.
+- Push the latest stale pointer/manual-review pinned filter fixes, request a fresh Copilot Code Review, and continue polling until new comments/checks are resolved.
 - GitHub Actions/status checks remain unavailable for PR #2; do not treat CI as green, only as unconfigured.
 
 ## 2026-04-30 - Macro 2 Slice

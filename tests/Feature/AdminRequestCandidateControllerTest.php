@@ -217,6 +217,42 @@ final class AdminRequestCandidateControllerTest extends TestCase
         ]);
     }
 
+    public function test_candidate_reject_clears_stale_best_when_last_remaining_candidate_was_not_best(): void
+    {
+        $requestRecord = $this->createDiscoveryRequest([
+            'status' => 'manual_review',
+            'final_score' => 91,
+        ]);
+        $staleBestCandidate = $this->createCandidate($requestRecord, [
+            'status' => 'rejected',
+            'final_score' => 91,
+        ]);
+        $candidate = $this->createCandidate($requestRecord, [
+            'final_score' => 64,
+        ]);
+        $requestRecord->forceFill([
+            'selected_candidate_id' => $candidate->getKey(),
+            'best_candidate_id' => $staleBestCandidate->getKey(),
+        ])->save();
+
+        $this->postJson('/admin/product-image-discovery/requests/'.$requestRecord->getKey().'/candidates/'.$candidate->getKey().'/reject', [
+            'reason' => 'LOW_CONFIDENCE',
+            'notes' => 'The only remaining candidate is not suitable.',
+        ])
+            ->assertOk()
+            ->assertJsonPath('request.status', 'rejected')
+            ->assertJsonPath('request.selected_candidate', null)
+            ->assertJsonPath('request.best_candidate', null);
+
+        $this->assertDatabaseHas('product_image_discovery_requests', [
+            'id' => $requestRecord->getKey(),
+            'status' => 'rejected',
+            'selected_candidate_id' => null,
+            'best_candidate_id' => null,
+            'final_score' => null,
+        ]);
+    }
+
     public function test_request_retry_requeues_the_request(): void
     {
         $requestRecord = $this->createDiscoveryRequest([
