@@ -1,5 +1,157 @@
 # Progress
 
+## 2026-05-01
+
+- Continued `task/request-review-workflows` with candidate review wrappers.
+- Added admin routes for:
+  - request candidates index
+  - candidate approve
+  - candidate reject
+  - request retry
+- Extended the Requests/Manual Review drawer to load candidate rows from the dedicated wrapper endpoint and expose approve/reject/retry actions.
+- Added a reject modal with note requirements for risky reasons and a toast for mutation feedback.
+- Added feature coverage for candidate index sorting, approve/reject behavior, reject validation, and request retry.
+- Extended the request drawer with compare mode, selected-vs-under-review candidate cards, image previews, and source/open/copy actions.
+- Added RTL coverage for the compare-mode branch in the request drawer.
+- Completed the local deterministic demo data slice for Macro Task 3:
+  - Added `pid-admin:seed-demo` with `--fresh` support.
+  - Added Herno, Nike, and New Balance demo scenarios for manual review, selected-image, and retry/no-candidate workflows.
+  - Seeded a no-secret `fake-demo` provider plus trusted demo sources to keep the dataset offline.
+  - Added generated inline PNG candidate images so image previews work without live URLs.
+  - Added `npm run phpunit` as a Herd-aware PHP runner for this Windows setup.
+- Verification passed after the demo data slice:
+  - `npm run phpunit`
+  - `npm run test`
+  - `npm run build`
+  - `npm run e2e`
+- Resolved the still-open Macro Task 1 PR loop on GitHub:
+  - Pushed `b6925b9` to `task/foundation-laravel-admin-app`.
+  - Addressed and resolved the remaining Copilot threads for normalized admin route prefix, dashboard aggregate counts, JsonViewer clipboard handling, and shell body memoization.
+  - Confirmed no GitHub Actions workflow runs/status checks were configured for the PR head.
+  - Merged PR #1 into `main` at merge commit `3b2142f`.
+- Cherry-picked the foundation review fixes into `task/request-review-workflows` as `2ae421b`.
+- Verification passed after carrying those fixes into Macro Task 3:
+  - `npm run phpunit`
+  - `npm run test`
+  - `npm run build`
+  - `npm run e2e`
+- Opened PR #2 for Macro Task 3 into `main`, then merged `origin/main` into the branch to make the PR mergeable.
+- Addressed automated review comments on PR #2:
+  - approving a candidate now demotes any previously selected candidate row for the same request
+  - rejecting a candidate now clears/recomputes stale best/selected candidate pointers and `final_score`
+  - retry now rejects non-retryable request statuses server-side using the package status enum
+  - the drawer retry action is enabled only for retryable failed/no-candidates requests
+- Verification passed after PR #2 review fixes:
+  - `npm run phpunit`
+  - `npm run test`
+  - `npm run build`
+  - `npm run e2e`
+- Addressed the follow-up automated review comment on PR #2:
+  - rejecting a non-selected candidate now preserves `ready_to_publish`/`published` when the selected candidate remains valid
+  - rejecting the current best candidate still recomputes `best_candidate_id` and `final_score`
+- Verification passed after the follow-up PR #2 review fix:
+  - `npm run phpunit` => 27 tests, 174 assertions
+  - `npm run test` => 4 files, 16 tests
+  - `npm run build`
+  - `npm run e2e` => 4 Playwright tests
+- Addressed the next automated review comments on PR #2:
+  - candidate approval now runs inside a DB transaction and locks the request/candidate rows before mutating selection state
+  - candidate preview image URLs now use `window.PID_ADMIN.apiBase` instead of a hard-coded admin prefix
+- Verification after resuming and finishing the atomic approval/configured image URL fixes:
+  - `npm run phpunit` => 27 tests, 174 assertions
+  - `npm run test` => 4 files, 18 tests
+  - `npm run build`
+  - `npm run e2e -- --reporter=line` blocked after the Vite build because `node scripts/prepare-e2e.mjs` could not execute Herd PHP in this session; direct `php`, `php.bat`, and `php84` access returned denied/not found outside the working `npm run phpunit` wrapper.
+- Corrected the review workflow docs to require GitHub Copilot Code Review instead of `@codex review`.
+- Attempted to request Copilot review on PR #2:
+  - `gh pr edit 2 --add-reviewer '@copilot'` was blocked by GitHub CLI GraphQL 401
+  - REST reviewer reads returned no pending reviewers
+  - GitHub connector reviewer request returned without error, but the normalized PR snapshot still did not expose a pending Copilot reviewer
+- The earlier `@codex review` trigger produced a new Codex review on commit `731330f`; it is not treated as a Copilot substitute, but its two actionable race-condition findings were addressed:
+  - candidate rejection now runs inside a DB transaction with locked request/candidate rows
+  - retry now locks the request row while validating status, incrementing attempts, and recording the audit event
+- Verification passed after the reject/retry concurrency fixes:
+  - `npm run phpunit` => 27 tests, 174 assertions
+  - `npm run test` => 4 files, 18 tests
+  - `npm run build`
+- Resumed the PR #2 loop after `gh auth login` was refreshed by the user:
+  - the last code-fix head before status documentation was `e456ebc`; subsequent pushes are documentation-only PR-loop status updates
+  - `gh auth status` succeeds for `lopadova`
+  - thread-aware review polling found 8 review threads, with 0 unresolved non-outdated threads; the 4 unresolved threads are all outdated against the current head
+  - GitHub Actions/status checks are still unavailable for the branch (`gh pr checks 2` reports no checks, and the Actions runs API returns 0 workflow runs)
+- Verification passed after the resumed PR #2 loop:
+  - `npm run phpunit` => 27 tests, 174 assertions
+  - `npm run test` => 4 files, 18 tests
+  - `npm run build`
+  - `npm run e2e` => 4 Playwright tests
+- Attempted to request GitHub Copilot Code Review on PR #2 after the final local gates:
+  - `gh pr edit 2 --add-reviewer '@copilot'` is blocked by a missing `read:project` token scope
+  - `gh auth refresh -h github.com -s read:project` timed out waiting for interactive auth
+  - REST fallback `POST /repos/padosoft/product_image_discovery_admin/pulls/2/requested_reviewers` with `reviewers[]=copilot` returned 200, but subsequent API reads still expose no pending reviewer, so Copilot review could not be verified from CLI/API
+- Investigated the Copilot reviewer request path and found the correct CLI bypass:
+  - GitHub CLI translates `@copilot` to the review bot login `copilot-pull-request-reviewer`
+  - the correct mutation is GraphQL `requestReviewsByLogin` with `botLogins[]='copilot-pull-request-reviewer[bot]'` and `union=true`
+  - the direct mutation succeeded for PR #2 at node ID `PR_kwDOSRBF8M7XaL-e`
+  - `GET /repos/padosoft/product_image_discovery_admin/pulls/2/requested_reviewers` now shows pending reviewer `Copilot`
+- Copilot Code Review completed on PR #2 at head `a2f41d5` and generated 3 actionable comments.
+- Addressed the Copilot PR #2 comments:
+  - the request list refresh effect now runs only on the Requests and Manual Review pages, avoiding duplicate `/requests/search` calls on Overview
+  - approving a candidate now sets `best_candidate_id`, `selected_candidate_id`, and `final_score` from the approved candidate consistently
+  - candidate pagination now has a stable secondary `id` sort when scores tie
+- Verification passed after the Copilot PR #2 fixes:
+  - `npm run phpunit` => 27 tests, 176 assertions
+  - `npm run test` => 4 files, 18 tests
+  - `npm run build`
+  - `npm run e2e` => 4 Playwright tests
+- Pushed the first Copilot PR #2 fixes as `f8e2a21`, requested a fresh Copilot Code Review with GraphQL, and resolved the addressed review threads.
+- Copilot reviewed `f8e2a21` and generated 2 follow-up comments.
+- Addressed the follow-up Copilot comments:
+  - timeline event details now omit null/empty message parts instead of rendering `null` or `undefined`
+  - the overview fetch regression test now observes fetch calls/timer scheduling without a real 350 ms sleep
+- Verification passed after the follow-up Copilot PR #2 fixes:
+  - `npm run phpunit` => 27 tests, 176 assertions
+  - `npm run test` => 4 files, 18 tests
+  - `npm run build`
+  - `npm run e2e` => 4 Playwright tests
+- Pushed the follow-up Copilot PR #2 fixes as `1546b00`, requested a fresh Copilot Code Review with GraphQL, and resolved the addressed review threads.
+- Copilot reviewed `1546b00` and generated 3 more frontend comments.
+- Addressed the latest Copilot comments:
+  - the client filter input now uses numeric input constraints matching backend integer validation
+  - the rejection reason placeholder now matches the backend enum-style value casing
+  - request detail loading now ignores stale async responses so a slower earlier request cannot overwrite a newer drawer selection
+- Verification passed after the latest Copilot PR #2 fixes:
+  - `npm run phpunit` => 27 tests, 176 assertions
+  - `npm run test` => 4 files, 19 tests
+  - `npm run build`
+  - `npm run e2e` => 4 Playwright tests
+- Pushed the latest frontend Copilot PR #2 fixes as `bdbf808`, requested a fresh Copilot Code Review with GraphQL, and resolved the addressed review threads.
+- Copilot reviewed `bdbf808` and generated 1 additional frontend security comment.
+- Addressed the latest Copilot comment:
+  - source-page opening now normalizes candidate URLs and only enables `window.open` for `http:`/`https:` URLs
+- Verification passed after the source URL safety fix:
+  - `npm run phpunit` => 27 tests, 176 assertions
+  - `npm run test` => 4 files, 19 tests
+  - `npm run build`
+  - `npm run e2e` => 4 Playwright tests
+- Pushed the source URL safety fix as `69f9245`, requested a fresh Copilot Code Review with GraphQL, and resolved the addressed review thread.
+- Copilot reviewed `69f9245` and generated 2 additional comments.
+- Addressed the latest Copilot comments:
+  - rejecting the last remaining non-rejected candidate now clears stale selected/best candidate pointers and `final_score` regardless of whether the rejected row was the current best
+  - the Manual Review page now renders the pinned manual-review filter as disabled/read-only so the UI matches the enforced query state
+- Verification passed after the latest Copilot PR #2 fixes:
+  - `npm run phpunit` => 28 tests, 181 assertions
+  - `npm run test` => 4 files, 19 tests
+  - `npm run build`
+  - `npm run e2e` => 4 Playwright tests
+- Copilot reviewed `b8aed8f` and generated 1 additional wrapper-script comment.
+- Addressed the latest Copilot comment:
+  - `scripts/run-php.mjs` now only applies `existsSync()` to path-like PHP candidates, allowing `PHP_BINARY` command names such as `php84` to resolve through `PATH`
+- Verification passed after the PHP wrapper fix:
+  - `npm run phpunit` => 28 tests, 181 assertions
+  - `npm run test` => 4 files, 19 tests
+  - `npm run build`
+  - `npm run e2e` => 4 Playwright tests
+
 ## 2026-04-30
 
 - User confirmed the full implementation plan is saved at `%USERPROFILE%\Downloads\productimagesearch-admin\plan.md`.
@@ -28,13 +180,8 @@
 
 ## Open Items
 
-- Remote PR/Copilot loop is pending until explicitly run:
-  - push branch `task/foundation-laravel-admin-app`
-  - open PR
-  - request Copilot review
-  - wait for CI/review comments
-  - fix until green
-- Continue Macro Task 2 after Macro 1 PR loop, unless the user explicitly wants to keep implementing locally first.
+- Push the latest PHP wrapper fix, resolve the addressed Copilot thread, request a fresh Copilot Code Review, and continue polling until new comments/checks are resolved.
+- GitHub Actions/status checks remain unavailable for PR #2; do not treat CI as green, only as unconfigured.
 
 ## 2026-04-30 - Macro 2 Slice
 
@@ -92,6 +239,22 @@
   - `npm run e2e` now builds the Vite assets before it starts the bootstrap and browser smoke.
 - Added regression coverage for the fetch safety changes and the request detail drawer behavior.
 - Verification passed after the review fixes:
+  - `npm run test`
+  - `npm run build`
+  - `npm run e2e`
+  - `C:\\Users\\lopad\\.config\\herd\\bin\\php84\\php.exe vendor\\bin\\phpunit --configuration phpunit.xml`
+
+## 2026-04-30 - Requests Workflow Slice 2
+
+- Expanded the Requests/Manual Review shell with the next batch of workflow filters:
+  - client, ERP model, ERP model color, EAN/barcode, rejection reason
+  - candidate/selected-image toggles
+  - created/updated date bounds
+- Switched the request event timeline to the shared `Timeline` primitive.
+- Kept `manual_review_required=true` pinned in the effective review filter state and the browser URL on the review page.
+- Added a manual review banner so the pinned filter is visible in the UI.
+- Added RTL coverage for the extra filters and the review-page pinned-filter behavior.
+- Verification passed after this slice:
   - `npm run test`
   - `npm run build`
   - `npm run e2e`

@@ -5,6 +5,7 @@
   "scripts": {
     "dev": "node -r ./scripts/no-net-use.cjs ./node_modules/vite/bin/vite.js",
     "build": "node -r ./scripts/no-net-use.cjs ./node_modules/vite/bin/vite.js build",
+    "phpunit": "node scripts/run-php.mjs vendor/bin/phpunit --configuration phpunit.xml",
     "test": "node -r ./scripts/no-net-use.cjs ./node_modules/vitest/vitest.mjs run",
     "test:watch": "node -r ./scripts/no-net-use.cjs ./node_modules/vitest/vitest.mjs",
     "e2e": "npm run build && node scripts/prepare-e2e.mjs && playwright test",

@@ -41,6 +41,41 @@ If that file is unavailable, use the repo docs and the latest `docs/PROGRESS.md`
 8. Update `docs/PROGRESS.md` and `docs/LESSON.md`.
 9. If PR/Copilot/CI steps cannot be executed locally, record the missing remote step clearly.
 
+## Copilot Review Request Fallback
+
+Prefer the standard GitHub CLI path first:
+
+```text
+gh pr edit <PR> --add-reviewer @copilot
+```
+
+If it fails before requesting the review because `gh pr edit` queries PR project items and the token lacks `read:project`, bypass `gh pr edit` with the GraphQL mutation used by GitHub CLI. Resolve the PR node ID first:
+
+```text
+gh pr view <PR> --json id
+```
+
+Then request the Copilot Code Review bot:
+
+```powershell
+$query = @'
+mutation RequestReviewsByLogin($pullRequestId: ID!, $botLogins: [String!], $union: Boolean!) {
+  requestReviewsByLogin(input: {pullRequestId: $pullRequestId, botLogins: $botLogins, union: $union}) {
+    clientMutationId
+  }
+}
+'@
+gh api graphql -f query="$query" -F pullRequestId='<PR_NODE_ID>' -F botLogins[]='copilot-pull-request-reviewer[bot]' -F union=true
+```
+
+Verify with:
+
+```text
+gh api repos/padosoft/product_image_discovery_admin/pulls/<PR>/requested_reviewers
+```
+
+Do not use `@codex review`, and do not treat `POST requested_reviewers reviewers[]=copilot` as equivalent; that REST fallback can return 200 while leaving no visible Copilot reviewer.
+
 ## Macro Order
 
 1. Laravel App Foundation

@@ -47,6 +47,10 @@ npm run test
 npm run e2e
 ```
 
+- On this Windows/Herd machine, use `npm run phpunit` for the PHPUnit gate. It routes through `scripts/run-php.mjs` and Herd PHP 8.4.20, avoiding stale PATH resolution and avoiding XAMPP PHP.
+- Do not use XAMPP PHP for this repo; its installed versions/extensions do not match the Laravel 13/PHP 8.3+ requirement.
+- If a direct Herd PHP PowerShell command fails with access or trust errors, rerun the approved prefix or use `npm run phpunit` before marking the PHP gate blocked.
+
 If a tool is unavailable, blocked by sandbox/network, or requires remote CI, record the exact blocker in `docs/PROGRESS.md`.
 
 ## Documentation Rules
@@ -54,6 +58,11 @@ If a tool is unavailable, blocked by sandbox/network, or requires remote CI, rec
 - Update `docs/PROGRESS.md` after meaningful work.
 - Update `docs/LESSON.md` after finding a non-obvious setup fact, API contract detail, or test workaround.
 - Keep entries dated with `YYYY-MM-DD`.
+
+## Review Rules
+
+- Request GitHub Copilot Code Review through the PR Reviewers menu or `gh pr edit <PR> --add-reviewer @copilot`.
+- Do not use `@codex review` as a replacement for Copilot review unless the user explicitly asks for Codex review.
 
 ## Agent Model Rules
 

@@ -1,0 +1,225 @@
+<?php
+
+declare(strict_types=1);
+
+namespace App\Http\Controllers\ProductImageDiscovery;
+
+use Illuminate\Database\Eloquent\Model;
+use Illuminate\Http\JsonResponse;
+use Illuminate\Http\Request;
+use Illuminate\Http\Resources\Json\AnonymousResourceCollection;
+use Illuminate\Routing\Controller;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Validation\Rule;
+use Padosoft\ProductImageDiscovery\Enums\ProductImageDiscoveryRejectionReason;
+use Padosoft\ProductImageDiscovery\Enums\ProductImageDiscoveryRequestStatus;
+use Padosoft\ProductImageDiscovery\Http\Resources\ProductImageDiscoveryCandidateResource;
+use Padosoft\ProductImageDiscovery\Http\Resources\ProductImageDiscoveryRequestResource;
+use Padosoft\ProductImageDiscovery\Models\ProductImageDiscoveryCandidate;
+use Padosoft\ProductImageDiscovery\Models\ProductImageDiscoveryEvent;
+use Padosoft\ProductImageDiscovery\Models\ProductImageDiscoveryRequest;
+
+final class AdminRequestCandidateController extends Controller
+{
+    public function index(int|string $request): AnonymousResourceCollection
+    {
+        if (is_string($request) && ! ctype_digit($request)) {
+            abort(404, 'Not Found');
+        }
+
+        $record = ProductImageDiscoveryRequest::query()->findOrFail($request);
+        $candidates = $record->candidates()
+            ->orderByDesc('final_score')
+            ->orderBy('id')
+            ->paginate(max(1, min((int) request('per_page', 25), 100)));
+
+        return ProductImageDiscoveryCandidateResource::collection($candidates);
+    }
+
+    public function approve(Request $httpRequest, int|string $request, int|string $candidate): JsonResponse
+    {
+        [$record, $candidateRecord] = DB::transaction(function () use ($httpRequest, $request, $candidate): array {
+            [$record, $candidateRecord] = $this->resolveRequestAndCandidate($request, $candidate, true);
+
+            ProductImageDiscoveryCandidate::query()
+                ->where('request_id', $record->getKey())
+                ->whereKeyNot($candidateRecord->getKey())
+                ->where('status', 'selected')
+                ->update([
+                    'status' => 'candidate',
+                    'rejection_reason' => null,
+                ]);
+
+            $candidateRecord->fill([
+                'status' => 'selected',
+                'rejection_reason' => null,
+            ]);
+            $candidateRecord->save();
+
+            $record->fill([
+                'selected_candidate_id' => $candidateRecord->getKey(),
+                'best_candidate_id' => $candidateRecord->getKey(),
+                'final_score' => $candidateRecord->getAttribute('final_score'),
+                'rejection_reason' => null,
+                'status' => 'ready_to_publish',
+                'verified_at' => now(),
+            ]);
+            $record->save();
+
+            $this->recordAuditEvent($record, 'candidate_approved', [
+                'approved_by' => $httpRequest->user()?->getAuthIdentifier(),
+            ], $candidateRecord);
+
+            $this->loadAvailableRelations($record, ['bestCandidate', 'selectedCandidate']);
+
+            return [$record, $candidateRecord];
+        });
+
+        return response()->json([
+            'ok' => true,
+            'request' => (new ProductImageDiscoveryRequestResource($record))->resolve(),
+            'candidate' => (new ProductImageDiscoveryCandidateResource($candidateRecord))->resolve(),
+        ]);
+    }
+
+    public function reject(Request $httpRequest, int|string $request, int|string $candidate): JsonResponse
+    {
+        $payload = $httpRequest->validate([
+            'reason' => ['required', 'string', 'max:100', Rule::in(array_map(static fn (ProductImageDiscoveryRejectionReason $reason): string => $reason->value, ProductImageDiscoveryRejectionReason::cases()))],
+            'notes' => [
+                'nullable',
+                'string',
+                'max:1000',
+                Rule::requiredIf(static fn (): bool => in_array($httpRequest->input('reason'), [
+                    ProductImageDiscoveryRejectionReason::WrongProduct->value,
+                    ProductImageDiscoveryRejectionReason::WrongColor->value,
+                    ProductImageDiscoveryRejectionReason::WrongBrand->value,
+                    ProductImageDiscoveryRejectionReason::LowConfidence->value,
+                ], true)),
+            ],
+        ]);
+
+        [$record, $candidateRecord] = DB::transaction(function () use ($httpRequest, $request, $candidate, $payload): array {
+            [$record, $candidateRecord] = $this->resolveRequestAndCandidate($request, $candidate, true);
+
+            $candidateRecord->fill([
+                'status' => 'rejected',
+                'rejection_reason' => $payload['reason'],
+            ]);
+            $candidateRecord->save();
+
+            $otherCandidatesQuery = ProductImageDiscoveryCandidate::query()
+                ->where('request_id', $record->getKey())
+                ->whereKeyNot($candidateRecord->getKey())
+                ->where('status', '!=', 'rejected')
+                ->lockForUpdate();
+
+            $hasRemainingCandidates = $otherCandidatesQuery->exists();
+            $remainingBestCandidate = (clone $otherCandidatesQuery)
+                ->orderByDesc('final_score')
+                ->orderBy('id')
+                ->first();
+            $selectedCandidateId = $record->getAttribute('selected_candidate_id');
+            $bestCandidateId = $record->getAttribute('best_candidate_id');
+            $rejectedCandidateId = $candidateRecord->getKey();
+            $candidateWasSelected = $selectedCandidateId !== null && (string) $selectedCandidateId === (string) $rejectedCandidateId;
+            $candidateWasBest = $bestCandidateId !== null && (string) $bestCandidateId === (string) $rejectedCandidateId;
+            $currentStatus = $record->getAttribute('status');
+            $currentStatusValue = $currentStatus instanceof ProductImageDiscoveryRequestStatus
+                ? $currentStatus->value
+                : $currentStatus;
+            $shouldKeepPublishReadyStatus = $hasRemainingCandidates
+                && ! $candidateWasSelected
+                && $selectedCandidateId !== null
+                && in_array($currentStatusValue, [
+                    ProductImageDiscoveryRequestStatus::ReadyToPublish->value,
+                    ProductImageDiscoveryRequestStatus::Published->value,
+                ], true);
+            $selectedCandidateIdAfterReject = $hasRemainingCandidates
+                ? ($candidateWasSelected ? null : $selectedCandidateId)
+                : null;
+            $bestCandidateIdAfterReject = $hasRemainingCandidates
+                ? ($candidateWasBest ? $remainingBestCandidate?->getKey() : $bestCandidateId)
+                : null;
+            $finalScoreAfterReject = $hasRemainingCandidates
+                ? ($candidateWasBest ? $remainingBestCandidate?->getAttribute('final_score') : $record->getAttribute('final_score'))
+                : null;
+
+            $record->fill([
+                'status' => $shouldKeepPublishReadyStatus
+                    ? $currentStatusValue
+                    : ($hasRemainingCandidates ? 'manual_review' : 'rejected'),
+                'rejection_reason' => $hasRemainingCandidates ? null : $payload['reason'],
+                'selected_candidate_id' => $selectedCandidateIdAfterReject,
+                'best_candidate_id' => $bestCandidateIdAfterReject,
+                'final_score' => $finalScoreAfterReject,
+            ]);
+            $record->save();
+
+            $this->recordAuditEvent($record, 'candidate_rejected', [
+                'rejected_by' => $httpRequest->user()?->getAuthIdentifier(),
+                'reason' => $payload['reason'],
+                'notes' => $payload['notes'] ?? null,
+            ], $candidateRecord);
+
+            $this->loadAvailableRelations($record, ['bestCandidate', 'selectedCandidate']);
+
+            return [$record, $candidateRecord];
+        });
+
+        return response()->json([
+            'ok' => true,
+            'request' => (new ProductImageDiscoveryRequestResource($record))->resolve(),
+            'candidate' => (new ProductImageDiscoveryCandidateResource($candidateRecord))->resolve(),
+        ]);
+    }
+
+    /**
+     * @return array{0: Model, 1: Model}
+     */
+    private function resolveRequestAndCandidate(int|string $requestId, int|string $candidateId, bool $lockForUpdate = false): array
+    {
+        if (is_string($requestId) && ! ctype_digit($requestId)) {
+            abort(404, 'Not Found');
+        }
+
+        if (is_string($candidateId) && ! ctype_digit($candidateId)) {
+            abort(404, 'Not Found');
+        }
+
+        $requestQuery = ProductImageDiscoveryRequest::query();
+        $candidateQuery = ProductImageDiscoveryCandidate::query();
+
+        if ($lockForUpdate) {
+            $requestQuery->lockForUpdate();
+            $candidateQuery->lockForUpdate();
+        }
+
+        /** @var Model $record */
+        $record = $requestQuery->findOrFail($requestId);
+        /** @var Model $candidate */
+        $candidate = $candidateQuery
+            ->where('request_id', $record->getKey())
+            ->findOrFail($candidateId);
+
+        return [$record, $candidate];
+    }
+
+    private function recordAuditEvent(ProductImageDiscoveryRequest $record, string $eventType, array $context = [], ?ProductImageDiscoveryCandidate $candidate = null): void
+    {
+        ProductImageDiscoveryEvent::query()->create([
+            'request_id' => $record->getKey(),
+            'candidate_id' => $candidate?->getKey(),
+            'event_type' => $eventType,
+            'level' => 'info',
+            'message' => $eventType,
+            'context' => $context,
+            'created_at' => now(),
+        ]);
+    }
+
+    private function loadAvailableRelations(ProductImageDiscoveryRequest $record, array $relations): void
+    {
+        $record->loadMissing($relations);
+    }
+}

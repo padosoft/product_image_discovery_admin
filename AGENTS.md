@@ -29,7 +29,9 @@ If context is missing, read that plan first, then read:
 - Use SQLite by default for local development and tests.
 - Use Blade + Vite + React for the admin UI because the approved prototype is React.
 - Reuse the exported prototype at `%USERPROFILE%\Downloads\productimagesearch-admin\project` as the visual/product baseline.
-- On this machine, the usable local PHPUnit binary is `%USERPROFILE%\.config\herd\bin\php84\php.exe`; use it directly when `php` is not on PATH.
+- On this machine, use Herd PHP for PHPUnit; do not use XAMPP PHP for this repo.
+- Prefer `npm run phpunit`, which calls `scripts/run-php.mjs` and resolves Herd PHP 8.4.20 through `%USERPROFILE%\.config\herd\bin\php84.bat` / `php84\php.exe`.
+- Direct PowerShell calls to `%USERPROFILE%\.config\herd\bin\php84.bat` or `php84\php.exe` can fail with access/trust errors on first use in Codex; rerun the approved prefix or use `npm run phpunit`.
 - Never expose secrets. Provider credentials are write-only and JSON responses must expose only configured/missing booleans.
 - Keep UI dense and operational: no landing page, no marketing hero, no nested cards, radius <= 8px.
 - Use inline SVG icon buttons or the existing project icon set until an icon package is explicitly added.
@@ -52,10 +54,28 @@ For each subtask, the intended process is:
 1. Implement the smallest coherent subtask.
 2. Run the relevant PHP, Node, Vitest, Vite, and Playwright gates.
 3. Open a subtask PR into the macro branch.
-4. Request Copilot review.
+4. Request GitHub Copilot review.
 5. Wait for CI and Copilot comments.
 6. Fix until green and comments are resolved.
 7. Merge, then repeat for the macro PR into `main`.
+
+Copilot review means GitHub Copilot Code Review through the PR Reviewers menu or `gh pr edit <PR> --add-reviewer @copilot`. Do not use `@codex review` as a substitute unless the user explicitly asks for Codex review.
+
+If `gh pr edit <PR> --add-reviewer @copilot` fails before requesting the review because GitHub CLI queries PR project items and requires `read:project`, bypass `gh pr edit` with GitHub's GraphQL reviewer mutation. Resolve the PR node ID with `gh pr view <PR> --json id`, then request the Copilot review bot with:
+
+```powershell
+$query = @'
+mutation RequestReviewsByLogin($pullRequestId: ID!, $botLogins: [String!], $union: Boolean!) {
+  requestReviewsByLogin(input: {pullRequestId: $pullRequestId, botLogins: $botLogins, union: $union}) {
+    clientMutationId
+  }
+}
+'@
+gh api graphql -f query="$query" -F pullRequestId='<PR_NODE_ID>' -F botLogins[]='copilot-pull-request-reviewer[bot]' -F union=true
+gh api repos/padosoft/product_image_discovery_admin/pulls/<PR>/requested_reviewers
+```
+
+The REST requested-reviewer endpoint with `reviewers[]=copilot` is not equivalent; it can return 200 without creating a visible Copilot Code Review request.
 
 Do not stop after a push or review request. Keep polling PR status, CI, and review comments until the loop is resolved or GitHub access is unavailable.
 
