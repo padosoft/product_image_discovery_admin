@@ -23,6 +23,19 @@ import {
   buildSettingPayload,
   settingToForm,
 } from './settings-form';
+import {
+  DEFAULT_PROVIDER_FORM,
+  PROVIDER_DRIVERS,
+  PROVIDER_SECRET_MODES,
+  buildProviderPayload,
+  providerToForm,
+} from './provider-form';
+import {
+  DEFAULT_TRUSTED_SOURCE_FORM,
+  TRUSTED_SOURCE_TYPES,
+  buildTrustedSourcePayload,
+  trustedSourceToForm,
+} from './trusted-source-form';
 
 const DEFAULT_SUMMARY = {
   counts: {},
@@ -340,6 +353,18 @@ async function fetchRequestDetail(requestId, signal) {
 
 async function fetchSettings(signal) {
   const result = await pidFetch('/settings', { signal });
+
+  return normalizeLaravelPagination(result).data;
+}
+
+async function fetchSearchProviders(signal) {
+  const result = await pidFetch('/search-providers', { signal });
+
+  return normalizeLaravelPagination(result).data;
+}
+
+async function fetchTrustedSources(signal) {
+  const result = await pidFetch('/trusted-sources', { signal });
 
   return normalizeLaravelPagination(result).data;
 }
@@ -1297,6 +1322,738 @@ function SettingsPage({ onNotify }) {
   );
 }
 
+function booleanSelectOptions() {
+  return (
+    <>
+      <option value="true">Enabled</option>
+      <option value="false">Disabled</option>
+    </>
+  );
+}
+
+function secretModeDescription(form, field) {
+  const mode = form[`${field}_mode`];
+  const hasValue = form[`has_${field}`];
+
+  if (mode === 'replace') {
+    return 'A new write-only value will be sent with this save.';
+  }
+
+  if (mode === 'clear') {
+    return 'The stored value will be cleared on save.';
+  }
+
+  return hasValue ? 'Configured value will be kept.' : 'No stored value is configured.';
+}
+
+function ProviderSecretControl({ label, field, form, onChange, disabled }) {
+  const modeField = `${field}_mode`;
+
+  return (
+    <fieldset className="pid-secret-control pid-config-form__full">
+      <legend>{label}</legend>
+      <label>
+        <span>{label} action</span>
+        <select
+          value={form[modeField]}
+          onChange={(event) => onChange(modeField, event.target.value)}
+          disabled={disabled}
+          aria-label={`${label} action`}
+        >
+          {PROVIDER_SECRET_MODES.map((mode) => (
+            <option key={mode.value} value={mode.value}>{mode.label}</option>
+          ))}
+        </select>
+      </label>
+      {form[modeField] === 'replace' ? (
+        <label>
+          <span>{label} value</span>
+          <input
+            type="password"
+            value={form[field]}
+            onChange={(event) => onChange(field, event.target.value)}
+            disabled={disabled}
+            autoComplete="off"
+            aria-label={`${label} value`}
+          />
+        </label>
+      ) : null}
+      <p className="pid-muted">{secretModeDescription(form, field)}</p>
+    </fieldset>
+  );
+}
+
+function providerCredentials(provider) {
+  return [
+    provider.has_api_key ? 'key configured' : 'key missing',
+    provider.has_api_secret ? 'secret configured' : 'secret missing',
+  ].join(' / ');
+}
+
+function ProvidersPage({ onNotify }) {
+  const [providers, setProviders] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState('');
+  const [form, setForm] = useState(() => ({ ...DEFAULT_PROVIDER_FORM }));
+  const [formError, setFormError] = useState('');
+  const [actionLoading, setActionLoading] = useState(false);
+  const [deleteProvider, setDeleteProvider] = useState(null);
+  const mountedRef = useRef(true);
+  const reloadIdRef = useRef(0);
+
+  const formPayload = useMemo(() => buildProviderPayload(form), [form]);
+  const previewValue = formPayload.ok ? formPayload.value : { error: formPayload.error };
+
+  async function reloadProviders(signal) {
+    if (!mountedRef.current || signal?.aborted) {
+      return;
+    }
+
+    const reloadId = reloadIdRef.current + 1;
+    reloadIdRef.current = reloadId;
+    const isCurrentReload = () => (
+      mountedRef.current
+      && reloadIdRef.current === reloadId
+      && !signal?.aborted
+    );
+
+    setLoading(true);
+    setError('');
+
+    try {
+      const result = await fetchSearchProviders(signal);
+
+      if (!isCurrentReload()) {
+        return;
+      }
+
+      setProviders(result);
+    } catch (err) {
+      if (isCurrentReload() && err.name !== 'AbortError') {
+        setProviders([]);
+        setError(err.message || 'Unable to load providers.');
+      }
+    } finally {
+      if (isCurrentReload()) {
+        setLoading(false);
+      }
+    }
+  }
+
+  useEffect(() => {
+    const controller = new AbortController();
+    mountedRef.current = true;
+
+    reloadProviders(controller.signal);
+
+    return () => {
+      mountedRef.current = false;
+      controller.abort();
+    };
+  }, []);
+
+  function updateForm(name, value) {
+    setForm((current) => ({ ...current, [name]: value }));
+    setFormError('');
+  }
+
+  function resetForm() {
+    setForm({ ...DEFAULT_PROVIDER_FORM });
+    setFormError('');
+  }
+
+  async function submitProvider(event) {
+    event.preventDefault();
+
+    if (actionLoading) {
+      return;
+    }
+
+    const payload = buildProviderPayload(form);
+
+    if (!payload.ok) {
+      setFormError(payload.error);
+      return;
+    }
+
+    setActionLoading(true);
+    setFormError('');
+
+    try {
+      const path = form.id ? `/search-providers/${form.id}` : '/search-providers';
+      await pidFetch(path, {
+        method: form.id ? 'PUT' : 'POST',
+        body: JSON.stringify(payload.value),
+      });
+      await reloadProviders();
+
+      if (mountedRef.current) {
+        onNotify(form.id ? 'Provider updated.' : 'Provider created.', 'success');
+        resetForm();
+      }
+    } catch (err) {
+      if (mountedRef.current) {
+        setFormError(err.message || 'Unable to save provider.');
+        onNotify(err.message || 'Unable to save provider.', 'danger');
+      }
+    } finally {
+      if (mountedRef.current) {
+        setActionLoading(false);
+      }
+    }
+  }
+
+  async function confirmDeleteProvider() {
+    if (actionLoading || !deleteProvider?.id) {
+      return;
+    }
+
+    setActionLoading(true);
+
+    try {
+      await pidFetch(`/search-providers/${deleteProvider.id}`, { method: 'DELETE' });
+      await reloadProviders();
+
+      if (mountedRef.current) {
+        onNotify('Provider deleted.', 'success');
+        setDeleteProvider(null);
+        if (form.id === deleteProvider.id) {
+          resetForm();
+        }
+      }
+    } catch (err) {
+      if (mountedRef.current) {
+        setError(err.message || 'Unable to delete provider.');
+        onNotify(err.message || 'Unable to delete provider.', 'danger');
+      }
+    } finally {
+      if (mountedRef.current) {
+        setActionLoading(false);
+      }
+    }
+  }
+
+  const columns = [
+    { key: 'code', label: 'Code', render: (provider) => <code>{provider.code}</code> },
+    { key: 'name', label: 'Name' },
+    { key: 'driver', label: 'Driver' },
+    { key: 'active', label: 'State', render: (provider) => <StatusBadge status={provider.is_active ? 'ready_to_publish' : 'pending'} /> },
+    { key: 'credentials', label: 'Credentials', render: providerCredentials },
+    { key: 'priority', label: 'Priority' },
+    {
+      key: 'limits',
+      label: 'Limits',
+      render: (provider) => `${provider.timeout_seconds ?? '-'}s / ${provider.rate_limit_per_minute ?? 'no rate'}`,
+    },
+    {
+      key: 'actions',
+      label: 'Actions',
+      className: 'pid-table__actions',
+      render: (provider) => (
+        <div className="pid-row-actions">
+          <button type="button" className="pid-chip-button" onClick={() => setForm(providerToForm(provider))}>Edit</button>
+          <button type="button" className="pid-chip-button" onClick={() => setDeleteProvider(provider)}>Delete</button>
+        </div>
+      ),
+    },
+  ];
+
+  return (
+    <div className="pid-stack">
+      <div className="pid-config-layout">
+        <section className="pid-panel">
+          <div className="pid-panel__header">
+            <h2>{form.id ? `Edit ${form.code}` : 'Create Provider'}</h2>
+            <span>Write-only credentials</span>
+          </div>
+          <form className="pid-config-form" onSubmit={submitProvider}>
+            {formError ? <div className="pid-alert pid-alert--danger">{formError}</div> : null}
+            <label>
+              <span>Code</span>
+              <input value={form.code} onChange={(event) => updateForm('code', event.target.value)} disabled={actionLoading} />
+            </label>
+            <label>
+              <span>Name</span>
+              <input value={form.name} onChange={(event) => updateForm('name', event.target.value)} disabled={actionLoading} />
+            </label>
+            <label>
+              <span>Driver</span>
+              <select value={form.driver} onChange={(event) => updateForm('driver', event.target.value)} disabled={actionLoading}>
+                {PROVIDER_DRIVERS.map((driver) => <option key={driver} value={driver}>{driver}</option>)}
+              </select>
+            </label>
+            <label>
+              <span>State</span>
+              <select value={form.is_active} onChange={(event) => updateForm('is_active', event.target.value)} disabled={actionLoading}>
+                {booleanSelectOptions()}
+              </select>
+            </label>
+            <label className="pid-config-form__full">
+              <span>Base URL</span>
+              <input value={form.base_url} onChange={(event) => updateForm('base_url', event.target.value)} disabled={actionLoading} />
+            </label>
+            <label>
+              <span>Priority</span>
+              <input value={form.priority} onChange={(event) => updateForm('priority', event.target.value)} disabled={actionLoading} inputMode="numeric" />
+            </label>
+            <label>
+              <span>Timeout seconds</span>
+              <input value={form.timeout_seconds} onChange={(event) => updateForm('timeout_seconds', event.target.value)} disabled={actionLoading} inputMode="numeric" />
+            </label>
+            <label>
+              <span>Rate limit per minute</span>
+              <input value={form.rate_limit_per_minute} onChange={(event) => updateForm('rate_limit_per_minute', event.target.value)} disabled={actionLoading} inputMode="numeric" />
+            </label>
+            <ProviderSecretControl label="API key" field="api_key" form={form} onChange={updateForm} disabled={actionLoading} />
+            <ProviderSecretControl label="API secret" field="api_secret" form={form} onChange={updateForm} disabled={actionLoading} />
+            <label className="pid-config-form__full">
+              <span>Config JSON</span>
+              <textarea value={form.config} onChange={(event) => updateForm('config', event.target.value)} disabled={actionLoading} rows={8} />
+            </label>
+            <div className="pid-form-actions">
+              <button type="button" className="pid-chip-button" onClick={resetForm} disabled={actionLoading}>Reset</button>
+              <button type="submit" className="pid-chip-button pid-chip-button--accent" disabled={actionLoading}>
+                {actionLoading ? 'Working...' : (form.id ? 'Save provider' : 'Create provider')}
+              </button>
+            </div>
+          </form>
+        </section>
+        <JsonViewer value={previewValue} label="Provider payload preview" />
+      </div>
+
+      {error ? <div className="pid-alert pid-alert--danger">{error}</div> : null}
+
+      <section className="pid-panel">
+        <div className="pid-panel__header">
+          <h2>Search Providers</h2>
+          <span>{loading ? 'Loading' : `${providers.length} rows`}</span>
+        </div>
+        <DataTable
+          ariaLabel="Product image discovery search providers"
+          columns={columns}
+          rows={providers}
+          loading={loading}
+          emptyTitle="No providers"
+          emptyDescription="Create a fake or external search provider before enabling discovery."
+        />
+      </section>
+
+      <ConfirmModal
+        open={Boolean(deleteProvider)}
+        title={deleteProvider ? `Delete ${deleteProvider.code}` : 'Delete provider'}
+        description="Delete this provider configuration. Stored credentials are removed with the provider record."
+        confirmLabel={actionLoading ? 'Working...' : 'Delete'}
+        onCancel={() => setDeleteProvider(null)}
+        onConfirm={confirmDeleteProvider}
+      />
+    </div>
+  );
+}
+
+function formatPolicyList(source) {
+  const enabled = [
+    source.allow_search ? 'search' : null,
+    source.allow_scraping ? 'scrape' : null,
+    source.allow_download ? 'download' : null,
+    source.allow_auto_publish ? 'auto publish' : null,
+  ].filter(Boolean);
+
+  return enabled.length > 0 ? enabled.join(', ') : 'none';
+}
+
+function formatSourceScope(source) {
+  const brands = Array.isArray(source.brand_scope) && source.brand_scope.length > 0
+    ? source.brand_scope.join(', ')
+    : 'all brands';
+  const suppliers = Array.isArray(source.supplier_scope) && source.supplier_scope.length > 0
+    ? source.supplier_scope.join(', ')
+    : 'all suppliers';
+
+  return `${brands} / ${suppliers}`;
+}
+
+function trustedSourceMatchesFilters(source, filters) {
+  const clientId = String(source.client_id ?? '');
+  const domain = String(source.domain ?? '').toLowerCase();
+  const sourceType = String(source.source_type ?? '');
+
+  if (filters.client_id && clientId !== filters.client_id.trim()) {
+    return false;
+  }
+
+  if (filters.domain && !domain.includes(filters.domain.trim().toLowerCase())) {
+    return false;
+  }
+
+  if (filters.source_type && sourceType !== filters.source_type) {
+    return false;
+  }
+
+  for (const field of ['allow_download', 'allow_auto_publish', 'requires_manual_review', 'is_active']) {
+    if (filters[field] !== '' && String(Boolean(source[field])) !== filters[field]) {
+      return false;
+    }
+  }
+
+  return true;
+}
+
+function TrustedSourcesPage({ onNotify }) {
+  const [sources, setSources] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState('');
+  const [form, setForm] = useState(() => ({ ...DEFAULT_TRUSTED_SOURCE_FORM }));
+  const [filters, setFilters] = useState({
+    client_id: '',
+    domain: '',
+    source_type: '',
+    allow_download: '',
+    allow_auto_publish: '',
+    requires_manual_review: '',
+    is_active: '',
+  });
+  const [formError, setFormError] = useState('');
+  const [actionLoading, setActionLoading] = useState(false);
+  const [deleteSource, setDeleteSource] = useState(null);
+  const mountedRef = useRef(true);
+  const reloadIdRef = useRef(0);
+
+  const formPayload = useMemo(() => buildTrustedSourcePayload(form), [form]);
+  const previewValue = formPayload.ok ? formPayload.value : { error: formPayload.error };
+  const filteredSources = useMemo(
+    () => sources.filter((source) => trustedSourceMatchesFilters(source, filters)),
+    [sources, filters],
+  );
+
+  async function reloadSources(signal) {
+    if (!mountedRef.current || signal?.aborted) {
+      return;
+    }
+
+    const reloadId = reloadIdRef.current + 1;
+    reloadIdRef.current = reloadId;
+    const isCurrentReload = () => (
+      mountedRef.current
+      && reloadIdRef.current === reloadId
+      && !signal?.aborted
+    );
+
+    setLoading(true);
+    setError('');
+
+    try {
+      const result = await fetchTrustedSources(signal);
+
+      if (!isCurrentReload()) {
+        return;
+      }
+
+      setSources(result);
+    } catch (err) {
+      if (isCurrentReload() && err.name !== 'AbortError') {
+        setSources([]);
+        setError(err.message || 'Unable to load trusted sources.');
+      }
+    } finally {
+      if (isCurrentReload()) {
+        setLoading(false);
+      }
+    }
+  }
+
+  useEffect(() => {
+    const controller = new AbortController();
+    mountedRef.current = true;
+
+    reloadSources(controller.signal);
+
+    return () => {
+      mountedRef.current = false;
+      controller.abort();
+    };
+  }, []);
+
+  function updateForm(name, value) {
+    setForm((current) => ({ ...current, [name]: value }));
+    setFormError('');
+  }
+
+  function updateFilter(name, value) {
+    setFilters((current) => ({ ...current, [name]: value }));
+  }
+
+  function resetForm() {
+    setForm({ ...DEFAULT_TRUSTED_SOURCE_FORM });
+    setFormError('');
+  }
+
+  async function submitTrustedSource(event) {
+    event.preventDefault();
+
+    if (actionLoading) {
+      return;
+    }
+
+    const payload = buildTrustedSourcePayload(form);
+
+    if (!payload.ok) {
+      setFormError(payload.error);
+      return;
+    }
+
+    setActionLoading(true);
+    setFormError('');
+
+    try {
+      const path = form.id ? `/trusted-sources/${form.id}` : '/trusted-sources';
+      await pidFetch(path, {
+        method: form.id ? 'PUT' : 'POST',
+        body: JSON.stringify(payload.value),
+      });
+      await reloadSources();
+
+      if (mountedRef.current) {
+        onNotify(form.id ? 'Trusted source updated.' : 'Trusted source created.', 'success');
+        resetForm();
+      }
+    } catch (err) {
+      if (mountedRef.current) {
+        setFormError(err.message || 'Unable to save trusted source.');
+        onNotify(err.message || 'Unable to save trusted source.', 'danger');
+      }
+    } finally {
+      if (mountedRef.current) {
+        setActionLoading(false);
+      }
+    }
+  }
+
+  async function confirmDeleteSource() {
+    if (actionLoading || !deleteSource?.id) {
+      return;
+    }
+
+    setActionLoading(true);
+
+    try {
+      await pidFetch(`/trusted-sources/${deleteSource.id}`, { method: 'DELETE' });
+      await reloadSources();
+
+      if (mountedRef.current) {
+        onNotify('Trusted source deleted.', 'success');
+        setDeleteSource(null);
+        if (form.id === deleteSource.id) {
+          resetForm();
+        }
+      }
+    } catch (err) {
+      if (mountedRef.current) {
+        setError(err.message || 'Unable to delete trusted source.');
+        onNotify(err.message || 'Unable to delete trusted source.', 'danger');
+      }
+    } finally {
+      if (mountedRef.current) {
+        setActionLoading(false);
+      }
+    }
+  }
+
+  const columns = [
+    { key: 'trust_score', label: 'Score', render: (source) => <ScorePill score={source.trust_score} /> },
+    {
+      key: 'domain',
+      label: 'Domain',
+      render: (source) => (
+        <div className="pid-cell-stack">
+          <code>{source.domain}</code>
+          <span>{source.source_name || source.source_type || 'website'}</span>
+        </div>
+      ),
+    },
+    { key: 'policy', label: 'Policy', render: formatPolicyList },
+    { key: 'scope', label: 'Scope', render: formatSourceScope },
+    { key: 'state', label: 'State', render: (source) => <StatusBadge status={source.is_active ? 'ready_to_publish' : 'pending'} /> },
+    {
+      key: 'actions',
+      label: 'Actions',
+      className: 'pid-table__actions',
+      render: (source) => (
+        <div className="pid-row-actions">
+          <button type="button" className="pid-chip-button" onClick={() => setForm(trustedSourceToForm(source))}>Edit</button>
+          <button type="button" className="pid-chip-button" onClick={() => setDeleteSource(source)}>Delete</button>
+        </div>
+      ),
+    },
+  ];
+
+  const policyFields = [
+    ['allow_search', 'Allow search'],
+    ['allow_scraping', 'Allow scraping'],
+    ['allow_download', 'Allow download'],
+    ['allow_auto_publish', 'Allow auto publish'],
+    ['allow_description_import', 'Allow description import'],
+    ['respect_robots_txt', 'Respect robots.txt'],
+    ['requires_manual_review', 'Requires manual review'],
+    ['is_active', 'State'],
+  ];
+
+  return (
+    <div className="pid-stack">
+      <div className="pid-config-layout">
+        <section className="pid-panel">
+          <div className="pid-panel__header">
+            <h2>{form.id ? `Edit ${form.domain}` : 'Create Trusted Source'}</h2>
+            <span>Domain policy</span>
+          </div>
+          <form className="pid-config-form" onSubmit={submitTrustedSource}>
+            {formError ? <div className="pid-alert pid-alert--danger">{formError}</div> : null}
+            <label>
+              <span>Client override</span>
+              <input value={form.client_id} onChange={(event) => updateForm('client_id', event.target.value)} disabled={actionLoading} inputMode="numeric" />
+            </label>
+            <label>
+              <span>Domain</span>
+              <input value={form.domain} onChange={(event) => updateForm('domain', event.target.value)} disabled={actionLoading} />
+            </label>
+            <label>
+              <span>Source name</span>
+              <input value={form.source_name} onChange={(event) => updateForm('source_name', event.target.value)} disabled={actionLoading} />
+            </label>
+            <label>
+              <span>Source type</span>
+              <select value={form.source_type} onChange={(event) => updateForm('source_type', event.target.value)} disabled={actionLoading}>
+                {TRUSTED_SOURCE_TYPES.map((type) => <option key={type} value={type}>{type}</option>)}
+              </select>
+            </label>
+            <label className="pid-config-form__full">
+              <span>Trust score</span>
+              <input
+                type="range"
+                min="0"
+                max="100"
+                value={form.trust_score}
+                onChange={(event) => updateForm('trust_score', event.target.value)}
+                disabled={actionLoading}
+                aria-label="Trust score slider"
+              />
+            </label>
+            <label>
+              <span>Score value</span>
+              <input value={form.trust_score} onChange={(event) => updateForm('trust_score', event.target.value)} disabled={actionLoading} inputMode="numeric" aria-label="Trust score" />
+            </label>
+            <label>
+              <span>Rate limit per minute</span>
+              <input value={form.rate_limit_per_minute} onChange={(event) => updateForm('rate_limit_per_minute', event.target.value)} disabled={actionLoading} inputMode="numeric" />
+            </label>
+            <div className="pid-policy-grid pid-config-form__full">
+              {policyFields.map(([field, label]) => (
+                <label key={field}>
+                  <span>{label}</span>
+                  <select value={form[field]} onChange={(event) => updateForm(field, event.target.value)} disabled={actionLoading}>
+                    {booleanSelectOptions()}
+                  </select>
+                </label>
+              ))}
+            </div>
+            <label>
+              <span>Brand scope</span>
+              <textarea value={form.brand_scope} onChange={(event) => updateForm('brand_scope', event.target.value)} disabled={actionLoading} />
+            </label>
+            <label>
+              <span>Supplier scope</span>
+              <textarea value={form.supplier_scope} onChange={(event) => updateForm('supplier_scope', event.target.value)} disabled={actionLoading} />
+            </label>
+            <label className="pid-config-form__full">
+              <span>URL patterns</span>
+              <textarea value={form.url_patterns} onChange={(event) => updateForm('url_patterns', event.target.value)} disabled={actionLoading} />
+            </label>
+            <label className="pid-config-form__full">
+              <span>Permission reference</span>
+              <textarea value={form.permission_reference} onChange={(event) => updateForm('permission_reference', event.target.value)} disabled={actionLoading} />
+            </label>
+            <label className="pid-config-form__full">
+              <span>Notes</span>
+              <textarea value={form.notes} onChange={(event) => updateForm('notes', event.target.value)} disabled={actionLoading} />
+            </label>
+            <div className="pid-form-actions">
+              <button type="button" className="pid-chip-button" onClick={resetForm} disabled={actionLoading}>Reset</button>
+              <button type="submit" className="pid-chip-button pid-chip-button--accent" disabled={actionLoading}>
+                {actionLoading ? 'Working...' : (form.id ? 'Save trusted source' : 'Create trusted source')}
+              </button>
+            </div>
+          </form>
+        </section>
+        <JsonViewer value={previewValue} label="Trusted source payload preview" />
+      </div>
+
+      <section className="pid-panel">
+        <div className="pid-panel__header">
+          <h2>Trusted Source Filters</h2>
+          <span>{filteredSources.length} visible</span>
+        </div>
+        <div className="pid-filters">
+          <label>
+            <span>Client</span>
+            <input value={filters.client_id} onChange={(event) => updateFilter('client_id', event.target.value)} inputMode="numeric" />
+          </label>
+          <label>
+            <span>Domain contains</span>
+            <input value={filters.domain} onChange={(event) => updateFilter('domain', event.target.value)} />
+          </label>
+          <label>
+            <span>Source type</span>
+            <select value={filters.source_type} onChange={(event) => updateFilter('source_type', event.target.value)}>
+              <option value="">Any</option>
+              {TRUSTED_SOURCE_TYPES.map((type) => <option key={type} value={type}>{type}</option>)}
+            </select>
+          </label>
+          {[
+            ['allow_download', 'Download'],
+            ['allow_auto_publish', 'Auto publish'],
+            ['requires_manual_review', 'Manual review'],
+            ['is_active', 'Active'],
+          ].map(([field, label]) => (
+            <label key={field}>
+              <span>{label}</span>
+              <select value={filters[field]} onChange={(event) => updateFilter(field, event.target.value)}>
+                <option value="">Any</option>
+                <option value="true">Yes</option>
+                <option value="false">No</option>
+              </select>
+            </label>
+          ))}
+        </div>
+      </section>
+
+      {error ? <div className="pid-alert pid-alert--danger">{error}</div> : null}
+
+      <section className="pid-panel">
+        <div className="pid-panel__header">
+          <h2>Trusted Sources</h2>
+          <span>{loading ? 'Loading' : `${filteredSources.length} of ${sources.length} rows`}</span>
+        </div>
+        <DataTable
+          ariaLabel="Product image discovery trusted sources"
+          columns={columns}
+          rows={filteredSources}
+          loading={loading}
+          emptyTitle="No trusted sources"
+          emptyDescription="Add domains with explicit policy flags before using trusted-source scoring."
+        />
+      </section>
+
+      <ConfirmModal
+        open={Boolean(deleteSource)}
+        title={deleteSource ? `Delete ${deleteSource.domain}` : 'Delete trusted source'}
+        description="Delete this trusted-source policy. Existing requests keep their audit trail, but new scoring no longer uses this source."
+        confirmLabel={actionLoading ? 'Working...' : 'Delete'}
+        onCancel={() => setDeleteSource(null)}
+        onConfirm={confirmDeleteSource}
+      />
+    </div>
+  );
+}
+
 function PlaceholderPage({ page }) {
   return (
     <div className="pid-stack">
@@ -1750,6 +2507,10 @@ export default function App() {
     );
   } else if (page === 'settings') {
     body = <SettingsPage onNotify={notify} />;
+  } else if (page === 'providers') {
+    body = <ProvidersPage onNotify={notify} />;
+  } else if (page === 'trusted') {
+    body = <TrustedSourcesPage onNotify={notify} />;
   } else {
     body = <PlaceholderPage page={currentPage} />;
   }

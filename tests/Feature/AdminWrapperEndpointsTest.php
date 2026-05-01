@@ -12,6 +12,7 @@ use Padosoft\ProductImageDiscovery\Models\ProductImageDiscoveryEvent;
 use Padosoft\ProductImageDiscovery\Models\ProductImageDiscoveryRequest;
 use Padosoft\ProductImageDiscovery\Models\ProductImageDiscoverySetting;
 use Padosoft\ProductImageDiscovery\Models\ProductImageSearchProvider;
+use Padosoft\ProductImageDiscovery\Models\ProductImageTrustedSource;
 use Symfony\Component\HttpFoundation\StreamedResponse;
 use Tests\TestCase;
 
@@ -144,6 +145,127 @@ final class AdminWrapperEndpointsTest extends TestCase
         $this->getJson('/admin/product-image-discovery/settings')
             ->assertOk()
             ->assertJsonStructure(['data']);
+    }
+
+    public function test_admin_configuration_wrappers_support_provider_and_trusted_source_crud_without_secret_exposure(): void
+    {
+        $providerId = $this->postJson('/admin/product-image-discovery/search-providers', [
+            'code' => 'serpapi-client',
+            'name' => 'SerpAPI Client',
+            'driver' => 'serpapi',
+            'base_url' => 'https://serpapi.com',
+            'api_key' => 'secret-key',
+            'api_secret' => 'secret-secret',
+            'config' => ['supports_image_search' => true],
+            'priority' => 15,
+            'timeout_seconds' => 20,
+            'rate_limit_per_minute' => 40,
+            'is_active' => true,
+        ])
+            ->assertCreated()
+            ->assertJsonPath('data.code', 'serpapi-client')
+            ->assertJsonPath('data.has_api_key', true)
+            ->assertJsonPath('data.has_api_secret', true)
+            ->assertJsonMissing(['secret-key'])
+            ->assertJsonMissing(['secret-secret'])
+            ->json('data.id');
+
+        $provider = ProductImageSearchProvider::query()->findOrFail($providerId);
+        $rawApiKey = $provider->getRawOriginal('api_key_encrypted');
+
+        $this->assertNotNull($rawApiKey);
+        $this->assertNotSame('secret-key', $rawApiKey);
+
+        $this->putJson('/admin/product-image-discovery/search-providers/'.$providerId, [
+            'code' => 'serpapi-client',
+            'name' => 'SerpAPI Client Updated',
+            'driver' => 'serpapi',
+            'base_url' => 'https://serpapi.com',
+            'api_secret' => '',
+            'config' => ['supports_image_search' => true, 'max_results_per_request' => 20],
+            'priority' => 16,
+            'timeout_seconds' => 25,
+            'rate_limit_per_minute' => 35,
+            'is_active' => false,
+        ])
+            ->assertOk()
+            ->assertJsonPath('data.has_api_key', true)
+            ->assertJsonPath('data.has_api_secret', false)
+            ->assertJsonMissing(['secret-key']);
+
+        $provider->refresh();
+        $this->assertSame($rawApiKey, $provider->getRawOriginal('api_key_encrypted'));
+        $this->assertNull($provider->getRawOriginal('api_secret_encrypted'));
+
+        $trustedSourceId = $this->postJson('/admin/product-image-discovery/trusted-sources', [
+            'client_id' => 42,
+            'domain' => 'https://www.brand.example.test/catalog',
+            'source_name' => 'Brand Site',
+            'source_type' => 'brand_site',
+            'trust_score' => 94,
+            'allow_search' => true,
+            'allow_scraping' => true,
+            'allow_download' => true,
+            'allow_auto_publish' => true,
+            'allow_description_import' => false,
+            'respect_robots_txt' => true,
+            'requires_manual_review' => false,
+            'rate_limit_per_minute' => 30,
+            'brand_scope' => ['Acme'],
+            'supplier_scope' => ['Primary'],
+            'url_patterns' => ['https://brand.example.test/*'],
+            'permission_reference' => 'Contract 42',
+            'notes' => 'Approved for catalog images.',
+            'is_active' => true,
+        ])
+            ->assertCreated()
+            ->assertJsonPath('data.domain', 'brand.example.test')
+            ->assertJsonPath('data.trust_score', 94)
+            ->assertJsonPath('data.allow_auto_publish', true)
+            ->assertJsonPath('data.requires_manual_review', false)
+            ->assertJsonPath('data.brand_scope.0', 'Acme')
+            ->json('data.id');
+
+        $this->putJson('/admin/product-image-discovery/trusted-sources/'.$trustedSourceId, [
+            'client_id' => 42,
+            'domain' => 'brand.example.test',
+            'source_name' => 'Brand Site',
+            'source_type' => 'brand_site',
+            'trust_score' => 88,
+            'allow_search' => true,
+            'allow_scraping' => true,
+            'allow_download' => true,
+            'allow_auto_publish' => false,
+            'allow_description_import' => false,
+            'respect_robots_txt' => true,
+            'requires_manual_review' => true,
+            'rate_limit_per_minute' => 30,
+            'brand_scope' => ['Acme'],
+            'supplier_scope' => ['Primary'],
+            'url_patterns' => ['https://brand.example.test/*'],
+            'permission_reference' => 'Contract 42',
+            'notes' => 'Manual review required.',
+            'is_active' => true,
+        ])
+            ->assertOk()
+            ->assertJsonPath('data.trust_score', 88)
+            ->assertJsonPath('data.allow_auto_publish', false)
+            ->assertJsonPath('data.requires_manual_review', true);
+
+        $this->postJson('/admin/product-image-discovery/trusted-sources', [
+            'domain' => 'not a domain',
+        ])
+            ->assertUnprocessable()
+            ->assertJsonValidationErrors(['domain']);
+
+        $this->deleteJson('/admin/product-image-discovery/search-providers/'.$providerId)
+            ->assertNoContent();
+        $this->deleteJson('/admin/product-image-discovery/trusted-sources/'.$trustedSourceId)
+            ->assertNoContent();
+
+        $this->assertDatabaseMissing('product_image_search_providers', ['id' => $providerId]);
+        $this->assertDatabaseMissing('product_image_trusted_sources', ['id' => $trustedSourceId]);
+        $this->assertSame(0, ProductImageTrustedSource::query()->whereKey($trustedSourceId)->count());
     }
 
     public function test_request_search_date_to_filters_include_the_full_day(): void

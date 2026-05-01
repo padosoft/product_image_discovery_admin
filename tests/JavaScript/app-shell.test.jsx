@@ -1,6 +1,6 @@
 import '@testing-library/jest-dom/vitest';
 import React from 'react';
-import { act, fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { act, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import App from '../../resources/js/admin-product-image-discovery/App';
 import { ImageTile } from '../../resources/js/admin-product-image-discovery/components/ImageTile';
@@ -415,6 +415,172 @@ describe('admin product image discovery shell', () => {
 
     expect(screen.queryByText('stale.setting')).not.toBeInTheDocument();
     expect(screen.getByText('decision.auto_publish_threshold')).toBeVisible();
+  });
+
+  it('loads providers and submits write-only credential actions', async () => {
+    window.history.replaceState({}, '', '/admin/product-image-discovery/providers');
+    let createdPayload = null;
+    const providersPayload = {
+      data: [
+        {
+          id: 4,
+          code: 'brave',
+          name: 'Brave Search',
+          driver: 'brave',
+          base_url: 'https://api.search.brave.com',
+          config: { supports_image_search: true },
+          priority: 10,
+          timeout_seconds: 15,
+          rate_limit_per_minute: 60,
+          is_active: false,
+          has_api_key: true,
+          has_api_secret: false,
+        },
+      ],
+    };
+
+    vi.stubGlobal('fetch', vi.fn((url, options = {}) => {
+      const requestUrl = new URL(String(url));
+      const path = requestUrl.pathname;
+      const method = options.method ?? 'GET';
+
+      if (path.endsWith('/dashboard-summary')) {
+        return Promise.resolve(mockJsonResponse({
+          counts: { total: 0, manual_review: 0, ready_to_publish: 0, failed: 0, no_candidates_found: 0 },
+          provider_status: [],
+        }));
+      }
+
+      if (path.includes('/requests/search')) {
+        return Promise.resolve(mockJsonResponse({ data: [] }));
+      }
+
+      if (path.endsWith('/search-providers') && method === 'POST') {
+        createdPayload = JSON.parse(options.body);
+        return Promise.resolve(mockJsonResponse({ data: { id: 5, ...createdPayload, has_api_key: true, has_api_secret: false } }));
+      }
+
+      if (path.endsWith('/search-providers')) {
+        return Promise.resolve(mockJsonResponse(providersPayload));
+      }
+
+      return Promise.reject(new Error(`Unexpected request: ${method} ${path}`));
+    }));
+
+    render(<App />);
+
+    const providerHeading = await screen.findByRole('heading', { name: 'Create Provider' });
+    const providerForm = providerHeading.closest('section');
+    expect(providerHeading).toBeVisible();
+    expect(await screen.findByRole('table', { name: 'Product image discovery search providers' })).toHaveTextContent('brave');
+
+    fireEvent.change(within(providerForm).getByLabelText('Code'), { target: { value: 'serpapi-client' } });
+    fireEvent.change(within(providerForm).getByLabelText('Name'), { target: { value: 'SerpAPI Client' } });
+    fireEvent.change(within(providerForm).getByLabelText('Driver'), { target: { value: 'serpapi' } });
+    fireEvent.change(within(providerForm).getByLabelText('API key action'), { target: { value: 'replace' } });
+    fireEvent.change(within(providerForm).getByLabelText('API key value'), { target: { value: 'secret-key' } });
+    fireEvent.change(within(providerForm).getByLabelText('API secret action'), { target: { value: 'clear' } });
+    fireEvent.click(within(providerForm).getByRole('button', { name: 'Create provider' }));
+
+    await waitFor(() => expect(createdPayload).toMatchObject({
+      code: 'serpapi-client',
+      name: 'SerpAPI Client',
+      driver: 'serpapi',
+      api_key: 'secret-key',
+      api_secret: '',
+      priority: 100,
+      timeout_seconds: 15,
+      is_active: true,
+    }));
+  });
+
+  it('loads trusted sources and submits policy flags', async () => {
+    window.history.replaceState({}, '', '/admin/product-image-discovery/trusted');
+    let createdPayload = null;
+    const trustedSourcesPayload = {
+      data: [
+        {
+          id: 9,
+          client_id: 77,
+          domain: 'brand.example.test',
+          source_name: 'Brand Site',
+          source_type: 'brand_site',
+          trust_score: 94,
+          allow_search: true,
+          allow_scraping: true,
+          allow_download: true,
+          allow_auto_publish: false,
+          allow_description_import: false,
+          respect_robots_txt: true,
+          requires_manual_review: true,
+          rate_limit_per_minute: 30,
+          brand_scope: ['Acme'],
+          supplier_scope: ['Primary'],
+          url_patterns: ['https://brand.example.test/*'],
+          permission_reference: 'Contract 42',
+          notes: 'Approved source',
+          is_active: true,
+        },
+      ],
+    };
+
+    vi.stubGlobal('fetch', vi.fn((url, options = {}) => {
+      const requestUrl = new URL(String(url));
+      const path = requestUrl.pathname;
+      const method = options.method ?? 'GET';
+
+      if (path.endsWith('/dashboard-summary')) {
+        return Promise.resolve(mockJsonResponse({
+          counts: { total: 0, manual_review: 0, ready_to_publish: 0, failed: 0, no_candidates_found: 0 },
+          provider_status: [],
+        }));
+      }
+
+      if (path.includes('/requests/search')) {
+        return Promise.resolve(mockJsonResponse({ data: [] }));
+      }
+
+      if (path.endsWith('/trusted-sources') && method === 'POST') {
+        createdPayload = JSON.parse(options.body);
+        return Promise.resolve(mockJsonResponse({ data: { id: 10, ...createdPayload } }));
+      }
+
+      if (path.endsWith('/trusted-sources')) {
+        return Promise.resolve(mockJsonResponse(trustedSourcesPayload));
+      }
+
+      return Promise.reject(new Error(`Unexpected request: ${method} ${path}`));
+    }));
+
+    render(<App />);
+
+    const trustedHeading = await screen.findByRole('heading', { name: 'Create Trusted Source' });
+    const trustedForm = trustedHeading.closest('section');
+    expect(trustedHeading).toBeVisible();
+    expect(await screen.findByText('brand.example.test')).toBeVisible();
+
+    fireEvent.change(within(trustedForm).getByLabelText('Client override'), { target: { value: '42' } });
+    fireEvent.change(within(trustedForm).getByLabelText('Domain'), { target: { value: 'supplier.example.test' } });
+    fireEvent.change(within(trustedForm).getByLabelText('Source name'), { target: { value: 'Supplier Site' } });
+    fireEvent.change(within(trustedForm).getByLabelText('Source type'), { target: { value: 'supplier' } });
+    fireEvent.change(within(trustedForm).getByLabelText('Trust score', { selector: 'input[aria-label="Trust score"]' }), { target: { value: '91' } });
+    fireEvent.change(within(trustedForm).getByLabelText('Allow auto publish'), { target: { value: 'true' } });
+    fireEvent.change(within(trustedForm).getByLabelText('Requires manual review'), { target: { value: 'false' } });
+    fireEvent.change(within(trustedForm).getByLabelText('Brand scope'), { target: { value: 'Acme\nRoad Runner' } });
+    fireEvent.change(within(trustedForm).getByLabelText('URL patterns'), { target: { value: 'https://supplier.example.test/*' } });
+    fireEvent.click(within(trustedForm).getByRole('button', { name: 'Create trusted source' }));
+
+    await waitFor(() => expect(createdPayload).toMatchObject({
+      client_id: 42,
+      domain: 'supplier.example.test',
+      source_name: 'Supplier Site',
+      source_type: 'supplier',
+      trust_score: 91,
+      allow_auto_publish: true,
+      requires_manual_review: false,
+      brand_scope: ['Acme', 'Road Runner'],
+      url_patterns: ['https://supplier.example.test/*'],
+    }));
   });
 
   it('keeps the request detail drawer open while loading selected request data', async () => {

@@ -219,6 +219,21 @@
   - `npm run test` => 5 files, 27 tests
   - `npm run build`
   - `npm run e2e` => 6 Playwright tests
+- Copilot completed review on `0673dea` with no new comments.
+- Merged PR #3 into `main` at merge commit `2ed797dae9fbdb842aed14afe2593a6637bf59b5`; GitHub Actions/status checks remained unconfigured rather than failing.
+- Continued Macro Task 4 on a fresh `task/configuration-management` branch from updated `main`.
+- Implemented the Providers and Trusted Sources configuration slice:
+  - added admin JSON wrappers for search provider and trusted source CRUD
+  - added a local provider wrapper that treats omitted credentials as keep, empty strings as clear, and non-empty values as write-only replacements
+  - added dense Providers UI with JSON config editor, active state, limits, and write-only key/secret controls
+  - added dense Trusted Sources UI with filters, trust score control, policy toggles, scopes, URL patterns, permission reference, and CRUD actions
+  - added PHP, Vitest, and Playwright coverage for provider secrets, trusted source policies, and desktop/tablet CRUD flows
+- Verification passed after the Providers and Trusted Sources slice:
+  - `composer validate --strict`
+  - `npm run phpunit` => 31 tests, 237 assertions
+  - `npm run test` => 7 files, 35 tests
+  - `npm run build`
+  - `npm run e2e` => 10 Playwright tests
 
 ## 2026-04-30
 

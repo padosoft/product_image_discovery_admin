@@ -38,6 +38,7 @@
 - Async page-local reload helpers need a mounted guard for mutation-triggered reloads too, not only for the initial effect with an AbortController.
 - Prefer explicit layout utility classes over `nth-of-type` selectors in evolving admin forms; tests should avoid raw `RegExp` from dynamic strings unless the value is escaped first.
 - Page-local reload helpers that can run concurrently need a latest-request guard, not just a mounted guard; otherwise an older slower response can overwrite newer mutation-triggered state.
+- For provider credential wrappers, omitted `api_key`/`api_secret` must leave encrypted model attributes untouched; assigning the current raw encrypted value back through an encrypted cast can corrupt the stored secret. Use explicit write-only semantics: omitted means keep, empty string means clear, non-empty string means replace.
 
 ## 2026-04-30
 

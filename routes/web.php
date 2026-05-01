@@ -9,11 +9,13 @@ use App\Http\Controllers\ProductImageDiscovery\AdminRequestEventsController;
 use App\Http\Controllers\ProductImageDiscovery\AdminRequestShowController;
 use App\Http\Controllers\ProductImageDiscovery\AdminRequestSearchController;
 use App\Http\Controllers\ProductImageDiscovery\AdminRequestRetryController;
+use App\Http\Controllers\ProductImageDiscovery\AdminSearchProviderController;
 use App\Http\Controllers\ProductImageDiscovery\AdminSettingIndexController;
 use App\Http\Controllers\ProductImageDiscovery\AdminShellController;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Support\Facades\Route;
 use Padosoft\ProductImageDiscovery\Http\Controllers\Api\ProductImageDiscoverySettingController as PackageSettingController;
+use Padosoft\ProductImageDiscovery\Http\Controllers\Api\ProductImageTrustedSourceController as PackageTrustedSourceController;
 
 $adminPrefix = trim((string) config('pid-admin.route_prefix', 'admin/product-image-discovery'), '/');
 
@@ -39,6 +41,16 @@ Route::prefix($adminPrefix)
         Route::get('settings/{setting}', [PackageSettingController::class, 'show'])->name('settings.show');
         Route::put('settings/{setting}', [PackageSettingController::class, 'update'])->name('settings.update');
         Route::delete('settings/{setting}', [PackageSettingController::class, 'destroy'])->name('settings.destroy');
+        Route::get('search-providers', [AdminSearchProviderController::class, 'index'])->name('search-providers.index');
+        Route::post('search-providers', [AdminSearchProviderController::class, 'store'])->name('search-providers.store');
+        Route::get('search-providers/{searchProvider}', [AdminSearchProviderController::class, 'show'])->name('search-providers.show');
+        Route::put('search-providers/{searchProvider}', [AdminSearchProviderController::class, 'update'])->name('search-providers.update');
+        Route::delete('search-providers/{searchProvider}', [AdminSearchProviderController::class, 'destroy'])->name('search-providers.destroy');
+        Route::get('trusted-sources', [PackageTrustedSourceController::class, 'index'])->name('trusted-sources.index');
+        Route::post('trusted-sources', [PackageTrustedSourceController::class, 'store'])->name('trusted-sources.store');
+        Route::get('trusted-sources/{trustedSource}', [PackageTrustedSourceController::class, 'show'])->name('trusted-sources.show');
+        Route::put('trusted-sources/{trustedSource}', [PackageTrustedSourceController::class, 'update'])->name('trusted-sources.update');
+        Route::delete('trusted-sources/{trustedSource}', [PackageTrustedSourceController::class, 'destroy'])->name('trusted-sources.destroy');
 
         Route::get('/', AdminShellController::class)->name('shell');
         Route::get('{path}', AdminShellController::class)
