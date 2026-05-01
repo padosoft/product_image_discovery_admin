@@ -421,6 +421,7 @@ describe('admin product image discovery shell', () => {
     window.history.replaceState({}, '', '/admin/product-image-discovery/providers');
     let createdPayload = null;
     let testedPayload = null;
+    let updatedPayload = null;
     const providerPages = {
       1: {
         data: [
@@ -505,6 +506,20 @@ describe('admin product image discovery shell', () => {
         }));
       }
 
+      if (path.endsWith('/search-providers/4') && method === 'PUT') {
+        updatedPayload = JSON.parse(options.body);
+
+        return Promise.resolve(mockJsonResponse({
+          data: {
+            id: 4,
+            ...providerPages[1].data[0],
+            ...updatedPayload,
+            has_api_key: true,
+            has_api_secret: false,
+          },
+        }));
+      }
+
       if (path.endsWith('/search-providers')) {
         const page = Number(requestUrl.searchParams.get('page') ?? 1);
 
@@ -527,6 +542,12 @@ describe('admin product image discovery shell', () => {
     await waitFor(() => expect(testedPayload).toEqual({ mode: 'images', limit: 1 }));
     expect(await screen.findByRole('region', { name: 'Provider test details' })).toHaveTextContent('empty');
     expect(screen.getByRole('region', { name: 'Provider test result' })).toHaveTextContent('key configured');
+    fireEvent.click(within(braveRow).getByRole('button', { name: 'Edit' }));
+    fireEvent.change(within(providerForm).getByLabelText('Name'), { target: { value: 'Brave Updated' } });
+    fireEvent.click(within(providerForm).getByRole('button', { name: 'Save provider' }));
+
+    await waitFor(() => expect(updatedPayload).toMatchObject({ name: 'Brave Updated' }));
+    await waitFor(() => expect(screen.queryByRole('region', { name: 'Provider test result' })).not.toBeInTheDocument());
 
     fireEvent.change(within(providerForm).getByLabelText('Code'), { target: { value: 'serpapi-client' } });
     fireEvent.change(within(providerForm).getByLabelText('Name'), { target: { value: 'SerpAPI Client' } });

@@ -1527,6 +1527,7 @@ function ProvidersPage({ onNotify }) {
       return;
     }
 
+    const savedProviderId = form.id;
     setActionLoading(true);
     setFormError('');
 
@@ -1540,6 +1541,17 @@ function ProvidersPage({ onNotify }) {
 
       if (mountedRef.current) {
         onNotify(form.id ? 'Provider updated.' : 'Provider created.', 'success');
+        if (savedProviderId) {
+          setProviderTestResults((current) => {
+            const next = { ...current };
+            delete next[savedProviderId];
+
+            return next;
+          });
+          setLatestProviderTest((current) => (
+            current?.provider_id === savedProviderId ? null : current
+          ));
+        }
         resetForm();
       }
     } catch (err) {
@@ -1599,6 +1611,7 @@ function ProvidersPage({ onNotify }) {
     }
 
     setTestingProviderId(provider.id);
+    setLatestProviderTest(null);
     setError('');
 
     try {

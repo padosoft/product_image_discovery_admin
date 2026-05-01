@@ -304,6 +304,17 @@
   - `npm run test` => 8 files, 37 tests
   - `npm run build`
   - `npm run e2e` => 10 Playwright tests
+- Copilot reviewed `cdd1c0f` and generated 2 frontend state comments.
+- Addressed the latest Copilot PR #5 comments:
+  - starting a provider test now clears the previous latest-result panel while the new test is in flight
+  - saving an existing provider now invalidates that provider's cached last-test badge and clears the detail panel if it matched the edited provider
+  - added RTL coverage for clearing stale provider test details after a provider update
+- Verification passed after the provider test UI cache follow-up:
+  - `composer validate --strict`
+  - `npm run phpunit` => 36 tests, 272 assertions
+  - `npm run test` => 8 files, 37 tests
+  - `npm run build`
+  - `npm run e2e` => 10 Playwright tests
 
 ## 2026-04-30
 

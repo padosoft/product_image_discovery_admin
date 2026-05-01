@@ -47,6 +47,7 @@
 - When an admin wrapper needs one-provider execution, keep the provider factory source tied to the app-bound package manager registry. Duplicating only the currently known fake/brave factories makes future or host-registered drivers report false health failures.
 - Admin-triggered live/provider tests should have route-level throttling because a simple POST can burn external quota even when the endpoint returns only sanitized health data.
 - Reflection against package internals needs an explicit failure path; returning an empty registry lets the provider test report a normal sanitized driver failure instead of leaking a framework 500 if internals change.
+- Client-only health/test results must be invalidated when the underlying configuration changes; otherwise stale badges can make edited credentials or limits look freshly verified.
 
 ## 2026-04-30
 
