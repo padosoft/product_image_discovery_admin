@@ -3,12 +3,13 @@
 declare(strict_types=1);
 
 use App\Http\Controllers\ProductImageDiscovery\AdminCandidateImageController;
-use App\Http\Controllers\ProductImageDiscovery\AdminRequestCandidateController;
 use App\Http\Controllers\ProductImageDiscovery\AdminDashboardSummaryController;
+use App\Http\Controllers\ProductImageDiscovery\AdminHealthController;
+use App\Http\Controllers\ProductImageDiscovery\AdminRequestCandidateController;
 use App\Http\Controllers\ProductImageDiscovery\AdminRequestEventsController;
-use App\Http\Controllers\ProductImageDiscovery\AdminRequestShowController;
-use App\Http\Controllers\ProductImageDiscovery\AdminRequestSearchController;
 use App\Http\Controllers\ProductImageDiscovery\AdminRequestRetryController;
+use App\Http\Controllers\ProductImageDiscovery\AdminRequestSearchController;
+use App\Http\Controllers\ProductImageDiscovery\AdminRequestShowController;
 use App\Http\Controllers\ProductImageDiscovery\AdminSearchProviderController;
 use App\Http\Controllers\ProductImageDiscovery\AdminSettingIndexController;
 use App\Http\Controllers\ProductImageDiscovery\AdminShellController;
@@ -28,6 +29,7 @@ Route::prefix($adminPrefix)
     ->name('pid-admin.')
     ->group(function (): void {
         Route::get('dashboard-summary', AdminDashboardSummaryController::class)->name('dashboard-summary');
+        Route::get('health', AdminHealthController::class)->name('health');
         Route::get('requests/search', AdminRequestSearchController::class)->name('requests.search');
         Route::get('requests/{request}', AdminRequestShowController::class)->name('requests.show');
         Route::get('requests/{request}/events', AdminRequestEventsController::class)->name('requests.events');

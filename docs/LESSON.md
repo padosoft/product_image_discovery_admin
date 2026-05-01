@@ -48,6 +48,8 @@
 - Admin-triggered live/provider tests should have route-level throttling because a simple POST can burn external quota even when the endpoint returns only sanitized health data.
 - Reflection against package internals needs an explicit failure path; returning an empty registry lets the provider test report a normal sanitized driver failure instead of leaking a framework 500 if internals change.
 - Client-only health/test results must be invalidated when the underlying configuration changes; otherwise stale badges can make edited credentials or limits look freshly verified.
+- Health endpoints should report configured/missing booleans plus route, driver, provider, and queue names only; do not expose env values, raw secrets, headers, exception payloads, or absolute storage paths.
+- Diagnostics page URLs that also have JSON endpoints need the same request-intent routing as configuration pages: browser requests return the React shell, while `Accept: application/json` requests return the wrapper payload.
 
 ## 2026-04-30
 

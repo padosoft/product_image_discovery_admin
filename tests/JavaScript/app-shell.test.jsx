@@ -660,6 +660,92 @@ describe('admin product image discovery shell', () => {
     }));
   });
 
+  it('loads runtime health without exposing secrets', async () => {
+    window.history.replaceState({}, '', '/admin/product-image-discovery/health');
+    const healthPayload = {
+      data: {
+        app: {
+          environment: 'testing',
+          debug: false,
+          admin_prefix: 'admin/product-image-discovery',
+          package_api_prefix: 'api/product-image-discovery',
+        },
+        env_status: [
+          { key: 'BRAVE_SEARCH_API_KEY', scope: 'search', configured: false },
+          { key: 'ANTHROPIC_API_KEY', scope: 'ai', configured: true },
+        ],
+        ai: {
+          enabled: true,
+          provider: 'anthropic',
+          timeout_seconds: 45,
+          fail_silently: true,
+          attach_remote_image: false,
+          vision_model_configured: true,
+          description_model_configured: false,
+          provider_key_configured: true,
+          providers: [
+            { provider: 'anthropic', api_key_configured: true, base_url_configured: true },
+            { provider: 'openrouter', api_key_configured: false, base_url_configured: true },
+          ],
+        },
+        storage: { disk: 'local', configured: true, driver: 'local' },
+        queue: {
+          connection: 'sync',
+          queues: [
+            { phase: 'ingest', queue: 'image-discovery-ingest', status: 'configured' },
+            { phase: 'analysis', queue: 'image-discovery-ai', status: 'configured' },
+          ],
+        },
+        providers: [
+          {
+            id: 1,
+            code: 'fake',
+            driver: 'fake',
+            active: true,
+            has_api_key: false,
+            has_api_secret: false,
+            timeout_seconds: 15,
+            rate_limit_per_minute: null,
+            last_test_status: null,
+            last_test_at: null,
+          },
+        ],
+      },
+    };
+
+    vi.stubGlobal('fetch', vi.fn((url) => {
+      const requestUrl = new URL(String(url));
+      const path = requestUrl.pathname;
+
+      if (path.endsWith('/dashboard-summary')) {
+        return Promise.resolve(mockJsonResponse({
+          counts: { total: 0, manual_review: 0, ready_to_publish: 0, failed: 0, no_candidates_found: 0 },
+          provider_status: [],
+        }));
+      }
+
+      if (path.includes('/requests/search')) {
+        return Promise.resolve(mockJsonResponse({ data: [] }));
+      }
+
+      if (path.endsWith('/health')) {
+        return Promise.resolve(mockJsonResponse(healthPayload));
+      }
+
+      return Promise.reject(new Error(`Unexpected request: ${path}`));
+    }));
+
+    render(<App />);
+
+    expect(await screen.findByRole('heading', { name: 'Runtime Health' })).toBeVisible();
+    expect(screen.getByText('api/product-image-discovery')).toBeVisible();
+    expect(screen.getByText('ANTHROPIC_API_KEY')).toBeVisible();
+    expect(screen.getByRole('table', { name: 'Search provider health status' })).toHaveTextContent('fake');
+    expect(screen.getByRole('table', { name: 'Product image discovery queue status' })).toHaveTextContent('image-discovery-ai');
+    expect(document.body).not.toHaveTextContent('anthropic-secret');
+    expect(document.body).not.toHaveTextContent('provider-secret');
+  });
+
   it('keeps the request detail drawer open while loading selected request data', async () => {
     window.PID_ADMIN = { apiBase: '/custom-admin/product-image-discovery' };
     window.history.replaceState({}, '', '/custom-admin/product-image-discovery/requests');

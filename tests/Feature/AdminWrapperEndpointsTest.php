@@ -67,6 +67,61 @@ final class AdminWrapperEndpointsTest extends TestCase
             ->assertJsonMissing(['test-api-key']);
     }
 
+    public function test_admin_health_reports_configuration_without_exposing_secrets(): void
+    {
+        config([
+            'product-image-discovery.ai.enabled' => true,
+            'product-image-discovery.ai.provider' => 'anthropic',
+            'product-image-discovery.ai.vision_model' => 'claude-test',
+            'product-image-discovery.ai.description_model' => 'claude-description-test',
+            'product-image-discovery.ai.providers.anthropic.api_key' => 'anthropic-secret',
+            'product-image-discovery.ai.providers.openrouter.api_key' => 'openrouter-secret',
+            'product-image-discovery.storage.disk' => 'local',
+        ]);
+
+        ProductImageSearchProvider::query()->create([
+            'code' => 'fake-health',
+            'name' => 'Fake Health',
+            'driver' => 'fake',
+            'api_key_encrypted' => 'provider-secret',
+            'priority' => 5,
+            'timeout_seconds' => 15,
+            'is_active' => true,
+        ]);
+
+        $response = $this->getJson('/admin/product-image-discovery/health')
+            ->assertOk()
+            ->assertJsonPath('data.app.admin_prefix', 'admin/product-image-discovery')
+            ->assertJsonPath('data.ai.enabled', true)
+            ->assertJsonPath('data.ai.provider', 'anthropic')
+            ->assertJsonPath('data.ai.provider_key_configured', true)
+            ->assertJsonPath('data.ai.vision_model_configured', true)
+            ->assertJsonPath('data.storage.disk', 'local')
+            ->assertJsonPath('data.storage.configured', true)
+            ->assertJsonPath('data.queue.connection', 'sync')
+            ->assertJsonPath('data.providers.0.code', 'fake-health')
+            ->assertJsonPath('data.providers.0.has_api_key', true)
+            ->assertJsonPath('data.env_status.1.key', 'ANTHROPIC_API_KEY')
+            ->assertJsonPath('data.env_status.1.configured', true);
+
+        $content = $response->getContent();
+
+        $this->assertStringNotContainsString('provider-secret', $content);
+        $this->assertStringNotContainsString('anthropic-secret', $content);
+        $this->assertStringNotContainsString('openrouter-secret', $content);
+    }
+
+    public function test_health_ui_path_serves_shell_for_browser_requests(): void
+    {
+        $this->get('/admin/product-image-discovery/health')
+            ->assertOk()
+            ->assertSee('product-image-discovery-admin');
+
+        $this->getJson('/admin/product-image-discovery/health')
+            ->assertOk()
+            ->assertJsonStructure(['data' => ['app', 'env_status', 'ai', 'storage', 'queue', 'providers']]);
+    }
+
     public function test_request_search_applies_zero_score_filters(): void
     {
         $zeroScore = $this->createDiscoveryRequest([
