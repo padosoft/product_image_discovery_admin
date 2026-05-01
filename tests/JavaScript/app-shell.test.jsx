@@ -752,6 +752,87 @@ describe('admin product image discovery shell', () => {
     expect(document.body).not.toHaveTextContent('provider-secret');
   });
 
+  it('runs debug flow from JSON and redacts previewed secrets', async () => {
+    window.history.replaceState({}, '', '/admin/product-image-discovery/debug');
+    let createdPayload = null;
+
+    vi.stubGlobal('fetch', vi.fn((url, options = {}) => {
+      const requestUrl = new URL(String(url));
+      const path = requestUrl.pathname;
+      const method = options.method ?? 'GET';
+
+      if (path.endsWith('/dashboard-summary')) {
+        return Promise.resolve(mockJsonResponse({
+          counts: { total: 0, manual_review: 0, ready_to_publish: 0, failed: 0, no_candidates_found: 0 },
+          provider_status: [],
+        }));
+      }
+
+      if (path.includes('/requests/search')) {
+        return Promise.resolve(mockJsonResponse({ data: [] }));
+      }
+
+      if (path.endsWith('/debug-runs') && method === 'POST') {
+        createdPayload = JSON.parse(options.body);
+
+        return Promise.resolve(mockJsonResponse({
+          data: {
+            id: 7,
+            status: 'succeeded',
+            request_payload: { ...createdPayload.request_payload, api_key: '[redacted]' },
+            options: createdPayload.options,
+            summary: { candidate_count: 1, candidates_checked: 1 },
+            request_summary: {
+              erp_model_color_id: createdPayload.request_payload.erp_model_color_id,
+              final_score: 82,
+            },
+            report_available: true,
+            report: {
+              summary: { candidate_count: 1, candidates_checked: 1 },
+              request: { erp_model_color_id: createdPayload.request_payload.erp_model_color_id },
+              config: { api_key: 'server-secret' },
+              provider: { has_api_key: true, has_api_secret: false },
+            },
+            exit_code: 0,
+            updated_at: '2026-05-01T12:00:00Z',
+          },
+        }));
+      }
+
+      if (path.endsWith('/debug-runs')) {
+        return Promise.resolve(mockJsonResponse({ data: [] }));
+      }
+
+      return Promise.reject(new Error(`Unexpected request: ${method} ${path}`));
+    }));
+
+    render(<App />);
+
+    expect(await screen.findByRole('heading', { name: 'Run Debug Flow' })).toBeVisible();
+    const requestPayload = {
+      client_id: 1,
+      erp_model_id: 'HERNO-PI002223D',
+      erp_model_color_id: 'HERNO-PI002223D-CAMMELLO',
+      brand: 'Herno',
+      api_key: 'front-secret',
+    };
+
+    fireEvent.change(screen.getByLabelText('Request JSON'), {
+      target: { value: JSON.stringify(requestPayload, null, 2) },
+    });
+
+    expect(screen.getByRole('region', { name: 'Debug payload preview' })).not.toHaveTextContent('front-secret');
+    fireEvent.click(screen.getByRole('button', { name: 'Run debug flow' }));
+
+    await waitFor(() => expect(createdPayload).toMatchObject({
+      request_payload: requestPayload,
+      options: { max_candidates: 2, no_download: true, no_env_brave: true },
+    }));
+    expect(await screen.findByRole('region', { name: 'Debug run result' })).toHaveTextContent('HERNO-PI002223D-CAMMELLO');
+    expect(screen.getByRole('region', { name: 'Debug run report' })).not.toHaveTextContent('server-secret');
+    expect(screen.getByRole('region', { name: 'Debug run report' })).toHaveTextContent('"has_api_key": true');
+  });
+
   it('keeps the request detail drawer open while loading selected request data', async () => {
     window.PID_ADMIN = { apiBase: '/custom-admin/product-image-discovery' };
     window.history.replaceState({}, '', '/custom-admin/product-image-discovery/requests');

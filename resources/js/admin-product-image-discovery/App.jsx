@@ -44,6 +44,33 @@ const DEFAULT_SUMMARY = {
   provider_status: [],
 };
 
+const DEBUG_DRAFT_KEY = 'pid-debug-flow-draft';
+const DEFAULT_DEBUG_REQUEST = {
+  client_id: 1,
+  erp_model_id: 'HERNO-PI002223D',
+  erp_model_color_id: 'HERNO-PI002223D-CAMMELLO',
+  brand: 'Herno',
+  supplier: 'Herno',
+  supplier_sku: 'PI002223D',
+  model_code: 'PI002223D',
+  color_code: 'CAMMELLO',
+  color_name: 'Cammello',
+  category: 'Donna > Maglie e camicie',
+};
+
+const DEFAULT_DEBUG_OPTIONS = {
+  max_candidates: '2',
+  fresh: true,
+  clean_storage: false,
+  no_download: true,
+  download_all: false,
+  stop_on_first_good: false,
+  exhaustive: false,
+  good_score: '',
+  no_env_brave: true,
+  fail_on_no_match: false,
+};
+
 const navGroups = [
   {
     label: 'Operations',
@@ -382,6 +409,27 @@ async function fetchSearchProviders(signal) {
 
 async function fetchTrustedSources(signal) {
   return fetchPaginatedAdminRecords('/trusted-sources?per_page=100', signal);
+}
+
+async function fetchDebugRuns(signal) {
+  const result = await pidFetch('/debug-runs', { signal });
+
+  return result?.data ?? [];
+}
+
+async function fetchDebugRun(debugRunId, signal) {
+  const result = await pidFetch(`/debug-runs/${debugRunId}`, { signal });
+
+  return result?.data ?? result;
+}
+
+async function createDebugRun(payload) {
+  const result = await pidFetch('/debug-runs', {
+    method: 'POST',
+    body: JSON.stringify(payload),
+  });
+
+  return result?.data ?? result;
 }
 
 async function fetchHealth(signal) {
@@ -2215,6 +2263,357 @@ function TrustedSourcesPage({ onNotify }) {
   );
 }
 
+function debugRunStatusTone(status) {
+  if (status === 'succeeded') {
+    return 'ok';
+  }
+
+  if (status === 'failed') {
+    return 'danger';
+  }
+
+  if (status === 'running') {
+    return 'info';
+  }
+
+  return 'neutral';
+}
+
+function DebugRunStatusBadge({ status }) {
+  return (
+    <span className={`pid-badge pid-badge--${debugRunStatusTone(status)}`}>
+      {String(status || 'queued').replaceAll('_', ' ')}
+    </span>
+  );
+}
+
+function parseDebugDraft() {
+  const fallback = JSON.stringify(DEFAULT_DEBUG_REQUEST, null, 2);
+
+  try {
+    return localStorage.getItem(DEBUG_DRAFT_KEY) || fallback;
+  } catch (err) {
+    void err;
+
+    return fallback;
+  }
+}
+
+function buildDebugOptions(options) {
+  const maxCandidates = Number.parseInt(options.max_candidates, 10);
+  const goodScore = String(options.good_score ?? '').trim();
+
+  return {
+    max_candidates: Number.isFinite(maxCandidates) ? maxCandidates : 2,
+    fresh: Boolean(options.fresh),
+    clean_storage: Boolean(options.clean_storage),
+    no_download: Boolean(options.no_download),
+    download_all: Boolean(options.download_all),
+    stop_on_first_good: Boolean(options.stop_on_first_good),
+    exhaustive: Boolean(options.exhaustive),
+    good_score: goodScore === '' ? null : Number.parseInt(goodScore, 10),
+    no_env_brave: Boolean(options.no_env_brave),
+    fail_on_no_match: Boolean(options.fail_on_no_match),
+  };
+}
+
+function DebugFlowPage({ onNotify }) {
+  const [requestJson, setRequestJson] = useState(parseDebugDraft);
+  const [options, setOptions] = useState(() => ({ ...DEFAULT_DEBUG_OPTIONS }));
+  const [runs, setRuns] = useState([]);
+  const [selectedRun, setSelectedRun] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [actionLoading, setActionLoading] = useState(false);
+  const [error, setError] = useState('');
+  const mountedRef = useRef(true);
+
+  async function reloadRuns(signal) {
+    setLoading(true);
+    setError('');
+
+    try {
+      const result = await fetchDebugRuns(signal);
+
+      if (mountedRef.current && !signal?.aborted) {
+        setRuns(result);
+      }
+    } catch (err) {
+      if (mountedRef.current && err.name !== 'AbortError') {
+        setError(err.message || 'Unable to load debug runs.');
+        setRuns([]);
+      }
+    } finally {
+      if (mountedRef.current && !signal?.aborted) {
+        setLoading(false);
+      }
+    }
+  }
+
+  useEffect(() => {
+    const controller = new AbortController();
+    mountedRef.current = true;
+    reloadRuns(controller.signal);
+
+    return () => {
+      mountedRef.current = false;
+      controller.abort();
+    };
+  }, []);
+
+  useEffect(() => {
+    try {
+      localStorage.setItem(DEBUG_DRAFT_KEY, requestJson);
+    } catch (err) {
+      void err;
+    }
+  }, [requestJson]);
+
+  useEffect(() => {
+    if (!selectedRun?.id || !['queued', 'running'].includes(selectedRun.status)) {
+      return undefined;
+    }
+
+    let cancelled = false;
+    const interval = window.setInterval(async () => {
+      try {
+        const result = await fetchDebugRun(selectedRun.id);
+
+        if (!cancelled && mountedRef.current) {
+          setSelectedRun(result);
+          setRuns((current) => current.map((run) => (run.id === result.id ? result : run)));
+        }
+      } catch (err) {
+        if (!cancelled && mountedRef.current) {
+          setError(err.message || 'Unable to poll debug run.');
+        }
+      }
+    }, 1500);
+
+    return () => {
+      cancelled = true;
+      window.clearInterval(interval);
+    };
+  }, [selectedRun?.id, selectedRun?.status]);
+
+  function updateOption(name, value) {
+    setOptions((current) => ({ ...current, [name]: value }));
+    setError('');
+  }
+
+  async function submitDebugRun(event) {
+    event.preventDefault();
+
+    if (actionLoading) {
+      return;
+    }
+
+    let requestPayload;
+
+    try {
+      requestPayload = JSON.parse(requestJson);
+    } catch (err) {
+      setError(`Request JSON is invalid: ${err.message}`);
+      return;
+    }
+
+    setActionLoading(true);
+    setError('');
+
+    try {
+      const run = await createDebugRun({
+        request_payload: requestPayload,
+        options: buildDebugOptions(options),
+      });
+
+      if (mountedRef.current) {
+        setSelectedRun(run);
+        setRuns((current) => [run, ...current.filter((item) => item.id !== run.id)].slice(0, 20));
+        onNotify(run.status === 'failed' ? 'Debug run failed.' : 'Debug run started.', run.status === 'failed' ? 'danger' : 'success');
+        await reloadRuns();
+      }
+    } catch (err) {
+      if (mountedRef.current) {
+        setError(err.message || 'Unable to create debug run.');
+        onNotify(err.message || 'Unable to create debug run.', 'danger');
+      }
+    } finally {
+      if (mountedRef.current) {
+        setActionLoading(false);
+      }
+    }
+  }
+
+  const columns = [
+    { key: 'id', label: 'ID', render: (run) => <code>#{run.id}</code> },
+    { key: 'status', label: 'Status', render: (run) => <DebugRunStatusBadge status={run.status} /> },
+    { key: 'identity', label: 'Identity', render: (run) => run.request_summary?.erp_model_color_id ?? run.request_payload?.erp_model_color_id ?? '-' },
+    { key: 'score', label: 'Score', render: (run) => run.request_summary?.final_score ?? '-' },
+    { key: 'candidates', label: 'Candidates', render: (run) => run.summary?.candidate_count ?? '-' },
+    { key: 'updated_at', label: 'Updated', render: (run) => formatUpdatedAt(run.updated_at) },
+    {
+      key: 'actions',
+      label: 'Actions',
+      className: 'pid-table__actions',
+      render: (run) => (
+        <button type="button" className="pid-chip-button" onClick={() => setSelectedRun(run)}>
+          Open
+        </button>
+      ),
+    },
+  ];
+
+  return (
+    <div className="pid-stack">
+      {error ? <div className="pid-alert pid-alert--danger" role="alert">{error}</div> : null}
+      <div className="pid-config-layout">
+        <section className="pid-panel">
+          <div className="pid-panel__header">
+            <h2>Run Debug Flow</h2>
+            <span>Command-backed</span>
+          </div>
+          <form className="pid-config-form" onSubmit={submitDebugRun}>
+            <label className="pid-config-form__full">
+              <span>Request JSON</span>
+              <textarea value={requestJson} onChange={(event) => setRequestJson(event.target.value)} rows={14} disabled={actionLoading} />
+            </label>
+            <label>
+              <span>Max candidates</span>
+              <input value={options.max_candidates} inputMode="numeric" onChange={(event) => updateOption('max_candidates', event.target.value)} disabled={actionLoading} />
+            </label>
+            <label>
+              <span>Good score</span>
+              <input value={options.good_score} inputMode="numeric" placeholder="config default" onChange={(event) => updateOption('good_score', event.target.value)} disabled={actionLoading} />
+            </label>
+            <label>
+              <span>Fresh request</span>
+              <select value={String(options.fresh)} onChange={(event) => updateOption('fresh', event.target.value === 'true')} disabled={actionLoading}>
+                {booleanSelectOptions()}
+              </select>
+            </label>
+            <label>
+              <span>No download</span>
+              <select value={String(options.no_download)} onChange={(event) => updateOption('no_download', event.target.value === 'true')} disabled={actionLoading}>
+                {booleanSelectOptions()}
+              </select>
+            </label>
+            <label>
+              <span>Clean storage</span>
+              <select value={String(options.clean_storage)} onChange={(event) => updateOption('clean_storage', event.target.value === 'true')} disabled={actionLoading}>
+                {booleanSelectOptions()}
+              </select>
+            </label>
+            <label>
+              <span>Download all</span>
+              <select value={String(options.download_all)} onChange={(event) => updateOption('download_all', event.target.value === 'true')} disabled={actionLoading || options.no_download}>
+                {booleanSelectOptions()}
+              </select>
+            </label>
+            <label>
+              <span>Stop on first good</span>
+              <select value={String(options.stop_on_first_good)} onChange={(event) => updateOption('stop_on_first_good', event.target.value === 'true')} disabled={actionLoading || options.exhaustive}>
+                {booleanSelectOptions()}
+              </select>
+            </label>
+            <label>
+              <span>Exhaustive</span>
+              <select value={String(options.exhaustive)} onChange={(event) => updateOption('exhaustive', event.target.value === 'true')} disabled={actionLoading}>
+                {booleanSelectOptions()}
+              </select>
+            </label>
+            <label>
+              <span>No env Brave</span>
+              <select value={String(options.no_env_brave)} onChange={(event) => updateOption('no_env_brave', event.target.value === 'true')} disabled={actionLoading}>
+                {booleanSelectOptions()}
+              </select>
+            </label>
+            <div className="pid-form-actions">
+              <button type="button" className="pid-chip-button" onClick={() => setRequestJson(JSON.stringify(DEFAULT_DEBUG_REQUEST, null, 2))} disabled={actionLoading}>
+                Reset JSON
+              </button>
+              <button type="submit" className="pid-chip-button pid-chip-button--accent" disabled={actionLoading}>
+                {actionLoading ? 'Running...' : 'Run debug flow'}
+              </button>
+            </div>
+          </form>
+        </section>
+        <JsonViewer value={{ request_payload: redactDebugPreview(safeJsonPreview(requestJson)), options: buildDebugOptions(options) }} label="Debug payload preview" />
+      </div>
+
+      <section className="pid-panel">
+        <div className="pid-panel__header">
+          <h2>Debug Runs</h2>
+          <span>{loading ? 'Loading' : `${runs.length} recent`}</span>
+        </div>
+        <DataTable
+          ariaLabel="Product image discovery debug runs"
+          columns={columns}
+          rows={runs}
+          loading={loading}
+          emptyTitle="No debug runs"
+          emptyDescription="Run a debug flow to create a report."
+        />
+      </section>
+
+      {selectedRun ? (
+        <section className="pid-panel" aria-label="Debug run result">
+          <div className="pid-panel__header">
+            <h2>Debug Run #{selectedRun.id}</h2>
+            <DebugRunStatusBadge status={selectedRun.status} />
+          </div>
+          {selectedRun.error_message ? <div className="pid-alert pid-alert--danger">{selectedRun.error_message}</div> : null}
+          <div className="pid-detail-summary">
+            <div>
+              <span>ERP color</span>
+              <strong>{selectedRun.request_summary?.erp_model_color_id ?? selectedRun.request_payload?.erp_model_color_id ?? '-'}</strong>
+            </div>
+            <div>
+              <span>Candidates</span>
+              <strong>{selectedRun.summary?.candidate_count ?? '-'}</strong>
+            </div>
+            <div>
+              <span>Checked</span>
+              <strong>{selectedRun.summary?.candidates_checked ?? '-'}</strong>
+            </div>
+            <div>
+              <span>Exit</span>
+              <strong>{selectedRun.exit_code ?? '-'}</strong>
+            </div>
+          </div>
+          <JsonViewer value={redactDebugPreview(selectedRun.report ?? selectedRun)} label="Debug run report" />
+        </section>
+      ) : null}
+    </div>
+  );
+}
+
+function safeJsonPreview(value) {
+  try {
+    return JSON.parse(value);
+  } catch (err) {
+    return { error: err.message };
+  }
+}
+
+function redactDebugPreview(value) {
+  if (Array.isArray(value)) {
+    return value.map(redactDebugPreview);
+  }
+
+  if (value && typeof value === 'object') {
+    return Object.fromEntries(
+      Object.entries(value).map(([key, item]) => [
+        key,
+        !/^has_(api[_-]?key|api[_-]?secret)$/i.test(key)
+          && /(api[_-]?key|api[_-]?secret|authorization|credential|password|secret|token)/i.test(key)
+          ? (item ? '[redacted]' : item)
+          : redactDebugPreview(item),
+      ]),
+    );
+  }
+
+  return value;
+}
+
 function HealthStatusBadge({ configured, configuredLabel = 'configured', missingLabel = 'missing' }) {
   return (
     <span className={`pid-badge pid-badge--${configured ? 'ok' : 'danger'}`}>
@@ -2882,6 +3281,8 @@ export default function App() {
     body = <TrustedSourcesPage onNotify={notify} />;
   } else if (page === 'health') {
     body = <HealthPage />;
+  } else if (page === 'debug') {
+    body = <DebugFlowPage onNotify={notify} />;
   } else {
     body = <PlaceholderPage page={currentPage} />;
   }

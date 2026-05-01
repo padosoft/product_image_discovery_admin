@@ -370,6 +370,22 @@
   - `npm run test` => 8 files, 38 tests
   - `npm run build`
   - `npm run e2e` => 12 Playwright tests
+- Copilot completed the follow-up review on PR #6 at `4e45b29` with no new comments.
+- Merged PR #6 into `main` at merge commit `38d34201fcf34b21ef3be568ac4cfcf5c81b2476`; GitHub Actions/status checks remained unconfigured rather than failing.
+- Continued Macro Task 5 on `task/diagnostics-debug-health` from updated `main`.
+- Implemented the Debug Flow runner slice:
+  - added `product_image_discovery_debug_runs` storage plus a local model for queued/running/succeeded/failed debug executions
+  - added admin JSON wrappers for listing, creating, showing, and reading debug-run reports under `/admin/product-image-discovery/debug-runs...`
+  - added a queueable job that writes the command input/report files, runs the package `product-image-discovery:debug-flow` command, stores sanitized output, and records status/timing/exit code
+  - added recursive backend and frontend redaction for debug request/report payloads while preserving safe credential status flags such as `has_api_key`
+  - added a dense Debug Flow page with request JSON editing, option controls, redacted preview, recent-run table, selected-run polling, and report display
+  - added PHP, Vitest, and Playwright coverage for fake-provider execution, secret redaction, safe credential flags, and desktop/tablet flow completion
+- Verification passed after the Debug Flow runner slice:
+  - `composer validate --strict`
+  - `npm run phpunit` => 40 tests, 319 assertions
+  - `npm run test` => 8 files, 39 tests
+  - `npm run build`
+  - `npm run e2e` => 14 Playwright tests
 
 ## 2026-04-30
 
@@ -399,7 +415,7 @@
 
 ## Open Items
 
-- Continue Macro Task 5 after the Health status slice: Debug Flow, Debug Reports, and API Test Workbench.
+- Continue Macro Task 5 after the Debug Flow runner slice: Debug Reports and API Test Workbench.
 - Keep using the GraphQL `requestReviewsByLogin` fallback for Copilot Code Review when `gh pr edit --add-reviewer @copilot` is blocked by the missing `read:project` scope.
 
 ## 2026-04-30 - Macro 2 Slice

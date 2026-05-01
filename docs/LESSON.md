@@ -54,6 +54,10 @@
 - Health payload route-prefix fields should use the same config keys as the shell bootstrap (`pid-admin.route_prefix` and `pid-admin.package_api_prefix`) so diagnostics match the URLs the UI actually uses.
 - When a health response already includes provider rows, derive aggregate provider booleans from those rows instead of adding a second query for the same table.
 - Optional numeric fields in health payloads should preserve `null` instead of casting to `0`, otherwise the UI cannot distinguish missing configuration from an explicit zero value.
+- Package console commands registered only for console contexts may be missing when an HTTP-dispatched sync job calls `Artisan::call()`. Explicitly register the command class with `Artisan::registerCommand(app(CommandClass::class))` before invoking it from an admin job.
+- Laravel validation of nested arrays returns only validated nested keys; when the admin must pass through a full product request payload, validate required fields and then read the raw nested input with `$request->input('request_payload', [])`.
+- Playwright projects share the same prepared database when they run in parallel, so e2e assertions should not depend on a globally prioritized provider remaining unique to one project unless the test isolates that data or runs serially.
+- Debug payload redaction should preserve safe credential status booleans such as `has_api_key` and `has_api_secret`; those flags are the approved public shape, while raw `api_key`, `api_secret`, tokens, credentials, and passwords still need redaction.
 
 ## 2026-04-30
 
