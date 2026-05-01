@@ -798,76 +798,72 @@ export default function App() {
   const currentPage = pageIndex[page] ?? pageIndex.overview;
   const activeRequestFilters = useMemo(() => requestFiltersToActiveChips(requestFilters), [requestFilters]);
 
-  const body = useMemo(() => {
-    if (page === 'overview') {
-      return <Overview summary={summary} requests={overviewRequests} loading={loading} error={error} />;
-    }
+  let body;
 
-    if (page === 'requests') {
-      return (
-        <Requests
-          requests={requestRows}
-          loading={requestLoading}
-          title="Latest Requests"
-          filters={requestFilters}
-          onFiltersChange={setRequestFilters}
-          activeChips={activeRequestFilters}
-          onClearFilters={clearFilters}
-          onOpenRequest={openRequest}
-          error={requestError}
-          detailState={{
-            open: detailOpen,
-            detail: detailRequest,
-            events: detailEvents,
-            candidates: detailCandidates,
-            loading: detailLoading,
-            error: detailError,
-            onClose: () => {
-              setDetailOpen(false);
-              setDetailRequest(null);
-              setDetailCandidates([]);
-              setDetailEvents([]);
-              setDetailError('');
-            },
-          }}
-        />
-      );
-    }
-
-    if (page === 'review') {
-      return (
-        <Requests
-          requests={requestRows.filter((request) => request.status === 'manual_review')}
-          loading={requestLoading}
-          title="Manual Review Queue"
-          filters={{ ...requestFilters, manual_review_required: 'true' }}
-          onFiltersChange={(next) => setRequestFilters({ ...next, manual_review_required: next.manual_review_required || 'true' })}
-          activeChips={requestFiltersToActiveChips({ ...requestFilters, manual_review_required: 'true' })}
-          onClearFilters={clearFilters}
-          onOpenRequest={openRequest}
-          error={requestError}
-          detailState={{
-            open: detailOpen,
-            detail: detailRequest,
-            events: detailEvents,
-            candidates: detailCandidates,
-            loading: detailLoading,
-            error: detailError,
-            onClose: () => {
-              setDetailOpen(false);
-              setDetailRequest(null);
-              setDetailCandidates([]);
-              setDetailEvents([]);
-              setDetailError('');
-            },
-          }}
-          manualReviewOnly
-        />
-      );
-    }
-
-    return <PlaceholderPage page={currentPage} />;
-  }, [activeRequestFilters, clearFilters, currentPage, detailCandidates, detailError, detailEvents, detailLoading, detailRequest, error, loading, openRequest, page, requestFilters, requestLoading, requestRows, summary, overviewRequests]);
+  if (page === 'overview') {
+    body = <Overview summary={summary} requests={overviewRequests} loading={loading} error={error} />;
+  } else if (page === 'requests') {
+    body = (
+      <Requests
+        requests={requestRows}
+        loading={requestLoading}
+        title="Latest Requests"
+        filters={requestFilters}
+        onFiltersChange={setRequestFilters}
+        activeChips={activeRequestFilters}
+        onClearFilters={clearFilters}
+        onOpenRequest={openRequest}
+        error={requestError}
+        detailState={{
+          open: detailOpen,
+          detail: detailRequest,
+          events: detailEvents,
+          candidates: detailCandidates,
+          loading: detailLoading,
+          error: detailError,
+          onClose: () => {
+            setDetailOpen(false);
+            setDetailRequest(null);
+            setDetailCandidates([]);
+            setDetailEvents([]);
+            setDetailError('');
+          },
+        }}
+      />
+    );
+  } else if (page === 'review') {
+    body = (
+      <Requests
+        requests={requestRows.filter((request) => request.status === 'manual_review')}
+        loading={requestLoading}
+        title="Manual Review Queue"
+        filters={{ ...requestFilters, manual_review_required: 'true' }}
+        onFiltersChange={(next) => setRequestFilters({ ...next, manual_review_required: next.manual_review_required || 'true' })}
+        activeChips={requestFiltersToActiveChips({ ...requestFilters, manual_review_required: 'true' })}
+        onClearFilters={clearFilters}
+        onOpenRequest={openRequest}
+        error={requestError}
+        detailState={{
+          open: detailOpen,
+          detail: detailRequest,
+          events: detailEvents,
+          candidates: detailCandidates,
+          loading: detailLoading,
+          error: detailError,
+          onClose: () => {
+            setDetailOpen(false);
+            setDetailRequest(null);
+            setDetailCandidates([]);
+            setDetailEvents([]);
+            setDetailError('');
+          },
+        }}
+        manualReviewOnly
+      />
+    );
+  } else {
+    body = <PlaceholderPage page={currentPage} />;
+  }
 
   return (
     <div className="pid-app">

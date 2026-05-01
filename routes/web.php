@@ -11,11 +11,13 @@ use App\Http\Controllers\ProductImageDiscovery\AdminShellController;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Support\Facades\Route;
 
+$adminPrefix = trim((string) config('pid-admin.route_prefix', 'admin/product-image-discovery'), '/');
+
 Route::get('/', static function (): RedirectResponse {
     return redirect('/'.trim((string) config('pid-admin.route_prefix', 'admin/product-image-discovery'), '/'));
 });
 
-Route::prefix(config('pid-admin.route_prefix', 'admin/product-image-discovery'))
+Route::prefix($adminPrefix)
     ->middleware(config('pid-admin.route_middleware', ['web']))
     ->name('pid-admin.')
     ->group(function (): void {
