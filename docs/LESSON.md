@@ -78,6 +78,8 @@
 - JSON path search should filter while traversing and enforce row/depth limits, not flatten entire debug reports before slicing, because reports can grow quickly with provider payloads and candidate evidence.
 - Report-level KPIs should be derived from unfiltered report data; candidate table filters are view state and must not change summary totals.
 - Detail/report loaders that can be triggered repeatedly should keep their own `AbortController` ref and abort the previous request before starting the next one.
+- JSON traversal limits need both output limits and enqueue/traversal budgets; limiting rendered rows alone still lets huge arrays or objects allocate large stacks before the UI returns.
+- Candidate status badge maps should include report-only statuses such as `verified_match` and `quality_failed`, not only request workflow statuses.
 
 ## 2026-04-30
 

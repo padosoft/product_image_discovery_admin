@@ -526,6 +526,16 @@
   - `npm run test` => 8 files, 42 tests
   - `npm run build`
   - `npm run e2e` => 14 Playwright tests
+- Copilot reviewed `07ece5e` and generated 3 follow-up comments.
+- Addressed the latest Copilot PR #8 comments:
+  - debug report JSON flattening now limits traversal/enqueue budget as well as rendered row count
+  - status badge mapping now treats `verified_match` as OK and report failure statuses such as `quality_failed` as danger
+- Re-ran the full local gate after the latest Copilot follow-up fixes:
+  - `composer validate --strict`
+  - `npm run phpunit` => 42 tests, 336 assertions
+  - `npm run test` => 8 files, 43 tests
+  - `npm run build`
+  - `npm run e2e` => 14 Playwright tests
 
 ## 2026-04-30
 

@@ -6,6 +6,11 @@ describe('status mapping', () => {
     expect(statusTone('manual_review')).toBe('warn');
   });
 
+  it('maps report candidate statuses', () => {
+    expect(statusTone('verified_match')).toBe('ok');
+    expect(statusTone('quality_failed')).toBe('danger');
+  });
+
   it('maps scores into risk bands', () => {
     expect(scoreTone(55)).toBe('danger');
     expect(scoreTone(65)).toBe('warn');

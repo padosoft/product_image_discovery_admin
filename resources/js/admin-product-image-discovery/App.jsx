@@ -2386,10 +2386,12 @@ function formatReportValue(value) {
 function flattenReportValue(value, basePath = '$', options = {}) {
   const maxRows = options.maxRows ?? 80;
   const maxDepth = options.maxDepth ?? 10;
+  const maxNodes = options.maxNodes ?? 500;
   const query = String(options.query ?? '').trim().toLowerCase();
   const rows = [];
   const stack = [{ value, path: basePath, depth: 0 }];
   const seen = new WeakSet();
+  let visitedNodes = 0;
 
   function pushRow(row) {
     if (rows.length >= maxRows) {
@@ -2401,12 +2403,18 @@ function flattenReportValue(value, basePath = '$', options = {}) {
     }
   }
 
-  while (stack.length > 0 && rows.length < maxRows) {
+  function remainingNodeBudget() {
+    return Math.max(0, maxNodes - visitedNodes - stack.length);
+  }
+
+  while (stack.length > 0 && rows.length < maxRows && visitedNodes < maxNodes) {
     const item = stack.pop();
 
     if (!item) {
       continue;
     }
+
+    visitedNodes += 1;
 
     if (item.depth > maxDepth) {
       pushRow({ path: item.path, value: '[max depth]' });
@@ -2419,7 +2427,14 @@ function flattenReportValue(value, basePath = '$', options = {}) {
         continue;
       }
 
-      for (let index = item.value.length - 1; index >= 0; index -= 1) {
+      const childBudget = remainingNodeBudget();
+      const childCount = Math.min(item.value.length, childBudget);
+
+      if (childCount < item.value.length) {
+        pushRow({ path: `${item.path}[${childCount}]`, value: `[truncated ${item.value.length - childCount} items]` });
+      }
+
+      for (let index = childCount - 1; index >= 0; index -= 1) {
         stack.push({ value: item.value[index], path: `${item.path}[${index}]`, depth: item.depth + 1 });
       }
 
@@ -2440,7 +2455,14 @@ function flattenReportValue(value, basePath = '$', options = {}) {
         continue;
       }
 
-      for (let index = entries.length - 1; index >= 0; index -= 1) {
+      const childBudget = remainingNodeBudget();
+      const childCount = Math.min(entries.length, childBudget);
+
+      if (childCount < entries.length) {
+        pushRow({ path: `${item.path}.*`, value: `[truncated ${entries.length - childCount} keys]` });
+      }
+
+      for (let index = childCount - 1; index >= 0; index -= 1) {
         const [key, nestedValue] = entries[index];
         stack.push({ value: nestedValue, path: `${item.path}.${key}`, depth: item.depth + 1 });
       }
@@ -2639,7 +2661,7 @@ function DebugReportsPage({ onNotify }) {
   const candidateRows = useMemo(() => debugReportCandidateRows(report, filters), [report, filters]);
   const activeValue = useMemo(() => reportSectionValue(report, activeTab, candidateRows), [report, activeTab, candidateRows]);
   const searchRows = useMemo(
-    () => flattenReportValue(activeValue, '$', { query: searchQuery, maxRows: 80, maxDepth: 10 }),
+    () => flattenReportValue(activeValue, '$', { query: searchQuery, maxRows: 80, maxDepth: 10, maxNodes: 500 }),
     [activeValue, searchQuery],
   );
 
