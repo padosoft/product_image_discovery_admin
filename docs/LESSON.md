@@ -29,6 +29,7 @@
 - Candidate source URLs should be parsed and restricted to `http:`/`https:` before calling `window.open`; backend candidate data must not be trusted as executable navigation.
 - Reject flows that move a request to terminal `rejected` must clear selected/best candidate pointers and `final_score` unconditionally when no non-rejected candidates remain, even if the just-rejected row was not the recorded best.
 - Pinned UI filters should be disabled/read-only in the control itself, not only enforced in derived fetch state, or operators see an editable value that cannot actually change the query.
+- PHP runner helpers must distinguish executable names from filesystem paths. Only path-like `PHP_BINARY` candidates should be checked with `existsSync()`; command names such as `php84` need to reach `spawnSync()` so they can resolve through `PATH`.
 
 ## 2026-04-30
 

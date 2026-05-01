@@ -143,6 +143,14 @@
   - `npm run test` => 4 files, 19 tests
   - `npm run build`
   - `npm run e2e` => 4 Playwright tests
+- Copilot reviewed `b8aed8f` and generated 1 additional wrapper-script comment.
+- Addressed the latest Copilot comment:
+  - `scripts/run-php.mjs` now only applies `existsSync()` to path-like PHP candidates, allowing `PHP_BINARY` command names such as `php84` to resolve through `PATH`
+- Verification passed after the PHP wrapper fix:
+  - `npm run phpunit` => 28 tests, 181 assertions
+  - `npm run test` => 4 files, 19 tests
+  - `npm run build`
+  - `npm run e2e` => 4 Playwright tests
 
 ## 2026-04-30
 
@@ -172,7 +180,7 @@
 
 ## Open Items
 
-- Push the latest stale pointer/manual-review pinned filter fixes, request a fresh Copilot Code Review, and continue polling until new comments/checks are resolved.
+- Push the latest PHP wrapper fix, resolve the addressed Copilot thread, request a fresh Copilot Code Review, and continue polling until new comments/checks are resolved.
 - GitHub Actions/status checks remain unavailable for PR #2; do not treat CI as green, only as unconfigured.
 
 ## 2026-04-30 - Macro 2 Slice

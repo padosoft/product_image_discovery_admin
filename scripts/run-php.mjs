@@ -1,6 +1,6 @@
 import { existsSync } from 'node:fs';
 import { homedir } from 'node:os';
-import { basename, join } from 'node:path';
+import { basename, isAbsolute, join } from 'node:path';
 import { spawnSync } from 'node:child_process';
 
 const args = process.argv.slice(2);
@@ -22,8 +22,16 @@ const candidates = [
 
 let lastError = null;
 
+function isFilePathCandidate(candidate) {
+  return isAbsolute(candidate)
+    || candidate.startsWith('.')
+    || candidate.includes('/')
+    || candidate.includes('\\')
+    || /^[A-Za-z]:/.test(candidate);
+}
+
 for (const candidate of candidates) {
-  if (candidate !== 'php' && !existsSync(candidate)) {
+  if (isFilePathCandidate(candidate) && !existsSync(candidate)) {
     continue;
   }
 
