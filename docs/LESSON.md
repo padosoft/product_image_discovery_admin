@@ -33,6 +33,7 @@
 - When a configuration page path and an admin JSON collection share the same URL, route by request intent: browser `Accept: text/html` should return the React shell, while `Accept: application/json` should return the wrapper payload. Otherwise direct navigation to pages such as `/settings` renders raw JSON.
 - Setting form payloads need typed client-side parsing before submit so the operator sees JSON/integer/float/boolean/null errors before the package FormRequest rejects the request.
 - Client-side numeric parsing should validate the full input string before conversion. `parseInt()` silently truncates values such as `5.9` and `1e2`, and non-finite floats serialize to JSON `null`.
+- Create and edit form defaults should come from the same constant; drifting fallback value types can make an unchanged edit parse values differently from a new setting.
 
 ## 2026-04-30
 

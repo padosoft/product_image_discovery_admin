@@ -69,4 +69,19 @@ describe('settings form helpers', () => {
       is_active: true,
     });
   });
+
+  it('keeps edit fallback value type aligned with the create default', () => {
+    expect(settingToForm({
+      id: 8,
+      client_id: null,
+      setting_key: 'decision.manual_review_threshold',
+      setting_value: 60,
+      value_type: null,
+      description: null,
+      is_active: true,
+    })).toMatchObject({
+      value_type: 'integer',
+      setting_value: '60',
+    });
+  });
 });

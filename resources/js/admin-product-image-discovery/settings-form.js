@@ -28,7 +28,7 @@ export function settingToForm(setting) {
     client_id: setting.client_id ?? '',
     setting_key: setting.setting_key ?? '',
     setting_value: formatSettingValueForInput(setting.setting_value),
-    value_type: setting.value_type || 'json',
+    value_type: setting.value_type || DEFAULT_SETTING_FORM.value_type,
     description: setting.description ?? '',
     is_active: Boolean(setting.is_active),
   };
