@@ -2378,12 +2378,26 @@ function DebugFlowPage({ onNotify }) {
   }, []);
 
   useEffect(() => {
+    let parsed;
+
     try {
-      const parsed = JSON.parse(requestJson);
+      parsed = JSON.parse(requestJson);
+    } catch (err) {
+      void err;
+
+      try {
+        localStorage.removeItem(DEBUG_DRAFT_KEY);
+      } catch (storageErr) {
+        void storageErr;
+      }
+
+      return;
+    }
+
+    try {
       localStorage.setItem(DEBUG_DRAFT_KEY, JSON.stringify(redactDebugPreview(parsed), null, 2));
     } catch (err) {
       void err;
-      localStorage.removeItem(DEBUG_DRAFT_KEY);
     }
   }, [requestJson]);
 

@@ -57,6 +57,7 @@ final class RunProductImageDiscoveryDebugFlowJob implements ShouldQueue
             }
 
             $exitCode = Artisan::call('product-image-discovery:debug-flow', $this->commandArguments($run, $paths));
+            $consoleOutput = $this->sanitizeOutput(Artisan::output());
             $report = $this->readReport($paths['report']);
             $redactedReport = DebugPayloadRedactor::redact($report);
             $redactedJson = json_encode($redactedReport, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES | JSON_THROW_ON_ERROR);
@@ -66,8 +67,8 @@ final class RunProductImageDiscoveryDebugFlowJob implements ShouldQueue
             $run->forceFill([
                 'status' => $exitCode === 0 ? 'succeeded' : 'failed',
                 'report_payload' => $redactedReport,
-                'output' => $redactedJson,
-                'error_message' => $exitCode === 0 ? null : $this->sanitizeMessage(Artisan::output() ?: 'Debug flow failed.'),
+                'output' => $consoleOutput,
+                'error_message' => $exitCode === 0 ? null : ($consoleOutput ?: 'Debug flow failed.'),
                 'request_path' => $this->relativeStoragePath($paths['request']),
                 'report_path' => $this->relativeStoragePath($paths['report']),
                 'exit_code' => $exitCode,
@@ -158,8 +159,15 @@ final class RunProductImageDiscoveryDebugFlowJob implements ShouldQueue
 
     private function sanitizeMessage(string $message): string
     {
-        $message = DebugPayloadRedactor::redactText(trim(preg_replace('/\s+/', ' ', $message) ?? ''));
+        $message = $this->sanitizeOutput($message);
 
-        return $message === '' ? 'Debug flow failed.' : mb_substr($message, 0, 1000);
+        return $message ?: 'Debug flow failed.';
+    }
+
+    private function sanitizeOutput(?string $message): ?string
+    {
+        $message = DebugPayloadRedactor::redactText(trim(preg_replace('/\s+/', ' ', (string) $message) ?? ''));
+
+        return $message === '' ? null : mb_substr($message, 0, 10000);
     }
 }

@@ -63,6 +63,8 @@
 - Text redactors need dedicated handling for auth schemes such as `Authorization: Bearer <token>`; generic key/value redaction that stops at whitespace can leave the actual token behind.
 - Retryable/debug jobs should clear stale result fields when moving a row back to `running`; otherwise a retry can show old reports or finished timestamps while new work is in progress.
 - Client-side diagnostic option builders should clamp to the same integer bounds as backend validation and avoid letting `NaN` reach `JSON.stringify()`, where it silently becomes `null`.
+- Browser storage calls can throw on both write and remove in restricted contexts. Treat localStorage persistence as optional and keep both paths guarded.
+- Debug report payload and command console output are separate artifacts: store the structured report in `report_payload`/report files and store only sanitized/truncated `Artisan::output()` in `output`.
 
 ## 2026-04-30
 
