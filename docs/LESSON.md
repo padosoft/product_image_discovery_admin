@@ -67,6 +67,8 @@
 - Debug report payload and command console output are separate artifacts: store the structured report in `report_payload`/report files and store only sanitized/truncated `Artisan::output()` in `output`.
 - Playwright tests that create global configuration rows through admin APIs should clean them up in `finally`; desktop/tablet projects share the same prepared SQLite DB and can otherwise influence provider ordering.
 - High-impact admin diagnostics can need stricter middleware than the rest of the demo shell. Use a dedicated config key so production defaults can require `auth` while tests/local smoke can opt out explicitly.
+- List endpoints for stored debug reports should not sanitize full report payloads just to build table rows. Extract and redact only the summary fields needed by the list, and hydrate full reports from the detail endpoint.
+- Queue-backed UI copy should account for `sync` queues in local/demo environments; a create response may already be `succeeded`, not merely queued/running.
 
 ## 2026-04-30
 

@@ -216,6 +216,12 @@ final class AdminWrapperEndpointsTest extends TestCase
             ->assertJsonPath('data.status', 'succeeded')
             ->assertJsonPath('data.report_available', true);
 
+        $this->getJson('/admin/product-image-discovery/debug-runs')
+            ->assertOk()
+            ->assertJsonPath('data.0.report', null)
+            ->assertJsonPath('data.0.report_available', true)
+            ->assertJsonPath('data.0.summary.candidate_count', 1);
+
         $this->getJson('/admin/product-image-discovery/debug-runs/'.$debugRunId.'/report')
             ->assertOk()
             ->assertJsonPath('data.report.request.erp_model_color_id', 'HERNO-PI002223D-CAMMELLO')

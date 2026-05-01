@@ -449,6 +449,16 @@
   - `npm run test` => 8 files, 40 tests
   - `npm run build`
   - `npm run e2e` => 14 Playwright tests
+- Copilot reviewed `4b50d15` and generated 2 follow-up comments.
+- Addressed the latest Copilot PR #7 comments:
+  - debug-run list resources now avoid traversing/redacting the full report when `includeReport=false`, while still exposing redacted summary/request summary fields and `report_available`
+  - Debug Flow create notifications now say `Debug run completed.` when sync queues return `succeeded` immediately
+- Verification passed after the debug list/toast follow-up:
+  - `composer validate --strict`
+  - `npm run phpunit` => 41 tests, 329 assertions
+  - `npm run test` => 8 files, 40 tests
+  - `npm run build`
+  - `npm run e2e` => 14 Playwright tests
 
 ## 2026-04-30
 

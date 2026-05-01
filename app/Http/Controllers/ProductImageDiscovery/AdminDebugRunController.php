@@ -106,17 +106,27 @@ final class AdminDebugRunController extends Controller
 
     private function resource(ProductImageDiscoveryDebugRun $run, bool $includeReport = true): array
     {
-        $report = DebugPayloadRedactor::redact($run->getAttribute('report_payload') ?? []);
+        $reportPayload = $run->getAttribute('report_payload');
+        $reportAvailable = is_array($reportPayload) && $reportPayload !== [];
+        $report = $includeReport && is_array($reportPayload)
+            ? DebugPayloadRedactor::redact($reportPayload)
+            : [];
+        $summary = is_array($reportPayload)
+            ? DebugPayloadRedactor::redact($reportPayload['summary'] ?? null)
+            : null;
+        $requestSummary = is_array($reportPayload)
+            ? DebugPayloadRedactor::redact($reportPayload['request'] ?? null)
+            : null;
 
         return [
             'id' => $run->getKey(),
             'status' => $run->getAttribute('status'),
             'request_payload' => DebugPayloadRedactor::redact($run->getAttribute('request_payload') ?? []),
             'options' => $run->getAttribute('options') ?? [],
-            'summary' => is_array($report) ? ($report['summary'] ?? null) : null,
-            'request_summary' => is_array($report) ? ($report['request'] ?? null) : null,
+            'summary' => $summary,
+            'request_summary' => $requestSummary,
             'report' => $includeReport ? $report : null,
-            'report_available' => $report !== [],
+            'report_available' => $reportAvailable,
             'output' => $includeReport ? $run->getAttribute('output') : null,
             'error_message' => $run->getAttribute('error_message'),
             'exit_code' => $run->getAttribute('exit_code'),

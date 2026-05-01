@@ -838,6 +838,7 @@ describe('admin product image discovery shell', () => {
     expect(await screen.findByRole('region', { name: 'Debug run result' })).toHaveTextContent('HERNO-PI002223D-CAMMELLO');
     expect(screen.getByRole('region', { name: 'Debug run report' })).not.toHaveTextContent('server-secret');
     expect(screen.getByRole('region', { name: 'Debug run report' })).toHaveTextContent('"has_api_key": true');
+    expect(screen.getByText('Debug run completed.')).toBeVisible();
   });
 
   it('fetches a completed debug run report when opening a historical row', async () => {

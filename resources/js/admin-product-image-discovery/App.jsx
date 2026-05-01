@@ -2461,7 +2461,7 @@ function DebugFlowPage({ onNotify }) {
       if (mountedRef.current) {
         setSelectedRun(run);
         setRuns((current) => [run, ...current.filter((item) => item.id !== run.id)].slice(0, 20));
-        onNotify(run.status === 'failed' ? 'Debug run failed.' : 'Debug run started.', run.status === 'failed' ? 'danger' : 'success');
+        onNotify(debugRunNotificationMessage(run.status), run.status === 'failed' ? 'danger' : 'success');
         await reloadRuns();
       }
     } catch (err) {
@@ -2474,6 +2474,18 @@ function DebugFlowPage({ onNotify }) {
         setActionLoading(false);
       }
     }
+  }
+
+  function debugRunNotificationMessage(status) {
+    if (status === 'failed') {
+      return 'Debug run failed.';
+    }
+
+    if (status === 'succeeded') {
+      return 'Debug run completed.';
+    }
+
+    return 'Debug run started.';
   }
 
   async function openDebugRun(run) {
