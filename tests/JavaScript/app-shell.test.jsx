@@ -823,6 +823,8 @@ describe('admin product image discovery shell', () => {
     fireEvent.change(screen.getByLabelText('Request JSON'), {
       target: { value: JSON.stringify(requestPayload, null, 2) },
     });
+    fireEvent.change(screen.getByLabelText('Max candidates'), { target: { value: '100' } });
+    fireEvent.change(screen.getByLabelText('Good score'), { target: { value: 'not-a-score' } });
 
     expect(screen.getByRole('region', { name: 'Debug payload preview' })).not.toHaveTextContent('front-secret');
     await waitFor(() => expect(window.localStorage.getItem('pid-debug-flow-draft')).not.toContain('front-secret'));
@@ -831,7 +833,7 @@ describe('admin product image discovery shell', () => {
 
     await waitFor(() => expect(createdPayload).toMatchObject({
       request_payload: requestPayload,
-      options: { max_candidates: 2, no_download: true, no_env_brave: true },
+      options: { max_candidates: 50, good_score: null, no_download: true, no_env_brave: true },
     }));
     expect(await screen.findByRole('region', { name: 'Debug run result' })).toHaveTextContent('HERNO-PI002223D-CAMMELLO');
     expect(screen.getByRole('region', { name: 'Debug run report' })).not.toHaveTextContent('server-secret');

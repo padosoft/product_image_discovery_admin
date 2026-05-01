@@ -38,6 +38,11 @@ final class RunProductImageDiscoveryDebugFlowJob implements ShouldQueue
             'started_at' => $startedAt,
             'error_message' => null,
             'exit_code' => null,
+            'report_payload' => null,
+            'output' => null,
+            'request_path' => null,
+            'report_path' => null,
+            'finished_at' => null,
         ])->save();
 
         $paths = $this->paths($run);

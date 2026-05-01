@@ -61,6 +61,8 @@
 - Debug jobs should rewrite or delete command-generated artifacts after redaction, not only sanitize the database copy. On Windows, normalize both `storage_path('app')` and artifact paths before stripping the storage root, or mixed separators can leave absolute paths in persisted JSON.
 - Admin editors that accept arbitrary JSON should not persist raw drafts to localStorage. If local draft persistence is useful, write only a redacted parseable version and drop invalid drafts rather than storing partially typed secret-bearing text.
 - Text redactors need dedicated handling for auth schemes such as `Authorization: Bearer <token>`; generic key/value redaction that stops at whitespace can leave the actual token behind.
+- Retryable/debug jobs should clear stale result fields when moving a row back to `running`; otherwise a retry can show old reports or finished timestamps while new work is in progress.
+- Client-side diagnostic option builders should clamp to the same integer bounds as backend validation and avoid letting `NaN` reach `JSON.stringify()`, where it silently becomes `null`.
 
 ## 2026-04-30
 

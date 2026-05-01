@@ -223,6 +223,19 @@ final class AdminWrapperEndpointsTest extends TestCase
             ->assertJsonMissing(['request-secret']);
     }
 
+    public function test_admin_debug_run_requires_integer_client_id(): void
+    {
+        $this->postJson('/admin/product-image-discovery/debug-runs', [
+            'request_payload' => [
+                'client_id' => 'not-integer',
+                'erp_model_color_id' => 'HERNO-PI002223D-CAMMELLO',
+                'brand' => 'Herno',
+            ],
+        ])
+            ->assertUnprocessable()
+            ->assertJsonValidationErrors(['request_payload.client_id']);
+    }
+
     public function test_debug_payload_redactor_preserves_safe_credential_status_flags(): void
     {
         $redacted = DebugPayloadRedactor::redact([

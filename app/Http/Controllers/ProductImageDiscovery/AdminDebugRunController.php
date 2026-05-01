@@ -30,7 +30,7 @@ final class AdminDebugRunController extends Controller
     {
         $payload = $request->validate([
             'request_payload' => ['required', 'array'],
-            'request_payload.client_id' => ['required'],
+            'request_payload.client_id' => ['required', 'integer', 'min:1'],
             'request_payload.erp_model_color_id' => ['required', 'string'],
             'request_payload.brand' => ['required', 'string'],
             'options' => ['sometimes', 'array'],

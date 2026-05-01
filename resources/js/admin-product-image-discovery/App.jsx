@@ -2300,21 +2300,38 @@ function parseDebugDraft() {
 }
 
 function buildDebugOptions(options) {
-  const maxCandidates = Number.parseInt(options.max_candidates, 10);
+  const maxCandidates = parseBoundedInteger(options.max_candidates, 2, 1, 50);
   const goodScore = String(options.good_score ?? '').trim();
+  const parsedGoodScore = goodScore === '' ? null : parseBoundedInteger(goodScore, null, 0, 100);
 
   return {
-    max_candidates: Number.isFinite(maxCandidates) ? maxCandidates : 2,
+    max_candidates: maxCandidates,
     fresh: Boolean(options.fresh),
     clean_storage: Boolean(options.clean_storage),
     no_download: Boolean(options.no_download),
     download_all: Boolean(options.download_all),
     stop_on_first_good: Boolean(options.stop_on_first_good),
     exhaustive: Boolean(options.exhaustive),
-    good_score: goodScore === '' ? null : Number.parseInt(goodScore, 10),
+    good_score: parsedGoodScore,
     no_env_brave: Boolean(options.no_env_brave),
     fail_on_no_match: Boolean(options.fail_on_no_match),
   };
+}
+
+function parseBoundedInteger(value, fallback, min, max) {
+  const rawValue = String(value ?? '').trim();
+
+  if (!/^-?\d+$/.test(rawValue)) {
+    return fallback;
+  }
+
+  const parsed = Number.parseInt(rawValue, 10);
+
+  if (!Number.isFinite(parsed)) {
+    return fallback;
+  }
+
+  return Math.min(max, Math.max(min, parsed));
 }
 
 function DebugFlowPage({ onNotify }) {

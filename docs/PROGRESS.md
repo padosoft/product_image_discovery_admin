@@ -409,6 +409,17 @@
   - `npm run test` => 8 files, 40 tests
   - `npm run build`
   - `npm run e2e` => 14 Playwright tests
+- Copilot reviewed `a072251` and generated 3 follow-up comments.
+- Addressed the latest Copilot PR #7 comments:
+  - rerunning an existing debug job now clears stale report/output/path/finished fields when it transitions back to `running`
+  - Debug Flow options now clamp integer inputs to backend validation bounds and turn invalid good-score input into `null` instead of `NaN`
+  - debug-run payload validation now requires `request_payload.client_id` to be a positive integer
+- Verification passed after the latest debug hardening fixes:
+  - `composer validate --strict`
+  - `npm run phpunit` => 41 tests, 325 assertions
+  - `npm run test` => 8 files, 40 tests
+  - `npm run build`
+  - `npm run e2e` => 14 Playwright tests
 
 ## 2026-04-30
 
