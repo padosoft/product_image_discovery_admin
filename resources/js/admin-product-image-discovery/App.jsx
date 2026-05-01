@@ -1404,6 +1404,32 @@ function providerCredentials(provider) {
   ].join(' / ');
 }
 
+function providerTestTone(status) {
+  switch (status) {
+    case 'success':
+      return 'ok';
+    case 'failed':
+      return 'danger';
+    case 'empty':
+    case 'skipped':
+      return 'warn';
+    default:
+      return 'neutral';
+  }
+}
+
+function ProviderTestBadge({ result }) {
+  if (!result) {
+    return <span className="pid-muted">not tested</span>;
+  }
+
+  return (
+    <span className={`pid-badge pid-badge--${providerTestTone(result.status)}`}>
+      {result.status} · {result.latency_ms}ms
+    </span>
+  );
+}
+
 function ConfigStateBadge({ active }) {
   return (
     <span className={`pid-badge pid-badge--${active ? 'ok' : 'neutral'}`}>
@@ -1420,6 +1446,9 @@ function ProvidersPage({ onNotify }) {
   const [formError, setFormError] = useState('');
   const [actionLoading, setActionLoading] = useState(false);
   const [deleteProvider, setDeleteProvider] = useState(null);
+  const [testingProviderId, setTestingProviderId] = useState(null);
+  const [providerTestResults, setProviderTestResults] = useState({});
+  const [latestProviderTest, setLatestProviderTest] = useState(null);
   const mountedRef = useRef(true);
   const reloadIdRef = useRef(0);
 
@@ -1498,6 +1527,7 @@ function ProvidersPage({ onNotify }) {
       return;
     }
 
+    const savedProviderId = form.id;
     setActionLoading(true);
     setFormError('');
 
@@ -1511,6 +1541,17 @@ function ProvidersPage({ onNotify }) {
 
       if (mountedRef.current) {
         onNotify(form.id ? 'Provider updated.' : 'Provider created.', 'success');
+        if (savedProviderId) {
+          setProviderTestResults((current) => {
+            const next = { ...current };
+            delete next[savedProviderId];
+
+            return next;
+          });
+          setLatestProviderTest((current) => (
+            current?.provider_id === savedProviderId ? null : current
+          ));
+        }
         resetForm();
       }
     } catch (err) {
@@ -1538,6 +1579,15 @@ function ProvidersPage({ onNotify }) {
 
       if (mountedRef.current) {
         onNotify('Provider deleted.', 'success');
+        setProviderTestResults((current) => {
+          const next = { ...current };
+          delete next[deleteProvider.id];
+
+          return next;
+        });
+        setLatestProviderTest((current) => (
+          current?.provider_id === deleteProvider.id ? null : current
+        ));
         setDeleteProvider(null);
         if (form.id === deleteProvider.id) {
           resetForm();
@@ -1555,12 +1605,49 @@ function ProvidersPage({ onNotify }) {
     }
   }
 
+  async function testProvider(provider) {
+    if (testingProviderId || !provider?.id) {
+      return;
+    }
+
+    setTestingProviderId(provider.id);
+    setLatestProviderTest(null);
+    setError('');
+
+    try {
+      const payload = await pidFetch(`/search-providers/${provider.id}/test`, {
+        method: 'POST',
+        body: JSON.stringify({ mode: 'images', limit: 1 }),
+      });
+      const result = payload?.data ?? payload;
+
+      if (mountedRef.current) {
+        setProviderTestResults((current) => ({ ...current, [provider.id]: result }));
+        setLatestProviderTest(result);
+        onNotify(
+          result?.status === 'success' ? 'Provider test succeeded.' : 'Provider test completed.',
+          result?.status === 'failed' ? 'danger' : (result?.status === 'success' ? 'success' : 'neutral'),
+        );
+      }
+    } catch (err) {
+      if (mountedRef.current) {
+        setError(err.message || 'Unable to test provider.');
+        onNotify(err.message || 'Unable to test provider.', 'danger');
+      }
+    } finally {
+      if (mountedRef.current) {
+        setTestingProviderId(null);
+      }
+    }
+  }
+
   const columns = [
     { key: 'code', label: 'Code', render: (provider) => <code>{provider.code}</code> },
     { key: 'name', label: 'Name' },
     { key: 'driver', label: 'Driver' },
     { key: 'active', label: 'State', render: (provider) => <ConfigStateBadge active={provider.is_active} /> },
     { key: 'credentials', label: 'Credentials', render: providerCredentials },
+    { key: 'last_test', label: 'Last test', render: (provider) => <ProviderTestBadge result={providerTestResults[provider.id]} /> },
     { key: 'priority', label: 'Priority' },
     {
       key: 'limits',
@@ -1573,6 +1660,14 @@ function ProvidersPage({ onNotify }) {
       className: 'pid-table__actions',
       render: (provider) => (
         <div className="pid-row-actions">
+          <button
+            type="button"
+            className="pid-chip-button"
+            onClick={() => testProvider(provider)}
+            disabled={Boolean(testingProviderId)}
+          >
+            {testingProviderId === provider.id ? 'Testing...' : 'Test'}
+          </button>
           <button type="button" className="pid-chip-button" onClick={() => setForm(providerToForm(provider))}>Edit</button>
           <button type="button" className="pid-chip-button" onClick={() => setDeleteProvider(provider)}>Delete</button>
         </div>
@@ -1659,6 +1754,43 @@ function ProvidersPage({ onNotify }) {
           emptyDescription="Create a fake or external search provider before enabling discovery."
         />
       </section>
+
+      {latestProviderTest ? (
+        <section className="pid-panel" aria-label="Provider test result">
+          <div className="pid-panel__header">
+            <h2>Provider Test Result</h2>
+            <ProviderTestBadge result={latestProviderTest} />
+          </div>
+          <div className="pid-test-summary">
+            <div>
+              <span>Provider</span>
+              <strong>{latestProviderTest.code}</strong>
+            </div>
+            <div>
+              <span>Mode</span>
+              <strong>{latestProviderTest.mode}</strong>
+            </div>
+            <div>
+              <span>Results</span>
+              <strong>{latestProviderTest.results_count}</strong>
+            </div>
+            <div>
+              <span>Credentials</span>
+              <strong>
+                {[
+                  latestProviderTest.has_api_key ? 'key configured' : 'key missing',
+                  latestProviderTest.has_api_secret ? 'secret configured' : 'secret missing',
+                ].join(' / ')}
+              </strong>
+            </div>
+            <div className="pid-test-summary__message">
+              <span>Message</span>
+              <strong>{latestProviderTest.message}</strong>
+            </div>
+          </div>
+          <JsonViewer value={latestProviderTest} label="Provider test details" />
+        </section>
+      ) : null}
 
       <ConfirmModal
         open={Boolean(deleteProvider)}

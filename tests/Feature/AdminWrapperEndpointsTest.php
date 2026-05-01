@@ -6,6 +6,7 @@ namespace Tests\Feature;
 
 use Carbon\CarbonImmutable;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\Route;
 use Illuminate\Support\Facades\Storage;
 use Padosoft\ProductImageDiscovery\Models\ProductImageDiscoveryCandidate;
 use Padosoft\ProductImageDiscovery\Models\ProductImageDiscoveryEvent;
@@ -13,6 +14,13 @@ use Padosoft\ProductImageDiscovery\Models\ProductImageDiscoveryRequest;
 use Padosoft\ProductImageDiscovery\Models\ProductImageDiscoverySetting;
 use Padosoft\ProductImageDiscovery\Models\ProductImageSearchProvider;
 use Padosoft\ProductImageDiscovery\Models\ProductImageTrustedSource;
+use Padosoft\ProductImageDiscovery\Services\Search\CallableSearchProviderFactory;
+use Padosoft\ProductImageDiscovery\Services\Search\Data\ProductImageSearchQueryData;
+use Padosoft\ProductImageDiscovery\Services\Search\Data\ProductImageSearchResultCollection;
+use Padosoft\ProductImageDiscovery\Services\Search\Data\SearchProviderDefinition;
+use Padosoft\ProductImageDiscovery\Services\Search\ProductImageSearchProviderInterface;
+use Padosoft\ProductImageDiscovery\Services\Search\SearchProviderConfigRepositoryInterface;
+use Padosoft\ProductImageDiscovery\Services\Search\SearchProviderManager;
 use Symfony\Component\HttpFoundation\StreamedResponse;
 use Tests\TestCase;
 
@@ -287,6 +295,144 @@ final class AdminWrapperEndpointsTest extends TestCase
             ->assertJsonCount(2, 'data')
             ->assertJsonPath('meta.per_page', 2)
             ->assertJsonPath('meta.last_page', 2);
+    }
+
+    public function test_admin_search_provider_test_runs_single_provider_without_exposing_secrets(): void
+    {
+        $provider = ProductImageSearchProvider::query()->create([
+            'code' => 'fake-health',
+            'name' => 'Fake Health',
+            'driver' => 'fake',
+            'api_key_encrypted' => 'provider-test-secret',
+            'config' => [
+                'image_results' => [
+                    [
+                        'title' => 'Result',
+                        'page_url' => 'https://brand.example.test/product',
+                        'image_url' => 'https://brand.example.test/product.jpg',
+                        'source_domain' => 'brand.example.test',
+                    ],
+                ],
+            ],
+            'priority' => 5,
+            'timeout_seconds' => 15,
+            'is_active' => true,
+        ]);
+
+        $response = $this->postJson('/admin/product-image-discovery/search-providers/'.$provider->getKey().'/test', [
+            'mode' => 'images',
+            'query' => 'brand product',
+            'limit' => 1,
+        ])
+            ->assertOk()
+            ->assertJsonPath('data.code', 'fake-health')
+            ->assertJsonPath('data.driver', 'fake')
+            ->assertJsonPath('data.provider_active', true)
+            ->assertJsonPath('data.has_api_key', true)
+            ->assertJsonPath('data.status', 'success')
+            ->assertJsonPath('data.results_count', 1)
+            ->assertJsonPath('data.attempts.0.status', 'success')
+            ->assertJsonPath('data.attempts.0.results_count', 1)
+            ->assertJsonMissingPath('data.results')
+            ->assertJsonMissingPath('data.provider.api_key');
+
+        $this->assertStringNotContainsString('provider-test-secret', $response->getContent());
+    }
+
+    public function test_admin_search_provider_test_route_is_throttled(): void
+    {
+        $route = Route::getRoutes()->getByName('pid-admin.search-providers.test');
+
+        $this->assertNotNull($route);
+        $this->assertContains('throttle:6,1', $route->gatherMiddleware());
+    }
+
+    public function test_admin_search_provider_test_reuses_registered_provider_factories(): void
+    {
+        $this->app->forgetInstance(SearchProviderManager::class);
+        $this->app->singleton(SearchProviderManager::class, static function (): SearchProviderManager {
+            return new SearchProviderManager(
+                repository: new class implements SearchProviderConfigRepositoryInterface {
+                    public function getActiveProviders(): array
+                    {
+                        return [];
+                    }
+                },
+                factories: [
+                    'custom' => new CallableSearchProviderFactory(
+                        static fn (SearchProviderDefinition $definition): ProductImageSearchProviderInterface => new class implements ProductImageSearchProviderInterface {
+                            public function searchImages(ProductImageSearchQueryData $query): ProductImageSearchResultCollection
+                            {
+                                return new ProductImageSearchResultCollection([
+                                    [
+                                        'title' => 'Custom result',
+                                        'page_url' => 'https://custom.example.test/product',
+                                        'image_url' => 'https://custom.example.test/product.jpg',
+                                    ],
+                                ]);
+                            }
+
+                            public function searchWeb(ProductImageSearchQueryData $query): ProductImageSearchResultCollection
+                            {
+                                return $this->searchImages($query);
+                            }
+
+                            public function supportsImageSearch(): bool
+                            {
+                                return true;
+                            }
+
+                            public function supportsSiteFilter(): bool
+                            {
+                                return true;
+                            }
+                        },
+                    ),
+                ],
+            );
+        });
+
+        $provider = ProductImageSearchProvider::query()->create([
+            'code' => 'custom-health',
+            'name' => 'Custom Health',
+            'driver' => 'custom',
+            'config' => [],
+            'priority' => 5,
+            'timeout_seconds' => 15,
+            'is_active' => true,
+        ]);
+
+        $this->postJson('/admin/product-image-discovery/search-providers/'.$provider->getKey().'/test')
+            ->assertOk()
+            ->assertJsonPath('data.driver', 'custom')
+            ->assertJsonPath('data.status', 'success')
+            ->assertJsonPath('data.results_count', 1)
+            ->assertJsonPath('data.attempts.0.status', 'success');
+    }
+
+    public function test_admin_search_provider_test_returns_sanitized_failures(): void
+    {
+        $provider = ProductImageSearchProvider::query()->create([
+            'code' => 'fake-failure',
+            'name' => 'Fake Failure',
+            'driver' => 'fake',
+            'api_key_encrypted' => 'failure-secret',
+            'config' => ['throw' => true],
+            'priority' => 5,
+            'timeout_seconds' => 15,
+            'is_active' => false,
+        ]);
+
+        $response = $this->postJson('/admin/product-image-discovery/search-providers/'.$provider->getKey().'/test')
+            ->assertOk()
+            ->assertJsonPath('data.code', 'fake-failure')
+            ->assertJsonPath('data.provider_active', false)
+            ->assertJsonPath('data.status', 'failed')
+            ->assertJsonPath('data.results_count', 0)
+            ->assertJsonPath('data.attempts.0.status', 'failed')
+            ->assertJsonStructure(['data' => ['latency_ms', 'attempts' => [['error']]]]);
+
+        $this->assertStringNotContainsString('failure-secret', $response->getContent());
     }
 
     public function test_request_search_date_to_filters_include_the_full_day(): void

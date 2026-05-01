@@ -263,6 +263,58 @@
   - `npm run test` => 8 files, 37 tests
   - `npm run build`
   - `npm run e2e` => 10 Playwright tests
+- Continued Macro Task 4 with the provider/credential test wrapper:
+  - added `POST /admin/product-image-discovery/search-providers/{provider}/test`
+  - the wrapper runs the selected provider through a single-provider search manager and returns only sanitized status, latency, result count, credential booleans, and attempt summaries
+  - added the Providers page `Test` action, last-test badge, and sanitized result panel
+  - added PHP coverage for success/failure test results without exposing stored secrets
+  - extended the provider shell and Playwright flows to exercise the test action
+- Verification passed after the provider test wrapper slice:
+  - `composer validate --strict`
+  - `npm run phpunit` => 34 tests, 265 assertions
+  - `npm run test` => 8 files, 37 tests
+  - `npm run build`
+  - `npm run e2e` => 10 Playwright tests
+- An automatic Codex review on PR #5 generated 1 actionable provider-test registry comment; this is not treated as a Copilot substitute, but was addressed:
+  - provider tests now build the isolated single-provider manager from the app-bound `SearchProviderManager` factory registry instead of duplicating a hard-coded fake/brave registry
+  - added PHP coverage proving a custom registered provider driver is exercised by the admin test endpoint
+- Verification passed after the provider factory registry follow-up:
+  - `composer validate --strict`
+  - `npm run phpunit` => 35 tests, 270 assertions
+  - `npm run test` => 8 files, 37 tests
+  - `npm run build`
+  - `npm run e2e` => 10 Playwright tests
+- Copilot reviewed `e6199ed` and generated 3 comments.
+- Addressed the Copilot PR #5 comments:
+  - the provider test route now has a dedicated `throttle:6,1` middleware to reduce accidental or malicious quota burn
+  - provider test credential booleans now use `filled($model->getRawOriginal(...))` instead of decrypting values or treating empty strings as configured
+  - the factory-registry concern was already addressed in `d13fb8f` by deriving the isolated manager factories from the app-bound package manager registry
+- Verification passed after the Copilot PR #5 fixes:
+  - `composer validate --strict`
+  - `npm run phpunit` => 36 tests, 272 assertions
+  - `npm run test` => 8 files, 37 tests
+  - `npm run build`
+  - `npm run e2e` => 10 Playwright tests
+- Copilot reviewed `e886f59` and generated 1 follow-up comment.
+- Addressed the latest Copilot PR #5 comment:
+  - `factoriesFromManager()` now catches `ReflectionException` and degrades to an empty registry, producing a controlled sanitized provider-test failure instead of a 500 if the upstream manager internals change
+- Verification passed after the reflection guard follow-up:
+  - `composer validate --strict`
+  - `npm run phpunit` => 36 tests, 272 assertions
+  - `npm run test` => 8 files, 37 tests
+  - `npm run build`
+  - `npm run e2e` => 10 Playwright tests
+- Copilot reviewed `cdd1c0f` and generated 2 frontend state comments.
+- Addressed the latest Copilot PR #5 comments:
+  - starting a provider test now clears the previous latest-result panel while the new test is in flight
+  - saving an existing provider now invalidates that provider's cached last-test badge and clears the detail panel if it matched the edited provider
+  - added RTL coverage for clearing stale provider test details after a provider update
+- Verification passed after the provider test UI cache follow-up:
+  - `composer validate --strict`
+  - `npm run phpunit` => 36 tests, 272 assertions
+  - `npm run test` => 8 files, 37 tests
+  - `npm run build`
+  - `npm run e2e` => 10 Playwright tests
 
 ## 2026-04-30
 
@@ -292,8 +344,8 @@
 
 ## Open Items
 
-- Push the Settings configuration slice, open the next PR, request Copilot Code Review through the GraphQL fallback if `gh pr edit` is blocked, and poll until comments/checks are resolved.
-- Continue Macro Task 4 with Providers and Trusted Sources after the Settings slice PR loop is resolved.
+- Finish the provider test wrapper PR loop for Macro Task 4: push, open PR, request Copilot Code Review through the GraphQL fallback if `gh pr edit` is blocked, and poll until comments/checks are resolved.
+- Start Macro Task 5 after Macro Task 4 is merged: Debug Flow, Debug Reports, Health, and API Test Workbench.
 
 ## 2026-04-30 - Macro 2 Slice
 

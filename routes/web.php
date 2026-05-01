@@ -43,6 +43,9 @@ Route::prefix($adminPrefix)
         Route::delete('settings/{setting}', [PackageSettingController::class, 'destroy'])->name('settings.destroy');
         Route::get('search-providers', [AdminSearchProviderController::class, 'index'])->name('search-providers.index');
         Route::post('search-providers', [AdminSearchProviderController::class, 'store'])->name('search-providers.store');
+        Route::post('search-providers/{searchProvider}/test', [AdminSearchProviderController::class, 'test'])
+            ->middleware('throttle:6,1')
+            ->name('search-providers.test');
         Route::get('search-providers/{searchProvider}', [AdminSearchProviderController::class, 'show'])->name('search-providers.show');
         Route::put('search-providers/{searchProvider}', [AdminSearchProviderController::class, 'update'])->name('search-providers.update');
         Route::delete('search-providers/{searchProvider}', [AdminSearchProviderController::class, 'destroy'])->name('search-providers.destroy');
