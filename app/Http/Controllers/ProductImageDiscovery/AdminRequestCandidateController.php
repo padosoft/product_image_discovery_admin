@@ -9,6 +9,7 @@ use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\AnonymousResourceCollection;
 use Illuminate\Routing\Controller;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\Rule;
 use Padosoft\ProductImageDiscovery\Enums\ProductImageDiscoveryRejectionReason;
 use Padosoft\ProductImageDiscovery\Enums\ProductImageDiscoveryRequestStatus;
@@ -34,38 +35,42 @@ final class AdminRequestCandidateController extends Controller
 
     public function approve(Request $httpRequest, int|string $request, int|string $candidate): JsonResponse
     {
-        [$record, $candidateRecord] = $this->resolveRequestAndCandidate($request, $candidate);
+        [$record, $candidateRecord] = DB::transaction(function () use ($httpRequest, $request, $candidate): array {
+            [$record, $candidateRecord] = $this->resolveRequestAndCandidate($request, $candidate, true);
 
-        ProductImageDiscoveryCandidate::query()
-            ->where('request_id', $record->getKey())
-            ->whereKeyNot($candidateRecord->getKey())
-            ->where('status', 'selected')
-            ->update([
-                'status' => 'candidate',
+            ProductImageDiscoveryCandidate::query()
+                ->where('request_id', $record->getKey())
+                ->whereKeyNot($candidateRecord->getKey())
+                ->where('status', 'selected')
+                ->update([
+                    'status' => 'candidate',
+                    'rejection_reason' => null,
+                ]);
+
+            $candidateRecord->fill([
+                'status' => 'selected',
                 'rejection_reason' => null,
             ]);
+            $candidateRecord->save();
 
-        $candidateRecord->fill([
-            'status' => 'selected',
-            'rejection_reason' => null,
-        ]);
-        $candidateRecord->save();
+            $record->fill([
+                'selected_candidate_id' => $candidateRecord->getKey(),
+                'best_candidate_id' => $record->getAttribute('best_candidate_id') ?? $candidateRecord->getKey(),
+                'final_score' => $candidateRecord->getAttribute('final_score'),
+                'rejection_reason' => null,
+                'status' => 'ready_to_publish',
+                'verified_at' => now(),
+            ]);
+            $record->save();
 
-        $record->fill([
-            'selected_candidate_id' => $candidateRecord->getKey(),
-            'best_candidate_id' => $record->getAttribute('best_candidate_id') ?? $candidateRecord->getKey(),
-            'final_score' => $candidateRecord->getAttribute('final_score'),
-            'rejection_reason' => null,
-            'status' => 'ready_to_publish',
-            'verified_at' => now(),
-        ]);
-        $record->save();
+            $this->recordAuditEvent($record, 'candidate_approved', [
+                'approved_by' => $httpRequest->user()?->getAuthIdentifier(),
+            ], $candidateRecord);
 
-        $this->recordAuditEvent($record, 'candidate_approved', [
-            'approved_by' => $httpRequest->user()?->getAuthIdentifier(),
-        ], $candidateRecord);
+            $this->loadAvailableRelations($record, ['bestCandidate', 'selectedCandidate']);
 
-        $this->loadAvailableRelations($record, ['bestCandidate', 'selectedCandidate']);
+            return [$record, $candidateRecord];
+        });
 
         return response()->json([
             'ok' => true,
@@ -155,7 +160,7 @@ final class AdminRequestCandidateController extends Controller
     /**
      * @return array{0: Model, 1: Model}
      */
-    private function resolveRequestAndCandidate(int|string $requestId, int|string $candidateId): array
+    private function resolveRequestAndCandidate(int|string $requestId, int|string $candidateId, bool $lockForUpdate = false): array
     {
         if (is_string($requestId) && ! ctype_digit($requestId)) {
             abort(404, 'Not Found');
@@ -165,10 +170,18 @@ final class AdminRequestCandidateController extends Controller
             abort(404, 'Not Found');
         }
 
+        $requestQuery = ProductImageDiscoveryRequest::query();
+        $candidateQuery = ProductImageDiscoveryCandidate::query();
+
+        if ($lockForUpdate) {
+            $requestQuery->lockForUpdate();
+            $candidateQuery->lockForUpdate();
+        }
+
         /** @var Model $record */
-        $record = ProductImageDiscoveryRequest::query()->findOrFail($requestId);
+        $record = $requestQuery->findOrFail($requestId);
         /** @var Model $candidate */
-        $candidate = ProductImageDiscoveryCandidate::query()
+        $candidate = $candidateQuery
             ->where('request_id', $record->getKey())
             ->findOrFail($candidateId);
 

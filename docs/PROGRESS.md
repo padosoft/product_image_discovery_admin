@@ -54,6 +54,14 @@
   - `npm run test` => 4 files, 16 tests
   - `npm run build`
   - `npm run e2e` => 4 Playwright tests
+- Addressed the next automated review comments on PR #2:
+  - candidate approval now runs inside a DB transaction and locks the request/candidate rows before mutating selection state
+  - candidate preview image URLs now use `window.PID_ADMIN.apiBase` instead of a hard-coded admin prefix
+- Verification after resuming and finishing the atomic approval/configured image URL fixes:
+  - `npm run phpunit` => 27 tests, 174 assertions
+  - `npm run test` => 4 files, 18 tests
+  - `npm run build`
+  - `npm run e2e -- --reporter=line` blocked after the Vite build because `node scripts/prepare-e2e.mjs` could not execute Herd PHP in this session; direct `php`, `php.bat`, and `php84` access returned denied/not found outside the working `npm run phpunit` wrapper.
 
 ## 2026-04-30
 
@@ -83,7 +91,8 @@
 
 ## Open Items
 
-- Poll PR #2 review threads and status checks again after the follow-up fix.
+- Poll PR #2 review threads and status checks again after the follow-up fix is published.
+- If GitHub CLI GraphQL remains 401, use the GitHub connector for comments and record that thread-level resolution/status checks could not be verified through `gh`.
 - If no remote CI workflow runs are present, record that GitHub Actions/status checks are unavailable for PR #2 before merging.
 
 ## 2026-04-30 - Macro 2 Slice

@@ -3,6 +3,7 @@ import React from 'react';
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import App from '../../resources/js/admin-product-image-discovery/App';
+import { ImageTile } from '../../resources/js/admin-product-image-discovery/components/ImageTile';
 import { JsonViewer } from '../../resources/js/admin-product-image-discovery/components/JsonViewer';
 
 function mockJsonResponse(payload) {
@@ -196,7 +197,8 @@ describe('admin product image discovery shell', () => {
   });
 
   it('keeps the request detail drawer open while loading selected request data', async () => {
-    window.history.replaceState({}, '', '/admin/product-image-discovery/requests');
+    window.PID_ADMIN = { apiBase: '/custom-admin/product-image-discovery' };
+    window.history.replaceState({}, '', '/custom-admin/product-image-discovery/requests');
     vi.stubGlobal(
       'fetch',
       vi
@@ -281,6 +283,10 @@ describe('admin product image discovery shell', () => {
     expect(screen.getByText('Summary')).toBeVisible();
     expect(screen.getByRole('heading', { name: 'Compare mode' })).toBeVisible();
     expect(screen.getByRole('button', { name: 'Open source' })).toBeVisible();
+    expect((await screen.findAllByAltText('Candidate 301 preview'))[0]).toHaveAttribute(
+      'src',
+      '/custom-admin/product-image-discovery/candidates/301/image',
+    );
   });
 
   it('renders the json viewer and copies content', async () => {
@@ -298,6 +304,23 @@ describe('admin product image discovery shell', () => {
 
     expect(writeText).toHaveBeenCalledWith(JSON.stringify({ alpha: 1, beta: 'two' }, null, 2));
     expect(await screen.findByRole('button', { name: 'Copied' })).toBeVisible();
+  });
+
+  it('normalizes legacy candidate image paths through the configured admin base path', () => {
+    window.PID_ADMIN = { apiBase: '/custom-admin/product-image-discovery/' };
+
+    render(
+      <ImageTile
+        src="/admin/product-image-discovery/candidates/301/image"
+        alt="Candidate preview"
+        caption="Candidate"
+      />,
+    );
+
+    expect(screen.getByAltText('Candidate preview')).toHaveAttribute(
+      'src',
+      '/custom-admin/product-image-discovery/candidates/301/image',
+    );
   });
 
   it('keeps the json viewer stable when clipboard writes fail', async () => {

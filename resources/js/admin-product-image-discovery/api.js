@@ -3,6 +3,8 @@ const DEFAULT_HEADERS = {
   'Content-Type': 'application/json',
 };
 
+export const DEFAULT_ADMIN_API_BASE = '/admin/product-image-discovery';
+
 export class ApiError extends Error {
   constructor(message, status, payload) {
     super(message);
@@ -38,6 +40,18 @@ export function buildRequestSearchPath(filters) {
   const query = params.toString();
 
   return query ? `/requests/search?${query}` : '/requests/search';
+}
+
+export function normalizeAdminApiBase(apiBase = globalThis.window?.PID_ADMIN?.apiBase) {
+  const normalizedBase = String(apiBase || DEFAULT_ADMIN_API_BASE).replace(/\/+$/, '');
+
+  return normalizedBase || DEFAULT_ADMIN_API_BASE;
+}
+
+export function buildAdminApiPath(path) {
+  const normalizedPath = path.startsWith('/') ? path : `/${path}`;
+
+  return `${normalizeAdminApiBase()}${normalizedPath}`;
 }
 
 async function readResponsePayload(response) {
@@ -77,7 +91,7 @@ export async function pidFetch(path, options = {}) {
   const signal = options.signal ?? controller?.signal;
   const rawUrl = /^https?:\/\//i.test(path)
     ? path
-    : `${window.PID_ADMIN?.apiBase ?? '/admin/product-image-discovery'}${path}`;
+    : buildAdminApiPath(path);
   const url = new URL(rawUrl, window.location.origin);
 
   if (url.origin !== window.location.origin) {

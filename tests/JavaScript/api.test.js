@@ -1,5 +1,11 @@
 import { describe, expect, it, vi } from 'vitest';
-import { ApiError, normalizeApiError, normalizeLaravelPagination, pidFetch } from '../../resources/js/admin-product-image-discovery/api';
+import {
+  ApiError,
+  buildAdminApiPath,
+  normalizeApiError,
+  normalizeLaravelPagination,
+  pidFetch,
+} from '../../resources/js/admin-product-image-discovery/api';
 
 describe('api client helpers', () => {
   it('normalizes laravel pagination payloads', () => {
@@ -27,6 +33,12 @@ describe('api client helpers', () => {
 
     await expect(pidFetch('https://evil.example.com/requests/1')).rejects.toThrow('Cross-origin admin requests are not allowed.');
     expect(fetch).not.toHaveBeenCalled();
+  });
+
+  it('builds admin api paths from the configured base path', () => {
+    window.PID_ADMIN = { apiBase: '/custom-admin/product-image-discovery/' };
+
+    expect(buildAdminApiPath('/candidates/301/image')).toBe('/custom-admin/product-image-discovery/candidates/301/image');
   });
 
   it('handles non-json responses without a text helper', async () => {

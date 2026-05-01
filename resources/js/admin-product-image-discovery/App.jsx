@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import { pidFetch, normalizeLaravelPagination, buildRequestSearchPath } from './api';
+import { pidFetch, normalizeLaravelPagination, buildRequestSearchPath, buildAdminApiPath } from './api';
 import { DataTable } from './components/DataTable';
 import { ConfirmModal } from './components/ConfirmModal';
 import { Drawer } from './components/Drawer';
@@ -262,7 +262,7 @@ const rejectionReasons = [
 ];
 
 function candidateImageUrl(candidateId) {
-  return `/admin/product-image-discovery/candidates/${candidateId}/image`;
+  return buildAdminApiPath(`/candidates/${encodeURIComponent(candidateId)}/image`);
 }
 
 async function fetchOverviewData(signal) {

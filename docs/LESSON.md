@@ -15,6 +15,9 @@
 - Admin approve/reject wrappers need to maintain request candidate pointers, not just the clicked candidate row: approving should demote any prior selected candidate, and rejecting the current best/selected candidate should clear or recompute `best_candidate_id`, `selected_candidate_id`, and `final_score`.
 - Server-side retry validation should use `ProductImageDiscoveryRequestStatus::isRetryable()` so direct admin JSON calls cannot requeue published, ready-to-publish, manual-review, or other non-retryable requests.
 - Rejecting a non-selected candidate on a request that already has a valid selected candidate should preserve `ready_to_publish`/`published`; only rejecting the selected candidate should move the request back to review/rejected.
+- Candidate approval should run in a transaction with row locks because demoting previous selections and promoting the new selection must be atomic under concurrent operators.
+- Frontend wrapper URLs should derive from `window.PID_ADMIN.apiBase`; candidate image previews need the same configured route prefix handling as `pidFetch()`.
+- If `npm run e2e` exits immediately after the Vite build with no Playwright output, run `node scripts/prepare-e2e.mjs` to confirm the setup phase; in this Codex session Herd PHP access checks returned denied/false outside the working `npm run phpunit` wrapper, so e2e was blocked before the browser runner.
 
 ## 2026-04-30
 
