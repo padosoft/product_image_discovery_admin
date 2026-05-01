@@ -56,7 +56,7 @@ export function parseSettingValue(rawValue, valueType) {
     case 'float': {
       const parsed = Number(raw);
 
-      if (!raw || Number.isNaN(parsed)) {
+      if (!raw || Number.isNaN(parsed) || !Number.isFinite(parsed)) {
         return { ok: false, error: 'Setting value must be a number.' };
       }
 
@@ -83,9 +83,10 @@ export function buildSettingPayload(form) {
     return parsed;
   }
 
-  const clientId = form.client_id === '' ? null : Number.parseInt(form.client_id, 10);
+  const clientIdRaw = String(form.client_id ?? '').trim();
+  const clientId = clientIdRaw === '' ? null : Number(clientIdRaw);
 
-  if (form.client_id !== '' && (!Number.isInteger(clientId) || clientId < 1)) {
+  if (clientIdRaw !== '' && (!/^[1-9]\d*$/.test(clientIdRaw) || !Number.isSafeInteger(clientId))) {
     return { ok: false, error: 'Client id must be a positive integer.' };
   }
 

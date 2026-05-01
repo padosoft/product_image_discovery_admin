@@ -10,6 +10,7 @@ describe('settings form helpers', () => {
     expect(parseSettingValue('42', 'integer')).toEqual({ ok: true, value: 42 });
     expect(parseSettingValue('65.5', 'float')).toEqual({ ok: true, value: 65.5 });
     expect(parseSettingValue('65abc', 'float')).toEqual({ ok: false, error: 'Setting value must be a number.' });
+    expect(parseSettingValue('1e309', 'float')).toEqual({ ok: false, error: 'Setting value must be a number.' });
     expect(parseSettingValue('false', 'boolean')).toEqual({ ok: true, value: false });
     expect(parseSettingValue('{"enabled":true}', 'json')).toEqual({ ok: true, value: { enabled: true } });
     expect(parseSettingValue('not-json', 'json')).toEqual({ ok: false, error: 'Setting value must be valid JSON.' });
@@ -37,14 +38,16 @@ describe('settings form helpers', () => {
   });
 
   it('rejects invalid client ids before submit', () => {
-    expect(buildSettingPayload({
-      client_id: 'abc',
-      setting_key: 'decision.manual_review_threshold',
-      setting_value: '60',
-      value_type: 'integer',
-      description: '',
-      is_active: true,
-    })).toEqual({ ok: false, error: 'Client id must be a positive integer.' });
+    ['abc', '5.9', '1e2'].forEach((clientId) => {
+      expect(buildSettingPayload({
+        client_id: clientId,
+        setting_key: 'decision.manual_review_threshold',
+        setting_value: '60',
+        value_type: 'integer',
+        description: '',
+        is_active: true,
+      })).toEqual({ ok: false, error: 'Client id must be a positive integer.' });
+    });
   });
 
   it('formats object values for editing', () => {
