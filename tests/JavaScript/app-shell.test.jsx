@@ -1036,6 +1036,124 @@ describe('admin product image discovery shell', () => {
     expect(await screen.findByRole('region', { name: 'Debug run report' })).toHaveTextContent('"done": true');
   });
 
+  it('loads stored debug reports and filters candidate evidence', async () => {
+    window.history.replaceState({}, '', '/admin/product-image-discovery/reports');
+    const writeText = vi.fn().mockResolvedValue(undefined);
+    const reportPayload = {
+      summary: {
+        candidate_count: 2,
+        verified_match_count: 1,
+        completed_at: '2026-05-01T12:00:00Z',
+      },
+      config: { api_key: 'server-secret' },
+      request: {
+        status: 'manual_review',
+        final_score: 72,
+        erp_model_color_id: 'REPORT-COLOR',
+      },
+      search: {
+        provider: 'fake-debug',
+        result_count: 2,
+      },
+      candidates: [
+        {
+          id: 1,
+          status: 'verified_match',
+          title: 'Mismatch candidate',
+          source_domain: 'example.test',
+          local_original_path: 'product-image-discovery/1/original.jpg',
+          scores: { final_score: 72, quality_score: 80 },
+          evidence: { mismatches: ['color_mismatch'], matches: ['brand_match'] },
+          ai_verification: { match: false, rejection_reason: 'wrong_color' },
+          quality_analysis: { passed: true, quality_score: 80 },
+        },
+        {
+          id: 2,
+          status: 'rejected',
+          title: 'Clean candidate',
+          source_domain: 'example.test',
+          scores: { final_score: 20, quality_score: 0 },
+          evidence: { mismatches: [], matches: [] },
+          ai_verification: { match: true },
+        },
+      ],
+      downloaded_candidate_ids: [1],
+      quality_candidate_ids: [1],
+      events: [{ event_type: 'pipeline.debug.completed', message: 'done' }],
+    };
+
+    vi.stubGlobal('navigator', {
+      clipboard: { writeText },
+    });
+    vi.stubGlobal('fetch', vi.fn((url, options = {}) => {
+      const requestUrl = new URL(String(url));
+      const path = requestUrl.pathname;
+      const method = options.method ?? 'GET';
+
+      if (path.endsWith('/dashboard-summary')) {
+        return Promise.resolve(mockJsonResponse({
+          counts: { total: 0, manual_review: 0, ready_to_publish: 0, failed: 0, no_candidates_found: 0 },
+          provider_status: [],
+        }));
+      }
+
+      if (path.includes('/requests/search')) {
+        return Promise.resolve(mockJsonResponse({ data: [] }));
+      }
+
+      if (path.endsWith('/debug-runs/9/report') && method === 'GET') {
+        return Promise.resolve(mockJsonResponse({
+          data: {
+            id: 9,
+            status: 'succeeded',
+            report: reportPayload,
+            report_available: true,
+          },
+        }));
+      }
+
+      if (path.endsWith('/debug-runs') && method === 'GET') {
+        return Promise.resolve(mockJsonResponse({
+          data: [{
+            id: 9,
+            status: 'succeeded',
+            request_payload: { erp_model_color_id: 'REPORT-COLOR' },
+            summary: { candidate_count: 2 },
+            request_summary: { erp_model_color_id: 'REPORT-COLOR' },
+            report: null,
+            report_available: true,
+            updated_at: '2026-05-01T12:00:00Z',
+          }],
+        }));
+      }
+
+      return Promise.reject(new Error(`Unexpected request: ${method} ${path}`));
+    }));
+
+    render(<App />);
+
+    expect(await screen.findByRole('heading', { name: 'Load Debug Report' })).toBeVisible();
+    await screen.findByRole('table', { name: 'Stored debug reports' });
+    fireEvent.click(screen.getByRole('button', { name: 'Open' }));
+
+    expect(await screen.findByRole('region', { name: 'Debug report summary' })).toHaveTextContent('manual_review');
+    expect(screen.getByRole('region', { name: 'Debug report inspector' })).not.toHaveTextContent('server-secret');
+
+    fireEvent.click(screen.getByRole('button', { name: 'Candidates' }));
+    expect(screen.getByRole('table', { name: 'Debug report candidates' })).toHaveTextContent('Mismatch candidate');
+    expect(screen.getByRole('table', { name: 'Debug report candidates' })).toHaveTextContent('Clean candidate');
+
+    fireEvent.click(screen.getByLabelText('Only mismatches'));
+    expect(screen.getByRole('table', { name: 'Debug report candidates' })).toHaveTextContent('Mismatch candidate');
+    expect(screen.getByRole('table', { name: 'Debug report candidates' })).not.toHaveTextContent('Clean candidate');
+
+    fireEvent.change(screen.getByLabelText('Search JSON'), { target: { value: 'color_mismatch' } });
+    expect(screen.getByRole('table', { name: 'Debug report JSON matches' })).toHaveTextContent('color_mismatch');
+    fireEvent.click(screen.getAllByRole('button', { name: 'Path' })[0]);
+
+    await waitFor(() => expect(writeText).toHaveBeenCalledWith(expect.stringContaining('mismatches')));
+  });
+
   it('keeps the request detail drawer open while loading selected request data', async () => {
     window.PID_ADMIN = { apiBase: '/custom-admin/product-image-discovery' };
     window.history.replaceState({}, '', '/custom-admin/product-image-discovery/requests');

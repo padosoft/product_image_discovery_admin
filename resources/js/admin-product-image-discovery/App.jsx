@@ -423,6 +423,12 @@ async function fetchDebugRun(debugRunId, signal) {
   return result?.data ?? result;
 }
 
+async function fetchDebugRunReport(debugRunId, signal) {
+  const result = await pidFetch(`/debug-runs/${debugRunId}/report`, { signal });
+
+  return result?.data ?? result;
+}
+
 async function createDebugRun(payload) {
   const result = await pidFetch('/debug-runs', {
     method: 'POST',
@@ -2334,6 +2340,603 @@ function parseBoundedInteger(value, fallback, min, max) {
   return Math.min(max, Math.max(min, parsed));
 }
 
+const DEBUG_REPORT_TABS = [
+  { id: 'summary', label: 'Summary' },
+  { id: 'request', label: 'Request' },
+  { id: 'search', label: 'Search' },
+  { id: 'candidates', label: 'Candidates' },
+  { id: 'ai', label: 'AI' },
+  { id: 'downloads', label: 'Downloads' },
+  { id: 'quality', label: 'Quality' },
+  { id: 'events', label: 'Events' },
+  { id: 'raw', label: 'Raw JSON' },
+];
+
+function debugReportTabLabel(tabId) {
+  return DEBUG_REPORT_TABS.find((tab) => tab.id === tabId)?.label ?? 'Report';
+}
+
+function parseReportJson(value) {
+  const parsed = JSON.parse(value);
+  const report = parsed?.data?.report ?? parsed?.report ?? parsed;
+
+  if (!report || typeof report !== 'object' || Array.isArray(report)) {
+    throw new Error('Report JSON must decode to an object.');
+  }
+
+  return redactDebugPreview(report);
+}
+
+function formatReportValue(value) {
+  if (value === null || value === undefined || value === '') {
+    return '-';
+  }
+
+  if (typeof value === 'boolean') {
+    return value ? 'yes' : 'no';
+  }
+
+  if (typeof value === 'object') {
+    return JSON.stringify(value);
+  }
+
+  return String(value);
+}
+
+function flattenReportValue(value, basePath = '$') {
+  if (Array.isArray(value)) {
+    if (value.length === 0) {
+      return [{ path: basePath, value: [] }];
+    }
+
+    return value.flatMap((item, index) => flattenReportValue(item, `${basePath}[${index}]`));
+  }
+
+  if (value && typeof value === 'object') {
+    const entries = Object.entries(value);
+
+    if (entries.length === 0) {
+      return [{ path: basePath, value: {} }];
+    }
+
+    return entries.flatMap(([key, item]) => flattenReportValue(item, `${basePath}.${key}`));
+  }
+
+  return [{ path: basePath, value }];
+}
+
+function debugCandidateHasMismatch(candidate) {
+  return Array.isArray(candidate?.evidence?.mismatches) && candidate.evidence.mismatches.length > 0;
+}
+
+function debugCandidateHasAiFailure(candidate) {
+  const ai = candidate?.ai_verification;
+
+  if (!ai || typeof ai !== 'object') {
+    return false;
+  }
+
+  return Boolean(
+    ai.error
+      || ai.rejection_reason
+      || ai.status === 'failed'
+      || ai.match === false
+      || ai.variant_safe === false
+      || ai.image_quality_ok === false
+      || ai.brand_match === false
+      || ai.model_match === false
+      || ai.color_match === false
+      || ai.product_type_match === false,
+  );
+}
+
+function debugCandidateIsDownloaded(candidate, report) {
+  const downloadedIds = Array.isArray(report?.downloaded_candidate_ids) ? report.downloaded_candidate_ids : [];
+
+  return Boolean(
+    downloadedIds.includes(candidate?.id)
+      || candidate?.local_original_path
+      || candidate?.local_processed_path
+      || ['downloaded', 'quality_passed', 'quality_failed'].includes(candidate?.status),
+  );
+}
+
+function debugCandidateIsVerified(candidate) {
+  return ['verified_match', 'downloaded', 'quality_passed', 'quality_failed'].includes(candidate?.status);
+}
+
+function debugCandidateHasQuality(candidate, report) {
+  const qualityIds = Array.isArray(report?.quality_candidate_ids) ? report.quality_candidate_ids : [];
+
+  return Boolean(
+    qualityIds.includes(candidate?.id)
+      || candidate?.quality_analysis
+      || (candidate?.scores?.quality_score !== null && candidate?.scores?.quality_score !== undefined),
+  );
+}
+
+function debugReportCandidateRows(report, filters = {}) {
+  const candidates = Array.isArray(report?.candidates) ? report.candidates : [];
+
+  return candidates
+    .map((candidate, index) => ({
+      ...candidate,
+      _row_id: candidate?.id ?? `candidate-${index}`,
+      _has_mismatch: debugCandidateHasMismatch(candidate),
+      _ai_failure: debugCandidateHasAiFailure(candidate),
+      _downloaded: debugCandidateIsDownloaded(candidate, report),
+      _verified: debugCandidateIsVerified(candidate),
+      _has_quality: debugCandidateHasQuality(candidate, report),
+    }))
+    .filter((candidate) => !filters.mismatches || candidate._has_mismatch)
+    .filter((candidate) => !filters.aiFailures || candidate._ai_failure)
+    .filter((candidate) => !filters.downloaded || candidate._downloaded)
+    .filter((candidate) => !filters.verified || candidate._verified);
+}
+
+function reportSectionValue(report, activeTab, candidateRows) {
+  if (!report) {
+    return null;
+  }
+
+  if (activeTab === 'summary') {
+    return { summary: report.summary ?? null, config: report.config ?? null };
+  }
+
+  if (activeTab === 'request') {
+    return report.request ?? null;
+  }
+
+  if (activeTab === 'search') {
+    return { search: report.search ?? null, extract: report.extract ?? null };
+  }
+
+  if (activeTab === 'candidates') {
+    return candidateRows;
+  }
+
+  if (activeTab === 'ai') {
+    return candidateRows
+      .filter((candidate) => candidate.ai_verification || candidate._ai_failure)
+      .map((candidate) => ({
+        id: candidate.id,
+        title: candidate.title,
+        status: candidate.status,
+        ai_verification: candidate.ai_verification ?? null,
+        mismatches: candidate.evidence?.mismatches ?? [],
+      }));
+  }
+
+  if (activeTab === 'downloads') {
+    return {
+      downloaded_candidate_ids: report.downloaded_candidate_ids ?? [],
+      candidates: candidateRows.filter((candidate) => candidate._downloaded),
+    };
+  }
+
+  if (activeTab === 'quality') {
+    return {
+      quality_candidate_ids: report.quality_candidate_ids ?? [],
+      candidates: candidateRows.filter((candidate) => candidate._has_quality),
+    };
+  }
+
+  if (activeTab === 'events') {
+    return report.events ?? [];
+  }
+
+  return report;
+}
+
+function filterReportSearchRows(rows, query) {
+  const normalized = query.trim().toLowerCase();
+
+  if (!normalized) {
+    return rows;
+  }
+
+  return rows.filter((row) => `${row.path} ${formatReportValue(row.value)}`.toLowerCase().includes(normalized));
+}
+
+function DebugReportsPage({ onNotify }) {
+  const [mode, setMode] = useState('server');
+  const [runs, setRuns] = useState([]);
+  const [loadingRuns, setLoadingRuns] = useState(true);
+  const [loadingReport, setLoadingReport] = useState(false);
+  const [selectedRunId, setSelectedRunId] = useState('');
+  const [pasteValue, setPasteValue] = useState('');
+  const [report, setReport] = useState(null);
+  const [reportSource, setReportSource] = useState('');
+  const [activeTab, setActiveTab] = useState('summary');
+  const [searchQuery, setSearchQuery] = useState('');
+  const [filters, setFilters] = useState({
+    mismatches: false,
+    aiFailures: false,
+    downloaded: false,
+    verified: false,
+  });
+  const [error, setError] = useState('');
+  const mountedRef = useRef(true);
+
+  useEffect(() => {
+    mountedRef.current = true;
+    const controller = new AbortController();
+
+    async function loadRuns() {
+      setLoadingRuns(true);
+      setError('');
+
+      try {
+        const result = await fetchDebugRuns(controller.signal);
+
+        if (mountedRef.current && !controller.signal.aborted) {
+          setRuns(result);
+          setSelectedRunId((current) => current || String(result.find((run) => run.report_available)?.id ?? ''));
+        }
+      } catch (err) {
+        if (mountedRef.current && err.name !== 'AbortError') {
+          setRuns([]);
+          setError(err.message || 'Unable to load debug reports.');
+        }
+      } finally {
+        if (mountedRef.current && !controller.signal.aborted) {
+          setLoadingRuns(false);
+        }
+      }
+    }
+
+    loadRuns();
+
+    return () => {
+      mountedRef.current = false;
+      controller.abort();
+    };
+  }, []);
+
+  const candidateRows = useMemo(() => debugReportCandidateRows(report, filters), [report, filters]);
+  const activeValue = useMemo(() => reportSectionValue(report, activeTab, candidateRows), [report, activeTab, candidateRows]);
+  const searchRows = useMemo(
+    () => filterReportSearchRows(flattenReportValue(activeValue), searchQuery).slice(0, 80),
+    [activeValue, searchQuery],
+  );
+
+  const runColumns = [
+    { key: 'id', label: 'ID', render: (run) => <code>#{run.id}</code>, width: '80px' },
+    { key: 'status', label: 'Status', render: (run) => <DebugRunStatusBadge status={run.status} />, width: '130px' },
+    { key: 'identity', label: 'Identity', render: (run) => run.request_summary?.erp_model_color_id ?? run.request_payload?.erp_model_color_id ?? '-' },
+    { key: 'candidates', label: 'Candidates', render: (run) => run.summary?.candidate_count ?? '-', width: '110px' },
+    {
+      key: 'actions',
+      label: 'Actions',
+      className: 'pid-table__actions',
+      render: (run) => (
+        <button type="button" className="pid-chip-button" onClick={() => loadServerReport(run.id)} disabled={!run.report_available || loadingReport}>
+          Open
+        </button>
+      ),
+      width: '110px',
+    },
+  ];
+
+  const candidateColumns = [
+    { key: 'id', label: 'ID', render: (candidate) => <code>{candidate.id ?? '-'}</code>, width: '80px' },
+    { key: 'status', label: 'Status', render: (candidate) => <StatusBadge status={candidate.status ?? 'unknown'} />, width: '150px' },
+    {
+      key: 'title',
+      label: 'Candidate',
+      render: (candidate) => (
+        <div className="pid-cell-stack">
+          <strong>{candidate.title ?? '-'}</strong>
+          <span>{candidate.source_domain ?? candidate.source_page_url ?? '-'}</span>
+        </div>
+      ),
+    },
+    { key: 'score', label: 'Score', render: (candidate) => candidate.scores?.final_score ?? '-', width: '90px' },
+    { key: 'mismatches', label: 'Mismatches', render: (candidate) => candidate.evidence?.mismatches?.length ?? 0, width: '110px' },
+    { key: 'downloaded', label: 'Downloaded', render: (candidate) => (candidate._downloaded ? 'yes' : 'no'), width: '110px' },
+  ];
+
+  const searchColumns = [
+    { key: 'path', label: 'Path', render: (row) => <code>{row.path}</code> },
+    { key: 'value', label: 'Value', render: (row) => <span className="pid-report-value">{formatReportValue(row.value)}</span> },
+    {
+      key: 'actions',
+      label: 'Copy',
+      className: 'pid-table__actions',
+      render: (row) => (
+        <div className="pid-row-actions">
+          <button type="button" className="pid-chip-button" onClick={() => copyReportText(row.path, 'Path copied.')}>Path</button>
+          <button type="button" className="pid-chip-button" onClick={() => copyReportText(formatReportValue(row.value), 'Value copied.')}>Value</button>
+        </div>
+      ),
+      width: '150px',
+    },
+  ];
+
+  function setLoadedReport(nextReport, source) {
+    setReport(redactDebugPreview(nextReport));
+    setReportSource(source);
+    setActiveTab('summary');
+    setSearchQuery('');
+    setError('');
+  }
+
+  async function loadServerReport(runId = selectedRunId) {
+    if (!runId) {
+      setError('Select a debug run with an available report.');
+      return;
+    }
+
+    setLoadingReport(true);
+    setError('');
+
+    try {
+      const result = await fetchDebugRunReport(runId);
+      const nextReport = result?.report;
+
+      if (!nextReport) {
+        throw new Error('Selected debug run has no report payload.');
+      }
+
+      if (mountedRef.current) {
+        setSelectedRunId(String(runId));
+        setLoadedReport(nextReport, `Debug run #${runId}`);
+      }
+    } catch (err) {
+      if (mountedRef.current) {
+        setError(err.message || 'Unable to load debug report.');
+      }
+    } finally {
+      if (mountedRef.current) {
+        setLoadingReport(false);
+      }
+    }
+  }
+
+  function loadPastedReport() {
+    try {
+      setLoadedReport(parseReportJson(pasteValue), 'Pasted JSON');
+      onNotify('Debug report loaded.', 'success');
+    } catch (err) {
+      setError(err.message || 'Report JSON is invalid.');
+      onNotify(err.message || 'Report JSON is invalid.', 'danger');
+    }
+  }
+
+  function loadUploadedReport(event) {
+    const file = event.target.files?.[0];
+
+    if (!file) {
+      return;
+    }
+
+    const reader = new FileReader();
+    reader.onload = () => {
+      try {
+        setLoadedReport(parseReportJson(String(reader.result ?? '')), file.name);
+        onNotify('Debug report loaded.', 'success');
+      } catch (err) {
+        setError(err.message || 'Report file is invalid.');
+        onNotify(err.message || 'Report file is invalid.', 'danger');
+      }
+    };
+    reader.onerror = () => {
+      setError('Unable to read report file.');
+      onNotify('Unable to read report file.', 'danger');
+    };
+    reader.readAsText(file);
+    event.target.value = '';
+  }
+
+  async function copyReportText(value, message) {
+    if (!navigator.clipboard?.writeText) {
+      return;
+    }
+
+    try {
+      await navigator.clipboard.writeText(String(value ?? ''));
+      onNotify(message, 'success');
+    } catch (err) {
+      void err;
+    }
+  }
+
+  function toggleFilter(name) {
+    setFilters((current) => ({ ...current, [name]: !current[name] }));
+  }
+
+  return (
+    <div className="pid-stack">
+      {error ? <div className="pid-alert pid-alert--danger" role="alert">{error}</div> : null}
+
+      <div className="pid-config-layout">
+        <section className="pid-panel">
+          <div className="pid-panel__header">
+            <h2>Load Debug Report</h2>
+            <span>{loadingRuns ? 'Loading' : `${runs.filter((run) => run.report_available).length} available`}</span>
+          </div>
+          <div className="pid-report-source">
+            <div className="pid-segmented" role="tablist" aria-label="Report source">
+              {[
+                ['server', 'Server'],
+                ['paste', 'Paste'],
+                ['upload', 'Upload'],
+              ].map(([id, label]) => (
+                <button
+                  key={id}
+                  type="button"
+                  className={mode === id ? 'pid-segmented__item pid-segmented__item--active' : 'pid-segmented__item'}
+                  aria-selected={mode === id}
+                  onClick={() => setMode(id)}
+                >
+                  {label}
+                </button>
+              ))}
+            </div>
+
+            {mode === 'server' ? (
+              <>
+                <label>
+                  <span>Debug run</span>
+                  <select value={selectedRunId} onChange={(event) => setSelectedRunId(event.target.value)} disabled={loadingRuns || loadingReport}>
+                    <option value="">Select report</option>
+                    {runs.filter((run) => run.report_available).map((run) => (
+                      <option key={run.id} value={run.id}>
+                        #{run.id} - {run.request_summary?.erp_model_color_id ?? run.request_payload?.erp_model_color_id ?? run.status}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+                <button type="button" className="pid-chip-button pid-chip-button--accent" onClick={() => loadServerReport()} disabled={!selectedRunId || loadingReport}>
+                  {loadingReport ? 'Loading...' : 'Open report'}
+                </button>
+              </>
+            ) : null}
+
+            {mode === 'paste' ? (
+              <>
+                <label>
+                  <span>Report JSON</span>
+                  <textarea value={pasteValue} onChange={(event) => setPasteValue(event.target.value)} rows={12} />
+                </label>
+                <button type="button" className="pid-chip-button pid-chip-button--accent" onClick={loadPastedReport} disabled={!pasteValue.trim()}>
+                  Load pasted report
+                </button>
+              </>
+            ) : null}
+
+            {mode === 'upload' ? (
+              <label>
+                <span>Report file</span>
+                <input type="file" accept=".json,application/json" onChange={loadUploadedReport} />
+              </label>
+            ) : null}
+          </div>
+        </section>
+
+        <section className="pid-panel">
+          <div className="pid-panel__header">
+            <h2>Recent Server Reports</h2>
+            <span>{runs.length} runs</span>
+          </div>
+          <DataTable
+            ariaLabel="Stored debug reports"
+            columns={runColumns}
+            rows={runs.filter((run) => run.report_available)}
+            loading={loadingRuns}
+            emptyTitle="No stored reports"
+            emptyDescription="Run Debug Flow to create the first stored report."
+          />
+        </section>
+      </div>
+
+      {!report ? (
+        <section className="pid-panel">
+          <EmptyState title="No report selected" description="Choose a server, pasted, or uploaded report." />
+        </section>
+      ) : (
+        <>
+          <section className="pid-panel" aria-label="Debug report summary">
+            <div className="pid-panel__header">
+              <h2>{reportSource || 'Debug report'}</h2>
+              <span>{report.summary?.completed_at ?? report.summary?.started_at ?? 'loaded'}</span>
+            </div>
+            <div className="pid-kpis">
+              <div className="pid-kpi pid-kpi--compact">
+                <span>Status</span>
+                <strong>{report.request?.status ?? '-'}</strong>
+              </div>
+              <div className="pid-kpi pid-kpi--compact">
+                <span>Final score</span>
+                <strong>{report.request?.final_score ?? '-'}</strong>
+              </div>
+              <div className="pid-kpi pid-kpi--compact">
+                <span>Candidates</span>
+                <strong>{report.summary?.candidate_count ?? candidateRows.length}</strong>
+              </div>
+              <div className="pid-kpi pid-kpi--compact">
+                <span>Verified</span>
+                <strong>{report.summary?.verified_match_count ?? candidateRows.filter((candidate) => candidate._verified).length}</strong>
+              </div>
+              <div className="pid-kpi pid-kpi--compact">
+                <span>Provider</span>
+                <strong className="pid-metric__text">{report.search?.provider ?? '-'}</strong>
+              </div>
+            </div>
+          </section>
+
+          <section className="pid-panel" aria-label="Debug report inspector">
+            <div className="pid-panel__header">
+              <h2>Report Inspector</h2>
+              <span>{debugReportTabLabel(activeTab)}</span>
+            </div>
+            <div className="pid-report-toolbar">
+              <div className="pid-tabs" role="tablist" aria-label="Debug report sections">
+                {DEBUG_REPORT_TABS.map((tab) => (
+                  <button
+                    key={tab.id}
+                    type="button"
+                    className={activeTab === tab.id ? 'pid-tabs__item pid-tabs__item--active' : 'pid-tabs__item'}
+                    aria-selected={activeTab === tab.id}
+                    onClick={() => setActiveTab(tab.id)}
+                  >
+                    {tab.label}
+                  </button>
+                ))}
+              </div>
+              <label className="pid-report-search">
+                <span>Search JSON</span>
+                <input value={searchQuery} onChange={(event) => setSearchQuery(event.target.value)} placeholder="path or value" />
+              </label>
+              <div className="pid-report-filters" aria-label="Candidate filters">
+                {[
+                  ['mismatches', 'Only mismatches'],
+                  ['aiFailures', 'Only AI failures'],
+                  ['downloaded', 'Only downloaded'],
+                  ['verified', 'Only verified'],
+                ].map(([id, label]) => (
+                  <label key={id}>
+                    <input type="checkbox" checked={filters[id]} onChange={() => toggleFilter(id)} />
+                    <span>{label}</span>
+                  </label>
+                ))}
+              </div>
+            </div>
+
+            {activeTab === 'candidates' ? (
+              <DataTable
+                ariaLabel="Debug report candidates"
+                columns={candidateColumns}
+                rows={candidateRows}
+                rowKey="_row_id"
+                emptyTitle="No candidates"
+                emptyDescription="No candidates match the active report filters."
+              />
+            ) : null}
+
+            <JsonViewer value={activeValue} label={`${debugReportTabLabel(activeTab)} JSON`} />
+
+            <div className="pid-panel pid-panel--flat">
+              <div className="pid-panel__header">
+                <h2>JSON Matches</h2>
+                <span>{searchRows.length} rows</span>
+              </div>
+              <DataTable
+                ariaLabel="Debug report JSON matches"
+                columns={searchColumns}
+                rows={searchRows}
+                rowKey="path"
+                emptyTitle="No JSON matches"
+                emptyDescription="No paths match the current search."
+              />
+            </div>
+          </section>
+        </>
+      )}
+    </div>
+  );
+}
+
 function DebugFlowPage({ onNotify }) {
   const [requestJson, setRequestJson] = useState(parseDebugDraft);
   const [options, setOptions] = useState(() => ({ ...DEFAULT_DEBUG_OPTIONS }));
@@ -3371,6 +3974,8 @@ export default function App() {
     body = <HealthPage />;
   } else if (page === 'debug') {
     body = <DebugFlowPage onNotify={notify} />;
+  } else if (page === 'reports') {
+    body = <DebugReportsPage onNotify={notify} />;
   } else {
     body = <PlaceholderPage page={currentPage} />;
   }
