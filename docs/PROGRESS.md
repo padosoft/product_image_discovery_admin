@@ -469,6 +469,17 @@
   - `npm run test` => 8 files, 40 tests
   - `npm run build`
   - `npm run e2e` => 14 Playwright tests
+- Copilot reviewed `b2c9cfb` and generated 3 follow-up comments.
+- Addressed the latest Copilot PR #7 comments:
+  - the dedicated debug-run report endpoint now returns `report: null` plus `report_available: false` when no report payload exists, matching show/list resources
+  - Debug Flow polling now uses a one-at-a-time timeout loop with an `AbortController`, avoiding overlapping requests and stale status overwrites
+  - `openDebugRun()` now uses an explicit `hasHydratedReport` guard for the completed-run hydration path
+- Verification passed after the debug report/polling follow-up:
+  - `composer validate --strict`
+  - `npm run phpunit` => 42 tests, 336 assertions
+  - `npm run test` => 8 files, 41 tests
+  - `npm run build`
+  - `npm run e2e` => 14 Playwright tests
 
 ## 2026-04-30
 

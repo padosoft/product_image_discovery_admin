@@ -73,11 +73,15 @@ final class AdminDebugRunController extends Controller
 
     public function report(ProductImageDiscoveryDebugRun $debugRun): JsonResponse
     {
+        $reportPayload = $debugRun->getAttribute('report_payload');
+        $reportAvailable = is_array($reportPayload) && $reportPayload !== [];
+
         return response()->json([
             'data' => [
                 'id' => $debugRun->getKey(),
                 'status' => $debugRun->getAttribute('status'),
-                'report' => DebugPayloadRedactor::redact($debugRun->getAttribute('report_payload') ?? []),
+                'report' => $reportAvailable ? DebugPayloadRedactor::redact($reportPayload) : null,
+                'report_available' => $reportAvailable,
             ],
         ]);
     }

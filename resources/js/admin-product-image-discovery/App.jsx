@@ -2406,25 +2406,44 @@ function DebugFlowPage({ onNotify }) {
       return undefined;
     }
 
+    const debugRunId = selectedRun.id;
     let cancelled = false;
-    const interval = window.setInterval(async () => {
+    let timeoutId;
+    let controller = null;
+
+    const schedulePoll = () => {
+      timeoutId = window.setTimeout(poll, 1500);
+    };
+
+    const poll = async () => {
+      controller = new AbortController();
+
       try {
-        const result = await fetchDebugRun(selectedRun.id);
+        const result = await fetchDebugRun(debugRunId, controller.signal);
 
         if (!cancelled && mountedRef.current) {
           setSelectedRun(result);
           setRuns((current) => current.map((run) => (run.id === result.id ? result : run)));
         }
       } catch (err) {
-        if (!cancelled && mountedRef.current) {
+        if (!cancelled && mountedRef.current && err.name !== 'AbortError') {
           setError(err.message || 'Unable to poll debug run.');
         }
+      } finally {
+        controller = null;
+
+        if (!cancelled && mountedRef.current) {
+          schedulePoll();
+        }
       }
-    }, 1500);
+    };
+
+    schedulePoll();
 
     return () => {
       cancelled = true;
-      window.clearInterval(interval);
+      window.clearTimeout(timeoutId);
+      controller?.abort();
     };
   }, [selectedRun?.id, selectedRun?.status]);
 
@@ -2492,7 +2511,9 @@ function DebugFlowPage({ onNotify }) {
     setSelectedRun(run);
     setError('');
 
-    if (!run?.id || run.report !== null && run.report !== undefined) {
+    const hasHydratedReport = run?.report != null;
+
+    if (!run?.id || hasHydratedReport) {
       return;
     }
 

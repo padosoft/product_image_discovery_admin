@@ -258,6 +258,11 @@ final class AdminWrapperEndpointsTest extends TestCase
             ->assertOk()
             ->assertJsonPath('data.report_available', false)
             ->assertJsonPath('data.report', null);
+
+        $this->getJson('/admin/product-image-discovery/debug-runs/'.$run->getKey().'/report')
+            ->assertOk()
+            ->assertJsonPath('data.report_available', false)
+            ->assertJsonPath('data.report', null);
     }
 
     public function test_debug_payload_redactor_preserves_safe_credential_status_flags(): void

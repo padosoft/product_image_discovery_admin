@@ -71,6 +71,8 @@
 - Queue-backed UI copy should account for `sync` queues in local/demo environments; a create response may already be `succeeded`, not merely queued/running.
 - Debug text redaction needs to handle authorization schemes beyond Bearer, such as Basic, without leaving the credential token after the scheme.
 - API resources should use `null` for missing detail payloads rather than empty arrays when the frontend uses nullish coalescing to decide whether detail hydration is needed.
+- Dedicated detail/report endpoints should use the same nullability contract as their parent resources; otherwise clients cannot reliably distinguish no payload yet from an intentionally empty payload.
+- Polling loops should schedule the next request only after the current one settles, and abort on cleanup, so slow debug/status responses cannot overlap or overwrite newer state.
 
 ## 2026-04-30
 
