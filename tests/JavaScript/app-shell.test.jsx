@@ -42,39 +42,41 @@ describe('admin product image discovery shell', () => {
   });
 
   it('renders the shell, exposes accessible navigation labels, and toggles theme', async () => {
+    const fetchMock = vi
+      .fn()
+      .mockResolvedValueOnce(
+        mockJsonResponse({
+          counts: {
+            total: 12,
+            manual_review: 2,
+            ready_to_publish: 5,
+            failed: 1,
+            no_candidates_found: 3,
+          },
+          provider_status: [
+            { code: 'serpapi', driver: 'serpapi', active: true, has_api_key: true },
+          ],
+        }),
+      )
+      .mockResolvedValueOnce(
+        mockJsonResponse({
+          data: [
+            {
+              id: 11,
+              status: 'manual_review',
+              final_score: 67,
+              brand: 'Acme',
+              supplier: 'Primary',
+              erp_model_color_id: 'ERP-11',
+              updated_at: '2026-04-30T09:30:00Z',
+            },
+          ],
+        }),
+      );
+
     vi.stubGlobal(
       'fetch',
-      vi
-        .fn()
-        .mockResolvedValueOnce(
-          mockJsonResponse({
-            counts: {
-              total: 12,
-              manual_review: 2,
-              ready_to_publish: 5,
-              failed: 1,
-              no_candidates_found: 3,
-            },
-            provider_status: [
-              { code: 'serpapi', driver: 'serpapi', active: true, has_api_key: true },
-            ],
-          }),
-        )
-        .mockResolvedValueOnce(
-          mockJsonResponse({
-            data: [
-              {
-                id: 11,
-                status: 'manual_review',
-                final_score: 67,
-                brand: 'Acme',
-                supplier: 'Primary',
-                erp_model_color_id: 'ERP-11',
-                updated_at: '2026-04-30T09:30:00Z',
-              },
-            ],
-          }),
-        ),
+      fetchMock,
     );
 
     render(<App />);
@@ -88,6 +90,10 @@ describe('admin product image discovery shell', () => {
     await waitFor(() => expect(document.documentElement).toHaveAttribute('data-theme', 'dark'));
     expect(screen.getByRole('heading', { name: 'Overview' })).toBeVisible();
     expect(screen.getByText('Provider Health')).toBeVisible();
+    await new Promise((resolve) => {
+      window.setTimeout(resolve, 350);
+    });
+    expect(fetchMock).toHaveBeenCalledTimes(2);
   });
 
   it('keeps the shell mounted when API calls fail', async () => {

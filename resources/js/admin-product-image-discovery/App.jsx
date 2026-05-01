@@ -1064,6 +1064,11 @@ export default function App() {
   }, []);
 
   useEffect(() => {
+    if (page !== 'requests' && page !== 'review') {
+      setRequestLoading(false);
+      return undefined;
+    }
+
     let cancelled = false;
     const controller = new AbortController();
     const timeout = window.setTimeout(async () => {
@@ -1091,7 +1096,7 @@ export default function App() {
       controller.abort();
       window.clearTimeout(timeout);
     };
-  }, [effectiveRequestFilters]);
+  }, [page, effectiveRequestFilters]);
 
   async function openRequest(request) {
     setDetailOpen(true);

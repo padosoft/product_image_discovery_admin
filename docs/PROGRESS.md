@@ -93,6 +93,16 @@
   - the correct mutation is GraphQL `requestReviewsByLogin` with `botLogins[]='copilot-pull-request-reviewer[bot]'` and `union=true`
   - the direct mutation succeeded for PR #2 at node ID `PR_kwDOSRBF8M7XaL-e`
   - `GET /repos/padosoft/product_image_discovery_admin/pulls/2/requested_reviewers` now shows pending reviewer `Copilot`
+- Copilot Code Review completed on PR #2 at head `a2f41d5` and generated 3 actionable comments.
+- Addressed the Copilot PR #2 comments:
+  - the request list refresh effect now runs only on the Requests and Manual Review pages, avoiding duplicate `/requests/search` calls on Overview
+  - approving a candidate now sets `best_candidate_id`, `selected_candidate_id`, and `final_score` from the approved candidate consistently
+  - candidate pagination now has a stable secondary `id` sort when scores tie
+- Verification passed after the Copilot PR #2 fixes:
+  - `npm run phpunit` => 27 tests, 176 assertions
+  - `npm run test` => 4 files, 18 tests
+  - `npm run build`
+  - `npm run e2e` => 4 Playwright tests
 
 ## 2026-04-30
 
@@ -122,7 +132,7 @@
 
 ## Open Items
 
-- Continue polling PR #2 until the pending `Copilot` reviewer leaves a review or the request becomes unavailable; current API-visible review threads have no unresolved non-outdated comments.
+- Push the latest Copilot PR #2 fixes, request a fresh Copilot Code Review, and continue polling until new comments/checks are resolved.
 - GitHub Actions/status checks remain unavailable for PR #2; do not treat CI as green, only as unconfigured.
 
 ## 2026-04-30 - Macro 2 Slice

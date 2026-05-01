@@ -28,7 +28,10 @@ final class AdminRequestCandidateController extends Controller
         }
 
         $record = ProductImageDiscoveryRequest::query()->findOrFail($request);
-        $candidates = $record->candidates()->orderByDesc('final_score')->paginate(max(1, min((int) request('per_page', 25), 100)));
+        $candidates = $record->candidates()
+            ->orderByDesc('final_score')
+            ->orderBy('id')
+            ->paginate(max(1, min((int) request('per_page', 25), 100)));
 
         return ProductImageDiscoveryCandidateResource::collection($candidates);
     }
@@ -55,7 +58,7 @@ final class AdminRequestCandidateController extends Controller
 
             $record->fill([
                 'selected_candidate_id' => $candidateRecord->getKey(),
-                'best_candidate_id' => $record->getAttribute('best_candidate_id') ?? $candidateRecord->getKey(),
+                'best_candidate_id' => $candidateRecord->getKey(),
                 'final_score' => $candidateRecord->getAttribute('final_score'),
                 'rejection_reason' => null,
                 'status' => 'ready_to_publish',

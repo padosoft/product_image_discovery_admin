@@ -24,6 +24,9 @@ final class AdminRequestCandidateControllerTest extends TestCase
         $high = $this->createCandidate($requestRecord, [
             'final_score' => 91,
         ]);
+        $highTie = $this->createCandidate($requestRecord, [
+            'final_score' => 91,
+        ]);
 
         $this->getJson('/admin/product-image-discovery/requests/'.$requestRecord->getKey().'/candidates?per_page=1')
             ->assertOk()
@@ -34,7 +37,8 @@ final class AdminRequestCandidateControllerTest extends TestCase
         $this->getJson('/admin/product-image-discovery/requests/'.$requestRecord->getKey().'/candidates')
             ->assertOk()
             ->assertJsonPath('data.0.id', $high->getKey())
-            ->assertJsonPath('data.1.id', $low->getKey());
+            ->assertJsonPath('data.1.id', $highTie->getKey())
+            ->assertJsonPath('data.2.id', $low->getKey());
     }
 
     public function test_candidate_approve_updates_request_and_candidate(): void
@@ -53,6 +57,7 @@ final class AdminRequestCandidateControllerTest extends TestCase
         ]);
         $requestRecord->forceFill([
             'selected_candidate_id' => $previousSelected->getKey(),
+            'best_candidate_id' => $previousSelected->getKey(),
         ])->save();
 
         $this->postJson('/admin/product-image-discovery/requests/'.$requestRecord->getKey().'/candidates/'.$candidate->getKey().'/approve')
@@ -60,12 +65,15 @@ final class AdminRequestCandidateControllerTest extends TestCase
             ->assertJsonPath('ok', true)
             ->assertJsonPath('request.status', 'ready_to_publish')
             ->assertJsonPath('request.selected_candidate.id', $candidate->getKey())
+            ->assertJsonPath('request.best_candidate.id', $candidate->getKey())
             ->assertJsonPath('candidate.status', 'selected');
 
         $this->assertDatabaseHas('product_image_discovery_requests', [
             'id' => $requestRecord->getKey(),
             'status' => 'ready_to_publish',
             'selected_candidate_id' => $candidate->getKey(),
+            'best_candidate_id' => $candidate->getKey(),
+            'final_score' => 88,
         ]);
         $this->assertDatabaseHas('product_image_discovery_candidates', [
             'id' => $candidate->getKey(),
