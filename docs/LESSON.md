@@ -14,6 +14,7 @@
 - If `npm run phpunit -- --filter ...` fails to resolve Herd PHP and falls back to missing `php` on PATH, rerun the full `npm run phpunit` gate or set `PHP_BINARY` explicitly for the filtered run.
 - Admin approve/reject wrappers need to maintain request candidate pointers, not just the clicked candidate row: approving should demote any prior selected candidate, and rejecting the current best/selected candidate should clear or recompute `best_candidate_id`, `selected_candidate_id`, and `final_score`.
 - Server-side retry validation should use `ProductImageDiscoveryRequestStatus::isRetryable()` so direct admin JSON calls cannot requeue published, ready-to-publish, manual-review, or other non-retryable requests.
+- Rejecting a non-selected candidate on a request that already has a valid selected candidate should preserve `ready_to_publish`/`published`; only rejecting the selected candidate should move the request back to review/rejected.
 
 ## 2026-04-30
 
