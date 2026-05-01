@@ -516,6 +516,16 @@
   - `npm run test` => 8 files, 42 tests
   - `npm run build`
   - `npm run e2e` => 14 Playwright tests
+- Copilot reviewed `959ddd8` and generated 2 follow-up comments.
+- Addressed the latest Copilot PR #8 comments:
+  - server report loading now aborts any previous in-flight report request and cancels on unmount
+  - the Recent Server Reports header count now matches the report-available rows rendered in the table
+- Verification passed after the report loader/count follow-up:
+  - `composer validate --strict`
+  - `npm run phpunit` => 42 tests, 336 assertions
+  - `npm run test` => 8 files, 42 tests
+  - `npm run build`
+  - `npm run e2e` => 14 Playwright tests
 
 ## 2026-04-30
 

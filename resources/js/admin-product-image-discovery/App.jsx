@@ -2596,6 +2596,7 @@ function DebugReportsPage({ onNotify }) {
   });
   const [error, setError] = useState('');
   const mountedRef = useRef(true);
+  const reportLoadControllerRef = useRef(null);
 
   useEffect(() => {
     mountedRef.current = true;
@@ -2629,9 +2630,11 @@ function DebugReportsPage({ onNotify }) {
     return () => {
       mountedRef.current = false;
       controller.abort();
+      reportLoadControllerRef.current?.abort();
     };
   }, []);
 
+  const availableRuns = useMemo(() => runs.filter((run) => run.report_available), [runs]);
   const allCandidateRows = useMemo(() => debugReportCandidateRows(report), [report]);
   const candidateRows = useMemo(() => debugReportCandidateRows(report, filters), [report, filters]);
   const activeValue = useMemo(() => reportSectionValue(report, activeTab, candidateRows), [report, activeTab, candidateRows]);
@@ -2709,26 +2712,30 @@ function DebugReportsPage({ onNotify }) {
 
     setLoadingReport(true);
     setError('');
+    reportLoadControllerRef.current?.abort();
+    const controller = new AbortController();
+    reportLoadControllerRef.current = controller;
 
     try {
-      const result = await fetchDebugRunReport(runId);
+      const result = await fetchDebugRunReport(runId, controller.signal);
       const nextReport = result?.report;
 
       if (!nextReport) {
         throw new Error('Selected debug run has no report payload.');
       }
 
-      if (mountedRef.current) {
+      if (mountedRef.current && !controller.signal.aborted && reportLoadControllerRef.current === controller) {
         setSelectedRunId(String(runId));
         setLoadedReport(nextReport, `Debug run #${runId}`);
       }
     } catch (err) {
-      if (mountedRef.current) {
+      if (mountedRef.current && err.name !== 'AbortError' && reportLoadControllerRef.current === controller) {
         setError(err.message || 'Unable to load debug report.');
       }
     } finally {
-      if (mountedRef.current) {
+      if (mountedRef.current && reportLoadControllerRef.current === controller) {
         setLoadingReport(false);
+        reportLoadControllerRef.current = null;
       }
     }
   }
@@ -2793,7 +2800,7 @@ function DebugReportsPage({ onNotify }) {
         <section className="pid-panel">
           <div className="pid-panel__header">
             <h2>Load Debug Report</h2>
-            <span>{loadingRuns ? 'Loading' : `${runs.filter((run) => run.report_available).length} available`}</span>
+            <span>{loadingRuns ? 'Loading' : `${availableRuns.length} available`}</span>
           </div>
           <div className="pid-report-source">
             <div className="pid-segmented" aria-label="Report source">
@@ -2820,7 +2827,7 @@ function DebugReportsPage({ onNotify }) {
                   <span>Debug run</span>
                   <select value={selectedRunId} onChange={(event) => setSelectedRunId(event.target.value)} disabled={loadingRuns || loadingReport}>
                     <option value="">Select report</option>
-                    {runs.filter((run) => run.report_available).map((run) => (
+                    {availableRuns.map((run) => (
                       <option key={run.id} value={run.id}>
                         #{run.id} - {run.request_summary?.erp_model_color_id ?? run.request_payload?.erp_model_color_id ?? run.status}
                       </option>
@@ -2857,12 +2864,12 @@ function DebugReportsPage({ onNotify }) {
         <section className="pid-panel">
           <div className="pid-panel__header">
             <h2>Recent Server Reports</h2>
-            <span>{runs.length} runs</span>
+            <span>{availableRuns.length} reports</span>
           </div>
           <DataTable
             ariaLabel="Stored debug reports"
             columns={runColumns}
-            rows={runs.filter((run) => run.report_available)}
+            rows={availableRuns}
             loading={loadingRuns}
             emptyTitle="No stored reports"
             emptyDescription="Run Debug Flow to create the first stored report."

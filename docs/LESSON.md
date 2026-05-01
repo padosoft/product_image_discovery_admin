@@ -77,6 +77,7 @@
 - If a segmented control is implemented with ordinary buttons, use button semantics such as `aria-pressed`; only use `tablist`/`aria-selected` when the full ARIA tabs pattern is implemented.
 - JSON path search should filter while traversing and enforce row/depth limits, not flatten entire debug reports before slicing, because reports can grow quickly with provider payloads and candidate evidence.
 - Report-level KPIs should be derived from unfiltered report data; candidate table filters are view state and must not change summary totals.
+- Detail/report loaders that can be triggered repeatedly should keep their own `AbortController` ref and abort the previous request before starting the next one.
 
 ## 2026-04-30
 
