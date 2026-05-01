@@ -18,6 +18,7 @@
 - Candidate approval should run in a transaction with row locks because demoting previous selections and promoting the new selection must be atomic under concurrent operators.
 - Frontend wrapper URLs should derive from `window.PID_ADMIN.apiBase`; candidate image previews need the same configured route prefix handling as `pidFetch()`.
 - If `npm run e2e` exits immediately after the Vite build with no Playwright output, run `node scripts/prepare-e2e.mjs` to confirm the setup phase; in this Codex session Herd PHP access checks returned denied/false outside the working `npm run phpunit` wrapper, so e2e was blocked before the browser runner.
+- The PR loop requires GitHub Copilot Code Review, requested through the PR Reviewers menu or `gh pr edit <PR> --add-reviewer @copilot`; `@codex review` is not a valid substitute unless the user explicitly asks for it.
 
 ## 2026-04-30
 
