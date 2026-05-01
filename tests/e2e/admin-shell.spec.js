@@ -155,6 +155,23 @@ test('health page shows runtime status without secret values', async ({ page }) 
   await expect(page.locator('body')).not.toContainText('anthropic-secret');
 });
 
+test('api workbench creates a sample request and captures the response', async ({ page }, testInfo) => {
+  const sampleColor = `WORKBENCH-${testInfo.project.name}-CAMMELLO`;
+
+  await page.goto('/admin/product-image-discovery/apitest');
+
+  await expect(page.getByRole('heading', { name: 'API Test Workbench' })).toBeVisible();
+  await page.getByLabel('Sample ERP color').fill(sampleColor);
+  await expect(page.getByRole('button', { name: 'Create sample request' })).toBeEnabled();
+  await page.getByRole('button', { name: 'Create sample request' }).click();
+
+  await expect(page.getByRole('table', { name: 'API workbench calls' })).toContainText('/requests');
+  await expect(page.getByLabel('Request ID')).toHaveValue(/\d+/);
+  await expect(page.getByLabel('API workbench response')).toContainText(sampleColor);
+  await expect(page.getByLabel('API workbench response')).toContainText('"status": 201');
+  await expect(page.locator('body')).not.toContainText('server-token');
+});
+
 test('debug flow page runs a fake provider flow to completion', async ({ page }, testInfo) => {
   const providerCode = `debug-${testInfo.project.name}`;
   const imageData = Buffer.from('debug-image-bytes').toString('base64');

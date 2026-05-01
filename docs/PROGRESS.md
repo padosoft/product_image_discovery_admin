@@ -536,6 +536,22 @@
   - `npm run test` => 8 files, 43 tests
   - `npm run build`
   - `npm run e2e` => 14 Playwright tests
+- PR #8 received a fresh Copilot review on `74453c9` with no new comments, then merged into `main` at `01c2df7`; local `main`, `origin/main`, and `task/diagnostics-debug-health` were fast-forwarded to the merge commit.
+- Continued Macro Task 5 with the API Test Workbench slice:
+  - added the admin `POST /admin/product-image-discovery/requests` wrapper to create sample requests through the package controller under the admin prefix
+  - added the React API Test Workbench page with request/provider targets, sample request creation, request/candidate/retry/provider/health/debug actions, runtime AI/storage/queue snapshots, disabled approve/reject safety controls, and captured method/path/status/duration/response history with copyable cURL/JSON
+  - added PHP coverage for the request-store admin wrapper, Vitest coverage for Workbench sample creation/redaction, and Playwright coverage for creating a sample request from the Workbench
+- Targeted verification passed for the API Test Workbench slice:
+  - `npm run phpunit -- --filter AdminWrapperEndpointsTest` => 26 tests, 221 assertions
+  - `npm run test -- --run tests/JavaScript/app-shell.test.jsx` => 1 file, 20 tests
+  - `npm run build`
+  - `npx playwright test -g "api workbench"` => 2 Playwright tests
+- Full local gate passed after the API Test Workbench slice:
+  - `composer validate --strict`
+  - `npm run phpunit` => 43 tests, 342 assertions
+  - `npm run test` => 8 files, 44 tests
+  - `npm run build`
+  - `npm run e2e` => 16 Playwright tests
 
 ## 2026-04-30
 

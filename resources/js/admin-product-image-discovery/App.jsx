@@ -71,6 +71,21 @@ const DEFAULT_DEBUG_OPTIONS = {
   fail_on_no_match: false,
 };
 
+const DEFAULT_WORKBENCH_SAMPLE_COLOR = 'WORKBENCH-HERNO-CAMMELLO';
+
+function buildWorkbenchSampleRequest(erpModelColorId = DEFAULT_WORKBENCH_SAMPLE_COLOR) {
+  const colorId = String(erpModelColorId || '').trim() || DEFAULT_WORKBENCH_SAMPLE_COLOR;
+
+  return {
+    ...DEFAULT_DEBUG_REQUEST,
+    erp_model_id: 'WORKBENCH-HERNO',
+    erp_model_color_id: colorId,
+    metadata: {
+      admin_workbench: true,
+    },
+  };
+}
+
 const navGroups = [
   {
     label: 'Operations',
@@ -442,6 +457,123 @@ async function fetchHealth(signal) {
   const result = await pidFetch('/health', { signal });
 
   return result?.data ?? result;
+}
+
+async function readWorkbenchPayload(response) {
+  if (response.status === 204) {
+    return null;
+  }
+
+  const contentType = typeof response.headers?.get === 'function'
+    ? response.headers.get('content-type') ?? ''
+    : '';
+
+  if (contentType.includes('application/json')) {
+    return typeof response.json === 'function' ? response.json().catch(() => null) : null;
+  }
+
+  const text = typeof response.text === 'function'
+    ? await response.text().catch(() => '')
+    : '';
+
+  return text ? { message: text } : null;
+}
+
+async function runWorkbenchHttpRequest({ method = 'GET', path, body }, signal) {
+  const started = performance.now();
+  const token = document.querySelector('meta[name="csrf-token"]')?.content ?? '';
+  const response = await fetch(new URL(buildAdminApiPath(path), window.location.origin).toString(), {
+    method,
+    signal,
+    headers: {
+      Accept: 'application/json',
+      'Content-Type': 'application/json',
+      ...(token ? { 'X-CSRF-TOKEN': token } : {}),
+    },
+    body: body === undefined ? undefined : JSON.stringify(body),
+  });
+  const payload = await readWorkbenchPayload(response);
+
+  return {
+    method,
+    path,
+    status: response.status,
+    ok: response.ok,
+    duration_ms: Math.max(0, Math.round(performance.now() - started)),
+    request_body: body === undefined ? null : redactDebugPreview(body),
+    response: redactDebugPreview(payload),
+  };
+}
+
+function dataPayload(payload) {
+  return payload?.data ?? payload;
+}
+
+function focusedHealthPayload(payload, key) {
+  const data = dataPayload(payload);
+
+  return { [key]: data?.[key] ?? null };
+}
+
+function workbenchCurl(result) {
+  const url = new URL(buildAdminApiPath(result.path), window.location.origin).toString();
+  const lines = [
+    `curl -X ${result.method} "${url}"`,
+    '-H "Accept: application/json"',
+    '-H "Content-Type: application/json"',
+  ];
+
+  if (result.request_body !== null && result.request_body !== undefined) {
+    lines.push(`--data '${JSON.stringify(result.request_body).replace(/'/g, "'\"'\"'")}'`);
+  }
+
+  return lines.join(' \\\n  ');
+}
+
+function workbenchSummary(result) {
+  const payload = dataPayload(result.response);
+
+  if (!payload || typeof payload !== 'object') {
+    return result.ok ? 'Completed' : 'Failed';
+  }
+
+  if (payload.message) {
+    return payload.message;
+  }
+
+  if (payload.request_id) {
+    return `Request #${payload.request_id}`;
+  }
+
+  if (payload.request?.id) {
+    return `Request #${payload.request.id}`;
+  }
+
+  if (payload.status) {
+    return String(payload.status);
+  }
+
+  if (Array.isArray(payload)) {
+    return `${payload.length} rows`;
+  }
+
+  if (Array.isArray(payload.data)) {
+    return `${payload.data.length} rows`;
+  }
+
+  return result.ok ? 'Completed' : 'Failed';
+}
+
+function httpStatusTone(status) {
+  if (status >= 200 && status < 300) {
+    return 'ok';
+  }
+
+  if (status >= 400 && status < 500) {
+    return 'warn';
+  }
+
+  return 'danger';
 }
 
 function Sidebar({ page, onPage }) {
@@ -3582,6 +3714,391 @@ function HealthPage() {
   );
 }
 
+function ApiWorkbenchPage({ onNotify }) {
+  const [health, setHealth] = useState(null);
+  const [requests, setRequests] = useState([]);
+  const [providers, setProviders] = useState([]);
+  const [requestId, setRequestId] = useState('');
+  const [providerId, setProviderId] = useState('');
+  const [sampleColor, setSampleColor] = useState(DEFAULT_WORKBENCH_SAMPLE_COLOR);
+  const [loading, setLoading] = useState(true);
+  const [runningAction, setRunningAction] = useState('');
+  const [error, setError] = useState('');
+  const [results, setResults] = useState([]);
+  const [selectedResultId, setSelectedResultId] = useState('');
+
+  useEffect(() => {
+    const controller = new AbortController();
+    let mounted = true;
+
+    async function loadWorkbenchState() {
+      setLoading(true);
+      setError('');
+
+      const [healthResult, requestResult, providerResult] = await Promise.allSettled([
+        fetchHealth(controller.signal),
+        pidFetch('/requests/search?per_page=8', { signal: controller.signal }),
+        fetchSearchProviders(controller.signal),
+      ]);
+
+      if (!mounted || controller.signal.aborted) {
+        return;
+      }
+
+      const warnings = [];
+
+      if (healthResult.status === 'fulfilled') {
+        setHealth(healthResult.value);
+      } else {
+        setHealth(null);
+        warnings.push('Health unavailable.');
+      }
+
+      if (requestResult.status === 'fulfilled') {
+        const rows = normalizeLaravelPagination(requestResult.value).data;
+        setRequests(rows);
+        setRequestId((current) => current || String(rows[0]?.id ?? ''));
+      } else {
+        setRequests([]);
+        warnings.push('Requests unavailable.');
+      }
+
+      if (providerResult.status === 'fulfilled') {
+        setProviders(providerResult.value);
+        setProviderId((current) => current || String((providerResult.value.find((provider) => provider.is_active) ?? providerResult.value[0])?.id ?? ''));
+      } else {
+        setProviders([]);
+        warnings.push('Providers unavailable.');
+      }
+
+      setError(warnings.join(' '));
+      setLoading(false);
+    }
+
+    loadWorkbenchState().catch((err) => {
+      if (mounted && err.name !== 'AbortError') {
+        setError(err.message || 'Unable to load API workbench.');
+        setLoading(false);
+      }
+    });
+
+    return () => {
+      mounted = false;
+      controller.abort();
+    };
+  }, []);
+
+  const selectedResult = results.find((result) => result.id === selectedResultId) ?? results[0] ?? null;
+
+  const resultColumns = [
+    { key: 'method', label: 'Method', render: (result) => <code>{result.method}</code>, width: '90px' },
+    { key: 'path', label: 'Path', render: (result) => <code>{result.path}</code> },
+    {
+      key: 'status',
+      label: 'Status',
+      render: (result) => <span className={`pid-badge pid-badge--${httpStatusTone(result.status)}`}>{result.status}</span>,
+      width: '90px',
+    },
+    { key: 'duration', label: 'Duration', render: (result) => `${result.duration_ms}ms`, width: '100px' },
+    { key: 'summary', label: 'Summary', render: workbenchSummary },
+    {
+      key: 'actions',
+      label: 'Actions',
+      className: 'pid-table__actions',
+      render: (result) => (
+        <div className="pid-row-actions">
+          <button type="button" className="pid-chip-button" onClick={() => setSelectedResultId(result.id)}>Open</button>
+          <button type="button" className="pid-chip-button" onClick={() => copyWorkbenchText(workbenchCurl(result), 'cURL copied.')}>cURL</button>
+          <button type="button" className="pid-chip-button" onClick={() => copyWorkbenchText(JSON.stringify(result.response ?? null, null, 2), 'JSON copied.')}>JSON</button>
+        </div>
+      ),
+      width: '210px',
+    },
+  ];
+
+  async function refreshLists() {
+    const [requestResult, providerResult, healthResult] = await Promise.allSettled([
+      pidFetch('/requests/search?per_page=8'),
+      fetchSearchProviders(),
+      fetchHealth(),
+    ]);
+
+    if (requestResult.status === 'fulfilled') {
+      setRequests(normalizeLaravelPagination(requestResult.value).data);
+    }
+
+    if (providerResult.status === 'fulfilled') {
+      setProviders(providerResult.value);
+    }
+
+    if (healthResult.status === 'fulfilled') {
+      setHealth(healthResult.value);
+    }
+  }
+
+  async function runAction(action) {
+    if (runningAction) {
+      return;
+    }
+
+    const operation = operationForAction(action);
+
+    if (!operation) {
+      return;
+    }
+
+    setRunningAction(action);
+    setError('');
+
+    try {
+      let result = await runWorkbenchHttpRequest(operation);
+
+      if (action === 'ai_status') {
+        result = { ...result, response: focusedHealthPayload(result.response, 'ai') };
+      } else if (action === 'storage_status') {
+        result = { ...result, response: focusedHealthPayload(result.response, 'storage') };
+      } else if (action === 'queue_status') {
+        result = { ...result, response: focusedHealthPayload(result.response, 'queue') };
+      }
+
+      const resultWithId = {
+        ...result,
+        id: `${Date.now()}-${action}`,
+        action,
+      };
+
+      setResults((current) => [resultWithId, ...current].slice(0, 12));
+      setSelectedResultId(resultWithId.id);
+
+      const payload = dataPayload(result.response);
+      const nextRequestId = payload?.request_id ?? payload?.request?.id;
+
+      if (nextRequestId) {
+        setRequestId(String(nextRequestId));
+      }
+
+      if (!result.ok) {
+        setError(payload?.message || `Request failed with status ${result.status}.`);
+      } else {
+        onNotify('Workbench call completed.', 'success');
+      }
+
+      if (['create_sample', 'retry_request', 'debug_sample'].includes(action)) {
+        await refreshLists();
+      }
+    } catch (err) {
+      if (err.name !== 'AbortError') {
+        setError(err.message || 'Workbench call failed.');
+        onNotify(err.message || 'Workbench call failed.', 'danger');
+      }
+    } finally {
+      setRunningAction('');
+    }
+  }
+
+  async function copyWorkbenchText(value, message) {
+    if (!navigator.clipboard?.writeText) {
+      return;
+    }
+
+    try {
+      await navigator.clipboard.writeText(String(value ?? ''));
+      onNotify(message, 'success');
+    } catch (err) {
+      void err;
+    }
+  }
+
+  function operationForAction(action) {
+    if (action === 'list_requests') {
+      return { method: 'GET', path: '/requests/search?per_page=8' };
+    }
+
+    if (action === 'create_sample') {
+      return { method: 'POST', path: '/requests', body: buildWorkbenchSampleRequest(sampleColor) };
+    }
+
+    if (action === 'runtime_health' || action === 'ai_status' || action === 'storage_status' || action === 'queue_status') {
+      return { method: 'GET', path: '/health' };
+    }
+
+    if (action === 'provider_health') {
+      if (!providerId) {
+        setError('Select a provider before running the provider test.');
+        return null;
+      }
+
+      return {
+        method: 'POST',
+        path: `/search-providers/${encodeURIComponent(providerId)}/test`,
+        body: {
+          mode: 'images',
+          query: 'Herno PI002223D CAMMELLO',
+          limit: 1,
+        },
+      };
+    }
+
+    if (action === 'list_candidates' || action === 'retry_request') {
+      if (!requestId) {
+        setError('Select or create a request before running this call.');
+        return null;
+      }
+
+      return {
+        method: action === 'retry_request' ? 'POST' : 'GET',
+        path: action === 'retry_request'
+          ? `/requests/${encodeURIComponent(requestId)}/retry`
+          : `/requests/${encodeURIComponent(requestId)}/candidates`,
+      };
+    }
+
+    if (action === 'debug_sample') {
+      return {
+        method: 'POST',
+        path: '/debug-runs',
+        body: {
+          request_payload: buildWorkbenchSampleRequest(sampleColor),
+          options: {
+            max_candidates: 2,
+            fresh: true,
+            no_download: true,
+            no_env_brave: true,
+          },
+        },
+      };
+    }
+
+    return null;
+  }
+
+  return (
+    <div className="pid-stack">
+      {error ? <div className="pid-alert pid-alert--danger" role="alert">{error}</div> : null}
+      <div className="pid-workbench-layout">
+        <section className="pid-panel">
+          <div className="pid-panel__header">
+            <h2>API Test Workbench</h2>
+            <span>{loading ? 'Loading' : 'Ready'}</span>
+          </div>
+          <div className="pid-workbench-controls">
+            <label>
+              <span>Request ID</span>
+              <select value={requestId} onChange={(event) => setRequestId(event.target.value)} disabled={loading || runningAction}>
+                <option value="">Select request</option>
+                {requestId && !requests.some((request) => String(request.id) === String(requestId)) ? (
+                  <option value={requestId}>#{requestId} - selected</option>
+                ) : null}
+                {requests.map((request) => (
+                  <option key={request.id} value={request.id}>
+                    #{request.id} - {request.erp_model_color_id ?? request.status}
+                  </option>
+                ))}
+              </select>
+            </label>
+            <label>
+              <span>Provider</span>
+              <select value={providerId} onChange={(event) => setProviderId(event.target.value)} disabled={loading || runningAction}>
+                <option value="">Select provider</option>
+                {providers.map((provider) => (
+                  <option key={provider.id} value={provider.id}>
+                    {provider.code} / {provider.driver}
+                  </option>
+                ))}
+              </select>
+            </label>
+            <label className="pid-workbench-controls__full">
+              <span>Sample ERP color</span>
+              <input value={sampleColor} onChange={(event) => setSampleColor(event.target.value)} disabled={loading || runningAction} />
+            </label>
+          </div>
+          <div className="pid-workbench-actions">
+            <button type="button" className="pid-chip-button pid-chip-button--accent" onClick={() => runAction('create_sample')} disabled={loading || Boolean(runningAction)}>
+              {runningAction === 'create_sample' ? 'Creating...' : 'Create sample request'}
+            </button>
+            <button type="button" className="pid-chip-button" onClick={() => runAction('list_requests')} disabled={loading || Boolean(runningAction)}>
+              List requests
+            </button>
+            <button type="button" className="pid-chip-button" onClick={() => runAction('list_candidates')} disabled={loading || Boolean(runningAction) || !requestId}>
+              List candidates
+            </button>
+            <button type="button" className="pid-chip-button" onClick={() => runAction('retry_request')} disabled={loading || Boolean(runningAction) || !requestId}>
+              Retry request
+            </button>
+            <button type="button" className="pid-chip-button" onClick={() => runAction('provider_health')} disabled={loading || Boolean(runningAction) || !providerId}>
+              Provider health
+            </button>
+            <button type="button" className="pid-chip-button" onClick={() => runAction('runtime_health')} disabled={loading || Boolean(runningAction)}>
+              Runtime health
+            </button>
+            <button type="button" className="pid-chip-button" onClick={() => runAction('debug_sample')} disabled={loading || Boolean(runningAction)}>
+              Debug sample
+            </button>
+          </div>
+          <div className="pid-workbench-actions pid-workbench-actions--locked" aria-label="Locked review mutations">
+            <button type="button" className="pid-chip-button" disabled>Approve candidate</button>
+            <button type="button" className="pid-chip-button" disabled>Reject candidate</button>
+          </div>
+        </section>
+
+        <section className="pid-panel">
+          <div className="pid-panel__header">
+            <h2>Runtime Snapshots</h2>
+            <span>{health?.app?.environment ?? '-'}</span>
+          </div>
+          <div className="pid-metric-grid pid-workbench-snapshots">
+            <button type="button" className="pid-metric" onClick={() => runAction('ai_status')} disabled={loading || Boolean(runningAction)}>
+              <span>AI</span>
+              <strong>{health?.ai?.provider ?? '-'}</strong>
+              <HealthStatusBadge configured={Boolean(health?.ai?.provider_key_configured)} />
+            </button>
+            <button type="button" className="pid-metric" onClick={() => runAction('storage_status')} disabled={loading || Boolean(runningAction)}>
+              <span>Storage</span>
+              <strong>{health?.storage?.disk ?? '-'}</strong>
+              <HealthStatusBadge configured={Boolean(health?.storage?.configured)} />
+            </button>
+            <button type="button" className="pid-metric" onClick={() => runAction('queue_status')} disabled={loading || Boolean(runningAction)}>
+              <span>Queue</span>
+              <strong>{health?.queue?.connection ?? '-'}</strong>
+              <span>{health?.queue?.queues?.length ?? 0} queues</span>
+            </button>
+          </div>
+        </section>
+      </div>
+
+      <section className="pid-panel">
+        <div className="pid-panel__header">
+          <h2>Recent Calls</h2>
+          <span>{results.length} captured</span>
+        </div>
+        <DataTable
+          ariaLabel="API workbench calls"
+          columns={resultColumns}
+          rows={results}
+          loading={false}
+          emptyTitle="No API calls"
+          emptyDescription="Run a workbench action to capture the first response."
+        />
+      </section>
+
+      {selectedResult ? (
+        <JsonViewer
+          value={{
+            action: selectedResult.action,
+            method: selectedResult.method,
+            path: selectedResult.path,
+            status: selectedResult.status,
+            duration_ms: selectedResult.duration_ms,
+            request_body: selectedResult.request_body,
+            response: selectedResult.response,
+          }}
+          label="API workbench response"
+        />
+      ) : null}
+    </div>
+  );
+}
+
 function PlaceholderPage({ page }) {
   return (
     <div className="pid-stack">
@@ -4045,6 +4562,8 @@ export default function App() {
     body = <DebugFlowPage onNotify={notify} />;
   } else if (page === 'reports') {
     body = <DebugReportsPage onNotify={notify} />;
+  } else if (page === 'apitest') {
+    body = <ApiWorkbenchPage onNotify={notify} />;
   } else {
     body = <PlaceholderPage page={currentPage} />;
   }

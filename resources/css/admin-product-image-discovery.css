@@ -1051,6 +1051,74 @@ textarea {
   white-space: nowrap;
 }
 
+.pid-workbench-layout {
+  display: grid;
+  grid-template-columns: minmax(0, 1.1fr) minmax(320px, 0.9fr);
+  gap: 16px;
+}
+
+.pid-workbench-controls {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+  padding: 12px;
+}
+
+.pid-workbench-controls label {
+  display: grid;
+  gap: 6px;
+  color: var(--pid-muted);
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.pid-workbench-controls select,
+.pid-workbench-controls input {
+  min-width: 0;
+  border: 1px solid var(--pid-border);
+  border-radius: 6px;
+  background: var(--pid-surface);
+  color: var(--pid-text);
+  padding: 8px 10px;
+}
+
+.pid-workbench-controls__full {
+  grid-column: 1 / -1;
+}
+
+.pid-workbench-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  padding: 0 12px 12px;
+}
+
+.pid-workbench-actions--locked {
+  border-top: 1px solid var(--pid-border);
+  padding-top: 12px;
+}
+
+.pid-workbench-snapshots {
+  padding: 12px;
+}
+
+.pid-workbench-snapshots .pid-metric {
+  appearance: none;
+  width: 100%;
+  border-top: 0;
+  border-left: 0;
+  background: transparent;
+  color: inherit;
+  cursor: pointer;
+  font: inherit;
+  text-align: left;
+}
+
+.pid-workbench-snapshots .pid-metric:disabled {
+  cursor: not-allowed;
+  opacity: 0.65;
+}
+
 .pid-filter-actions {
   padding: 0 12px 12px;
 }
@@ -1174,6 +1242,10 @@ textarea {
     grid-template-columns: 1fr;
   }
 
+  .pid-workbench-layout {
+    grid-template-columns: 1fr;
+  }
+
   .pid-policy-grid {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
@@ -1219,7 +1291,8 @@ textarea {
   }
 
   .pid-policy-grid,
-  .pid-secret-control {
+  .pid-secret-control,
+  .pid-workbench-controls {
     grid-template-columns: 1fr;
   }
 

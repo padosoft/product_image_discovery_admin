@@ -80,6 +80,7 @@
 - Detail/report loaders that can be triggered repeatedly should keep their own `AbortController` ref and abort the previous request before starting the next one.
 - JSON traversal limits need both output limits and enqueue/traversal budgets; limiting rendered rows alone still lets huge arrays or objects allocate large stacks before the UI returns.
 - Candidate status badge maps should include report-only statuses such as `verified_match` and `quality_failed`, not only request workflow statuses.
+- Workbench actions that create a request can return an id before the refreshed recent-list page includes that row; keep a synthetic selected option so the target selector does not lose its value.
 
 ## 2026-04-30
 
