@@ -54,10 +54,12 @@ For each subtask, the intended process is:
 1. Implement the smallest coherent subtask.
 2. Run the relevant PHP, Node, Vitest, Vite, and Playwright gates.
 3. Open a subtask PR into the macro branch.
-4. Request Copilot review.
+4. Request GitHub Copilot review.
 5. Wait for CI and Copilot comments.
 6. Fix until green and comments are resolved.
 7. Merge, then repeat for the macro PR into `main`.
+
+Copilot review means GitHub Copilot Code Review through the PR Reviewers menu or `gh pr edit <PR> --add-reviewer @copilot`. Do not use `@codex review` as a substitute unless the user explicitly asks for Codex review.
 
 Do not stop after a push or review request. Keep polling PR status, CI, and review comments until the loop is resolved or GitHub access is unavailable.
 
