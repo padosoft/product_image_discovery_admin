@@ -46,6 +46,14 @@
   - `npm run test`
   - `npm run build`
   - `npm run e2e`
+- Addressed the follow-up automated review comment on PR #2:
+  - rejecting a non-selected candidate now preserves `ready_to_publish`/`published` when the selected candidate remains valid
+  - rejecting the current best candidate still recomputes `best_candidate_id` and `final_score`
+- Verification passed after the follow-up PR #2 review fix:
+  - `npm run phpunit` => 27 tests, 174 assertions
+  - `npm run test` => 4 files, 16 tests
+  - `npm run build`
+  - `npm run e2e` => 4 Playwright tests
 
 ## 2026-04-30
 
@@ -75,8 +83,7 @@
 
 ## Open Items
 
-- Push the PR #2 review fixes.
-- Poll PR #2 review threads and status checks again.
+- Poll PR #2 review threads and status checks again after the follow-up fix.
 - If no remote CI workflow runs are present, record that GitHub Actions/status checks are unavailable for PR #2 before merging.
 
 ## 2026-04-30 - Macro 2 Slice
