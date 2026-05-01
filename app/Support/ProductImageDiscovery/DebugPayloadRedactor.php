@@ -28,8 +28,26 @@ final class DebugPayloadRedactor
 
     public static function redactText(string $value): string
     {
+        $value = preg_replace(
+            '/((?:"|\')?(?:api[_-]?key|api[_-]?secret|authorization|credential|password|secret|token)(?:"|\')?\s*[:=]\s*)(["\'])(.*?)\2/i',
+            '$1$2[redacted]$2',
+            $value,
+        ) ?? $value;
+
+        $value = preg_replace(
+            '/((?:"|\')?authorization(?:"|\')?\s*[:=]\s*Bearer\s+)[^\s,;]+/i',
+            '$1[redacted]',
+            $value,
+        ) ?? $value;
+
+        $value = preg_replace(
+            '/((?:"|\')?authorization(?:"|\')?\s*[:=]\s*)(?!Bearer\s)(?!["\'])[^\s,;]+/i',
+            '$1[redacted]',
+            $value,
+        ) ?? $value;
+
         return preg_replace(
-            '/((?:"|\')?(?:api[_-]?key|api[_-]?secret|authorization|credential|password|secret|token)(?:"|\')?\s*[:=]\s*)(?:"[^"]*"|\'[^\']*\'|[^\s,;]+)/i',
+            '/((?:"|\')?(?:api[_-]?key|api[_-]?secret|credential|password|secret|token)(?:"|\')?\s*[:=]\s*)(?!["\'])[^\s,;]+/i',
             '$1[redacted]',
             $value,
         ) ?? $value;

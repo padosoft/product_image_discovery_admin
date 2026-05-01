@@ -60,6 +60,7 @@
 - Debug payload redaction should preserve safe credential status booleans such as `has_api_key` and `has_api_secret`; those flags are the approved public shape, while raw `api_key`, `api_secret`, tokens, credentials, and passwords still need redaction.
 - Debug jobs should rewrite or delete command-generated artifacts after redaction, not only sanitize the database copy. On Windows, normalize both `storage_path('app')` and artifact paths before stripping the storage root, or mixed separators can leave absolute paths in persisted JSON.
 - Admin editors that accept arbitrary JSON should not persist raw drafts to localStorage. If local draft persistence is useful, write only a redacted parseable version and drop invalid drafts rather than storing partially typed secret-bearing text.
+- Text redactors need dedicated handling for auth schemes such as `Authorization: Bearer <token>`; generic key/value redaction that stops at whitespace can leave the actual token behind.
 
 ## 2026-04-30
 

@@ -249,6 +249,10 @@ final class AdminWrapperEndpointsTest extends TestCase
             'authorization: [redacted] api_key=[redacted]',
             DebugPayloadRedactor::redactText('authorization: Bearer-secret api_key=secret-key'),
         );
+        $this->assertSame(
+            'Authorization: Bearer [redacted] token="[redacted]"',
+            DebugPayloadRedactor::redactText('Authorization: Bearer secret-token token="quoted secret"'),
+        );
     }
 
     public function test_request_search_applies_zero_score_filters(): void

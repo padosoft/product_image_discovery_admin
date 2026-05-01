@@ -399,6 +399,16 @@
   - `npm run test` => 8 files, 40 tests
   - `npm run build`
   - `npm run e2e` => 14 Playwright tests
+- Copilot reviewed `66c611a` and generated 1 follow-up comment.
+- Addressed the latest Copilot PR #7 comment:
+  - debug text redaction now handles `Authorization: Bearer <token>` without leaking the token after the scheme
+  - added backend coverage for bearer-token and quoted-token text redaction
+- Verification passed after the bearer redaction follow-up:
+  - `composer validate --strict`
+  - `npm run phpunit` => 40 tests, 322 assertions
+  - `npm run test` => 8 files, 40 tests
+  - `npm run build`
+  - `npm run e2e` => 14 Playwright tests
 
 ## 2026-04-30
 
