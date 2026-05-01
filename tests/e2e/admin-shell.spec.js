@@ -141,3 +141,16 @@ test('trusted sources page creates policy flags and deletes the source', async (
   await expect(page.getByText('Trusted source deleted.')).toBeVisible();
   await expect(page.getByRole('row').filter({ hasText: domain })).toHaveCount(0);
 });
+
+test('health page shows runtime status without secret values', async ({ page }) => {
+  await page.goto('/admin/product-image-discovery/health');
+
+  await expect(page.getByRole('heading', { name: 'Runtime Health' })).toBeVisible();
+  await expect(page.getByText('api/product-image-discovery')).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'AI Configuration' })).toBeVisible();
+  await expect(page.getByRole('table', { name: 'Environment key status' })).toContainText('ANTHROPIC_API_KEY');
+  await expect(page.getByRole('table', { name: 'Search provider health status' })).toBeVisible();
+  await expect(page.getByRole('table', { name: 'Product image discovery queue status' })).toContainText('configured');
+  await expect(page.locator('body')).not.toContainText('provider-secret');
+  await expect(page.locator('body')).not.toContainText('anthropic-secret');
+});

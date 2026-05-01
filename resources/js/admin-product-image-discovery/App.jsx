@@ -7,6 +7,7 @@ import { EmptyState } from './components/EmptyState';
 import { FilterBar } from './components/FilterBar';
 import { ImageTile } from './components/ImageTile';
 import { JsonViewer } from './components/JsonViewer';
+import { LoadingState } from './components/LoadingState';
 import { ScorePill } from './components/ScorePill';
 import { StatusBadge } from './components/StatusBadge';
 import { Toast } from './components/Toast';
@@ -381,6 +382,12 @@ async function fetchSearchProviders(signal) {
 
 async function fetchTrustedSources(signal) {
   return fetchPaginatedAdminRecords('/trusted-sources?per_page=100', signal);
+}
+
+async function fetchHealth(signal) {
+  const result = await pidFetch('/health', { signal });
+
+  return result?.data ?? result;
 }
 
 function Sidebar({ page, onPage }) {
@@ -2208,6 +2215,214 @@ function TrustedSourcesPage({ onNotify }) {
   );
 }
 
+function HealthStatusBadge({ configured, configuredLabel = 'configured', missingLabel = 'missing' }) {
+  return (
+    <span className={`pid-badge pid-badge--${configured ? 'ok' : 'danger'}`}>
+      {configured ? configuredLabel : missingLabel}
+    </span>
+  );
+}
+
+function HealthPage() {
+  const [health, setHealth] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState('');
+
+  useEffect(() => {
+    const controller = new AbortController();
+    let mounted = true;
+
+    async function loadHealth() {
+      setLoading(true);
+      setError('');
+
+      try {
+        const result = await fetchHealth(controller.signal);
+
+        if (mounted) {
+          setHealth(result);
+        }
+      } catch (err) {
+        if (mounted && err.name !== 'AbortError') {
+          setHealth(null);
+          setError(err.message || 'Unable to load health.');
+        }
+      } finally {
+        if (mounted) {
+          setLoading(false);
+        }
+      }
+    }
+
+    loadHealth();
+
+    return () => {
+      mounted = false;
+      controller.abort();
+    };
+  }, []);
+
+  if (loading) {
+    return <LoadingState label="Runtime Health" />;
+  }
+
+  const envRows = health?.env_status ?? [];
+  const aiProviders = health?.ai?.providers ?? [];
+  const queueRows = health?.queue?.queues ?? [];
+  const providerRows = health?.providers ?? [];
+  const activeProviderCount = providerRows.filter((provider) => provider.active).length;
+
+  const envColumns = [
+    { key: 'key', label: 'Key', render: (row) => <code>{row.key}</code> },
+    { key: 'scope', label: 'Scope' },
+    { key: 'configured', label: 'Status', render: (row) => <HealthStatusBadge configured={row.configured} /> },
+  ];
+  const aiColumns = [
+    { key: 'provider', label: 'Provider' },
+    { key: 'api_key_configured', label: 'API key', render: (row) => <HealthStatusBadge configured={row.api_key_configured} /> },
+    {
+      key: 'base_url_configured',
+      label: 'Base URL',
+      render: (row) => (
+        <span className={`pid-badge pid-badge--${row.base_url_configured ? 'ok' : 'neutral'}`}>
+          {row.base_url_configured ? 'set' : 'default'}
+        </span>
+      ),
+    },
+  ];
+  const queueColumns = [
+    { key: 'phase', label: 'Phase' },
+    { key: 'queue', label: 'Queue' },
+    { key: 'status', label: 'Status', render: (row) => <span className="pid-badge pid-badge--ok">{row.status}</span> },
+  ];
+  const providerColumns = [
+    { key: 'code', label: 'Code', render: (provider) => <code>{provider.code}</code> },
+    { key: 'driver', label: 'Driver' },
+    { key: 'active', label: 'State', render: (provider) => <ConfigStateBadge active={provider.active} /> },
+    { key: 'credentials', label: 'Credentials', render: (provider) => providerCredentials({ has_api_key: provider.has_api_key, has_api_secret: provider.has_api_secret }) },
+    {
+      key: 'limits',
+      label: 'Limits',
+      render: (provider) => {
+        const timeoutLabel = provider.timeout_seconds == null ? '-' : `${provider.timeout_seconds}s`;
+
+        return `${timeoutLabel} / ${provider.rate_limit_per_minute ?? 'no rate'}`;
+      },
+    },
+  ];
+
+  return (
+    <div className="pid-stack">
+      {error ? <div className="pid-alert pid-alert--danger" role="alert">{error}</div> : null}
+      <section className="pid-panel">
+        <div className="pid-panel__header">
+          <h2>Runtime Health</h2>
+          <span>{health?.app?.environment ?? 'unknown'}</span>
+        </div>
+        <div className="pid-metric-grid">
+          <div className="pid-metric">
+            <span>Package API</span>
+            <strong className="pid-metric__text">{health?.app?.package_api_prefix ?? '-'}</strong>
+          </div>
+          <div className="pid-metric">
+            <span>Storage</span>
+            <strong className="pid-metric__text">{health?.storage?.disk ?? '-'}</strong>
+            <HealthStatusBadge configured={Boolean(health?.storage?.configured)} />
+          </div>
+          <div className="pid-metric">
+            <span>Queue</span>
+            <strong className="pid-metric__text">{health?.queue?.connection ?? '-'}</strong>
+            <span>{queueRows.length} queues</span>
+          </div>
+          <div className="pid-metric">
+            <span>Providers</span>
+            <strong>{activeProviderCount}/{providerRows.length}</strong>
+            <span>active</span>
+          </div>
+        </div>
+      </section>
+
+      <section className="pid-panel">
+        <div className="pid-panel__header">
+          <h2>AI Configuration</h2>
+          <HealthStatusBadge configured={Boolean(health?.ai?.enabled)} configuredLabel="enabled" missingLabel="disabled" />
+        </div>
+        <div className="pid-detail-summary">
+          <div>
+            <span>Provider</span>
+            <strong>{health?.ai?.provider ?? '-'}</strong>
+          </div>
+          <div>
+            <span>Provider key</span>
+            <HealthStatusBadge configured={Boolean(health?.ai?.provider_key_configured)} />
+          </div>
+          <div>
+            <span>Vision model</span>
+            <HealthStatusBadge configured={Boolean(health?.ai?.vision_model_configured)} />
+          </div>
+          <div>
+            <span>Remote image</span>
+            <HealthStatusBadge configured={Boolean(health?.ai?.attach_remote_image)} configuredLabel="enabled" missingLabel="disabled" />
+          </div>
+        </div>
+        <DataTable
+          ariaLabel="AI provider credential status"
+          columns={aiColumns}
+          rows={aiProviders}
+          rowKey="provider"
+          emptyTitle="No AI providers"
+          emptyDescription="AI provider config is empty."
+        />
+      </section>
+
+      <section className="pid-panel">
+        <div className="pid-panel__header">
+          <h2>Environment Keys</h2>
+          <span>{envRows.filter((row) => row.configured).length}/{envRows.length} configured</span>
+        </div>
+        <DataTable
+          ariaLabel="Environment key status"
+          columns={envColumns}
+          rows={envRows}
+          rowKey="key"
+          emptyTitle="No environment keys"
+          emptyDescription="No expected keys were reported."
+        />
+      </section>
+
+      <section className="pid-panel">
+        <div className="pid-panel__header">
+          <h2>Provider Health</h2>
+          <span>{providerRows.length} providers</span>
+        </div>
+        <DataTable
+          ariaLabel="Search provider health status"
+          columns={providerColumns}
+          rows={providerRows}
+          rowKey="id"
+          emptyTitle="No providers"
+          emptyDescription="No search providers are configured."
+        />
+      </section>
+
+      <section className="pid-panel">
+        <div className="pid-panel__header">
+          <h2>Queues</h2>
+          <span>{health?.queue?.connection ?? '-'}</span>
+        </div>
+        <DataTable
+          ariaLabel="Product image discovery queue status"
+          columns={queueColumns}
+          rows={queueRows}
+          rowKey="phase"
+          emptyTitle="No queues"
+          emptyDescription="No package queues are configured."
+        />
+      </section>
+    </div>
+  );
+}
+
 function PlaceholderPage({ page }) {
   return (
     <div className="pid-stack">
@@ -2665,6 +2880,8 @@ export default function App() {
     body = <ProvidersPage onNotify={notify} />;
   } else if (page === 'trusted') {
     body = <TrustedSourcesPage onNotify={notify} />;
+  } else if (page === 'health') {
+    body = <HealthPage />;
   } else {
     body = <PlaceholderPage page={currentPage} />;
   }

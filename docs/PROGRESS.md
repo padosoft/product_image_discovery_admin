@@ -315,6 +315,61 @@
   - `npm run test` => 8 files, 37 tests
   - `npm run build`
   - `npm run e2e` => 10 Playwright tests
+- Copilot completed the follow-up review on PR #5 at `0b00675` with no new comments.
+- Merged PR #5 into `main` at merge commit `9916e8821d60845bf161db0807248b54ef4cecde`; GitHub Actions/status checks remained unconfigured rather than failing.
+- Started Macro Task 5 on `task/diagnostics-debug-health` from updated `main`.
+- Implemented the Health status slice:
+  - added `GET /admin/product-image-discovery/health` with request-intent routing so browser navigation serves the React shell and JSON requests receive the health payload
+  - reports app route prefixes, expected environment key presence, AI provider/model/key booleans, storage disk configuration, package queue names, and configured search providers
+  - keeps secrets and absolute storage paths out of the JSON response and UI
+  - added a dense Runtime Health page with environment, AI, provider, storage, and queue tables
+  - added PHP, Vitest, and Playwright coverage for direct browser navigation, JSON redaction, and Health page rendering
+- Verification passed after the Health status slice:
+  - `composer validate --strict`
+  - `npm run phpunit` => 38 tests, 298 assertions
+  - `npm run test` => 8 files, 38 tests
+  - `npm run build`
+  - `npm run e2e` => 12 Playwright tests
+- An automatic Codex review on PR #6 generated 1 actionable Health endpoint comment; this is not treated as a Copilot substitute, but was addressed:
+  - `BRAVE_SEARCH_API_KEY` health status now reads configured Brave provider records instead of calling `env()` from controller code, avoiding false missing statuses when config is cached
+  - coverage now proves the Brave provider secret only contributes to a boolean and is not exposed in the response
+- Verification passed after the Brave health status follow-up:
+  - `composer validate --strict`
+  - `npm run phpunit` => 38 tests, 301 assertions
+  - `npm run test` => 8 files, 38 tests
+  - `npm run build`
+  - `npm run e2e` => 12 Playwright tests
+- Copilot reviewed `d86e3b4` and generated 2 comments.
+- Addressed the Copilot PR #6 comments:
+  - Health now reports `package_api_prefix` from `pid-admin.package_api_prefix`, matching the config exposed by `AdminShellController`
+  - the Health page RTL test now injects secret-like fields into the mocked payload and asserts the UI does not render them
+- Verification passed after the Copilot PR #6 fixes:
+  - `composer validate --strict`
+  - `npm run phpunit` => 38 tests, 302 assertions
+  - `npm run test` => 8 files, 38 tests
+  - `npm run build`
+  - `npm run e2e` => 12 Playwright tests
+- Copilot reviewed `ecf98c4` and generated 4 comments.
+- Addressed the latest Copilot PR #6 comments:
+  - Health now derives the Brave key boolean from the already-loaded provider status rows instead of issuing a separate provider query
+  - provider timeout display now renders `- / no rate` instead of `-s / no rate` when timeout is missing
+  - AI provider Base URL defaults now render as a neutral `default` badge instead of a danger badge
+  - RTL coverage now checks both the neutral Base URL default label and the missing-timeout display
+- Verification passed after the latest Copilot PR #6 fixes:
+  - `composer validate --strict`
+  - `npm run phpunit` => 38 tests, 302 assertions
+  - `npm run test` => 8 files, 38 tests
+  - `npm run build`
+  - `npm run e2e` => 12 Playwright tests
+- Copilot reviewed `d4de6b8` and generated 1 additional comment.
+- Addressed the latest Copilot PR #6 comment:
+  - Health provider status now preserves `timeout_seconds: null` instead of coercing a missing value to `0`
+- Verification passed after the timeout serialization follow-up:
+  - `composer validate --strict`
+  - `npm run phpunit` => 38 tests, 302 assertions
+  - `npm run test` => 8 files, 38 tests
+  - `npm run build`
+  - `npm run e2e` => 12 Playwright tests
 
 ## 2026-04-30
 
@@ -344,8 +399,8 @@
 
 ## Open Items
 
-- Finish the provider test wrapper PR loop for Macro Task 4: push, open PR, request Copilot Code Review through the GraphQL fallback if `gh pr edit` is blocked, and poll until comments/checks are resolved.
-- Start Macro Task 5 after Macro Task 4 is merged: Debug Flow, Debug Reports, Health, and API Test Workbench.
+- Continue Macro Task 5 after the Health status slice: Debug Flow, Debug Reports, and API Test Workbench.
+- Keep using the GraphQL `requestReviewsByLogin` fallback for Copilot Code Review when `gh pr edit --add-reviewer @copilot` is blocked by the missing `read:project` scope.
 
 ## 2026-04-30 - Macro 2 Slice
 
