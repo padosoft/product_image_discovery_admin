@@ -136,6 +136,47 @@ final class AdminRequestCandidateControllerTest extends TestCase
         ]);
     }
 
+    public function test_candidate_reject_preserves_ready_to_publish_when_selected_candidate_remains(): void
+    {
+        $requestRecord = $this->createDiscoveryRequest([
+            'status' => 'ready_to_publish',
+            'final_score' => 91,
+        ]);
+        $selectedCandidate = $this->createCandidate($requestRecord, [
+            'status' => 'selected',
+            'final_score' => 84,
+        ]);
+        $rejectedCandidate = $this->createCandidate($requestRecord, [
+            'final_score' => 91,
+        ]);
+        $requestRecord->forceFill([
+            'selected_candidate_id' => $selectedCandidate->getKey(),
+            'best_candidate_id' => $rejectedCandidate->getKey(),
+        ])->save();
+
+        $this->postJson('/admin/product-image-discovery/requests/'.$requestRecord->getKey().'/candidates/'.$rejectedCandidate->getKey().'/reject', [
+            'reason' => 'LOW_CONFIDENCE',
+            'notes' => 'The alternate image is lower quality than the selected image.',
+        ])
+            ->assertOk()
+            ->assertJsonPath('request.status', 'ready_to_publish')
+            ->assertJsonPath('request.selected_candidate.id', $selectedCandidate->getKey())
+            ->assertJsonPath('request.best_candidate.id', $selectedCandidate->getKey());
+
+        $this->assertDatabaseHas('product_image_discovery_requests', [
+            'id' => $requestRecord->getKey(),
+            'status' => 'ready_to_publish',
+            'selected_candidate_id' => $selectedCandidate->getKey(),
+            'best_candidate_id' => $selectedCandidate->getKey(),
+            'final_score' => 84,
+        ]);
+        $this->assertDatabaseHas('product_image_discovery_candidates', [
+            'id' => $rejectedCandidate->getKey(),
+            'status' => 'rejected',
+            'rejection_reason' => 'LOW_CONFIDENCE',
+        ]);
+    }
+
     public function test_candidate_reject_clears_selected_and_best_when_no_candidates_remain(): void
     {
         $requestRecord = $this->createDiscoveryRequest([
