@@ -65,6 +65,7 @@
 - Client-side diagnostic option builders should clamp to the same integer bounds as backend validation and avoid letting `NaN` reach `JSON.stringify()`, where it silently becomes `null`.
 - Browser storage calls can throw on both write and remove in restricted contexts. Treat localStorage persistence as optional and keep both paths guarded.
 - Debug report payload and command console output are separate artifacts: store the structured report in `report_payload`/report files and store only sanitized/truncated `Artisan::output()` in `output`.
+- Playwright tests that create global configuration rows through admin APIs should clean them up in `finally`; desktop/tablet projects share the same prepared SQLite DB and can otherwise influence provider ordering.
 
 ## 2026-04-30
 

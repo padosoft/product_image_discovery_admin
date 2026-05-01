@@ -161,54 +161,66 @@ test('debug flow page runs a fake provider flow to completion', async ({ page },
 
   await page.goto('/admin/product-image-discovery/debug');
   const csrf = await page.locator('meta[name="csrf-token"]').getAttribute('content');
+  const jsonHeaders = {
+    Accept: 'application/json',
+    'X-CSRF-TOKEN': csrf ?? '',
+  };
+  let providerId = null;
 
-  const providerResponse = await page.request.post('/admin/product-image-discovery/search-providers', {
-    headers: {
-      Accept: 'application/json',
-      'X-CSRF-TOKEN': csrf ?? '',
-    },
-    data: {
-      code: providerCode,
-      name: 'Debug Fake Provider',
-      driver: 'fake',
-      base_url: 'https://example.test',
-      config: {
-        supports_image_search: true,
-        supports_site_filter: true,
-        image_results: [
-          {
-            title: 'Herno PI002223D Cappa In Nylon Ultralight Cammello',
-            page_url: `https://example.test/${providerCode}/herno-pi002223d-cammello`,
-            image_url: `data:image/jpeg;base64,${imageData}`,
-            source_domain: 'example.test',
-            width: 1200,
-            height: 1200,
-          },
-        ],
+  try {
+    const providerResponse = await page.request.post('/admin/product-image-discovery/search-providers', {
+      headers: jsonHeaders,
+      data: {
+        code: providerCode,
+        name: 'Debug Fake Provider',
+        driver: 'fake',
+        base_url: 'https://example.test',
+        config: {
+          supports_image_search: true,
+          supports_site_filter: true,
+          image_results: [
+            {
+              title: 'Herno PI002223D Cappa In Nylon Ultralight Cammello',
+              page_url: `https://example.test/${providerCode}/herno-pi002223d-cammello`,
+              image_url: `data:image/jpeg;base64,${imageData}`,
+              source_domain: 'example.test',
+              width: 1200,
+              height: 1200,
+            },
+          ],
+        },
+        priority: 1,
+        timeout_seconds: 5,
+        rate_limit_per_minute: 60,
+        is_active: true,
       },
-      priority: 1,
-      timeout_seconds: 5,
-      rate_limit_per_minute: 60,
-      is_active: true,
-    },
-  });
-  expect(providerResponse.ok()).toBeTruthy();
+    });
+    expect(providerResponse.ok()).toBeTruthy();
+    providerId = (await providerResponse.json()).data?.id ?? null;
+    expect(providerId).toBeTruthy();
 
-  await expect(page.getByRole('heading', { name: 'Run Debug Flow' })).toBeVisible();
-  await page.getByLabel('Request JSON').fill(JSON.stringify({
-    client_id: 1,
-    erp_model_id: `HERNO-${testInfo.project.name}`,
-    erp_model_color_id: `HERNO-${testInfo.project.name}-CAMMELLO`,
-    brand: 'Herno',
-    supplier: 'Herno',
-    supplier_sku: 'PI002223D',
-    model_code: 'PI002223D',
-    color_code: 'CAMMELLO',
-    color_name: 'Cammello',
-  }, null, 2));
-  await page.getByRole('button', { name: 'Run debug flow' }).click();
+    await expect(page.getByRole('heading', { name: 'Run Debug Flow' })).toBeVisible();
+    await page.getByLabel('Request JSON').fill(JSON.stringify({
+      client_id: 1,
+      erp_model_id: `HERNO-${testInfo.project.name}`,
+      erp_model_color_id: `HERNO-${testInfo.project.name}-CAMMELLO`,
+      brand: 'Herno',
+      supplier: 'Herno',
+      supplier_sku: 'PI002223D',
+      model_code: 'PI002223D',
+      color_code: 'CAMMELLO',
+      color_name: 'Cammello',
+    }, null, 2));
+    await page.getByRole('button', { name: 'Run debug flow' }).click();
 
-  await expect(page.getByRole('region', { name: 'Debug run result' })).toContainText('succeeded');
-  await expect(page.getByRole('region', { name: 'Debug run result' })).toContainText(`HERNO-${testInfo.project.name}-CAMMELLO`);
-  await expect(page.getByRole('region', { name: 'Debug run report' })).toContainText('verified_match');
+    await expect(page.getByRole('region', { name: 'Debug run result' })).toContainText('succeeded');
+    await expect(page.getByRole('region', { name: 'Debug run result' })).toContainText(`HERNO-${testInfo.project.name}-CAMMELLO`);
+    await expect(page.getByRole('region', { name: 'Debug run report' })).toContainText('verified_match');
+  } finally {
+    if (providerId) {
+      await page.request.delete(`/admin/product-image-discovery/search-providers/${providerId}`, {
+        headers: jsonHeaders,
+      });
+    }
+  }
 });
