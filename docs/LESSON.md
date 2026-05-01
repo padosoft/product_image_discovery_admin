@@ -41,6 +41,7 @@
 - For provider credential wrappers, omitted `api_key`/`api_secret` must leave encrypted model attributes untouched; assigning the current raw encrypted value back through an encrypted cast can corrupt the stored secret. Use explicit write-only semantics: omitted means keep, empty string means clear, non-empty string means replace.
 - Payload previews must apply the same secret redaction rules as API resources; write-only credential replacement values should never appear in JSON preview panes.
 - Admin pages backed by paginated package resources need either pagination controls or all-page loading. A single first-page fetch silently hides records past the package default page size.
+- Do not reuse request workflow status labels for configuration booleans; provider/source `is_active` should render as active/inactive or enabled/disabled.
 
 ## 2026-04-30
 

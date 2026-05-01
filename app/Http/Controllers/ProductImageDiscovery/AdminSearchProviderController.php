@@ -6,6 +6,7 @@ namespace App\Http\Controllers\ProductImageDiscovery;
 
 use Illuminate\Http\Response;
 use Illuminate\Http\Request;
+use Illuminate\Http\Resources\Json\AnonymousResourceCollection;
 use Illuminate\Routing\Controller;
 use Padosoft\ProductImageDiscovery\Http\Concerns\ResolvesProductImageDiscovery;
 use Padosoft\ProductImageDiscovery\Http\Requests\UpsertProductImageSearchProviderRequest;
@@ -15,7 +16,7 @@ final class AdminSearchProviderController extends Controller
 {
     use ResolvesProductImageDiscovery;
 
-    public function index(Request $request)
+    public function index(Request $request): AnonymousResourceCollection
     {
         $perPage = max(1, min(100, (int) $request->integer('per_page', 25)));
 

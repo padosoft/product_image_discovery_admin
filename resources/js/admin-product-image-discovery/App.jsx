@@ -1404,6 +1404,14 @@ function providerCredentials(provider) {
   ].join(' / ');
 }
 
+function ConfigStateBadge({ active }) {
+  return (
+    <span className={`pid-badge pid-badge--${active ? 'ok' : 'neutral'}`}>
+      {active ? 'active' : 'inactive'}
+    </span>
+  );
+}
+
 function ProvidersPage({ onNotify }) {
   const [providers, setProviders] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -1551,7 +1559,7 @@ function ProvidersPage({ onNotify }) {
     { key: 'code', label: 'Code', render: (provider) => <code>{provider.code}</code> },
     { key: 'name', label: 'Name' },
     { key: 'driver', label: 'Driver' },
-    { key: 'active', label: 'State', render: (provider) => <StatusBadge status={provider.is_active ? 'ready_to_publish' : 'pending'} /> },
+    { key: 'active', label: 'State', render: (provider) => <ConfigStateBadge active={provider.is_active} /> },
     { key: 'credentials', label: 'Credentials', render: providerCredentials },
     { key: 'priority', label: 'Priority' },
     {
@@ -1886,7 +1894,7 @@ function TrustedSourcesPage({ onNotify }) {
     },
     { key: 'policy', label: 'Policy', render: formatPolicyList },
     { key: 'scope', label: 'Scope', render: formatSourceScope },
-    { key: 'state', label: 'State', render: (source) => <StatusBadge status={source.is_active ? 'ready_to_publish' : 'pending'} /> },
+    { key: 'state', label: 'State', render: (source) => <ConfigStateBadge active={source.is_active} /> },
     {
       key: 'actions',
       label: 'Actions',

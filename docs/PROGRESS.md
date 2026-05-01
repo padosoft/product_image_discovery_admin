@@ -243,6 +243,16 @@
   - `npm run test` => 7 files, 36 tests
   - `npm run build`
   - `npm run e2e` => 10 Playwright tests
+- Copilot reviewed `19bfb95` and generated 3 comments.
+- Addressed the latest Copilot PR #4 comments:
+  - provider and trusted-source state columns now render configuration-specific `active`/`inactive` labels instead of request workflow statuses
+  - `AdminSearchProviderController::index()` now declares an `AnonymousResourceCollection` return type
+- Verification passed after the latest Copilot PR #4 fixes:
+  - `composer validate --strict`
+  - `npm run phpunit` => 32 tests, 241 assertions
+  - `npm run test` => 7 files, 36 tests
+  - `npm run build`
+  - `npm run e2e` => 10 Playwright tests
 
 ## 2026-04-30
 
