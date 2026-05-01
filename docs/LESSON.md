@@ -54,6 +54,25 @@
 - Health payload route-prefix fields should use the same config keys as the shell bootstrap (`pid-admin.route_prefix` and `pid-admin.package_api_prefix`) so diagnostics match the URLs the UI actually uses.
 - When a health response already includes provider rows, derive aggregate provider booleans from those rows instead of adding a second query for the same table.
 - Optional numeric fields in health payloads should preserve `null` instead of casting to `0`, otherwise the UI cannot distinguish missing configuration from an explicit zero value.
+- Package console commands registered only for console contexts may be missing when an HTTP-dispatched sync job calls `Artisan::call()`. Explicitly register the command class with `Artisan::registerCommand(app(CommandClass::class))` before invoking it from an admin job.
+- Laravel validation of nested arrays returns only validated nested keys; when the admin must pass through a full product request payload, validate required fields and then read the raw nested input with `$request->input('request_payload', [])`.
+- Playwright projects share the same prepared database when they run in parallel, so e2e assertions should not depend on a globally prioritized provider remaining unique to one project unless the test isolates that data or runs serially.
+- Debug payload redaction should preserve safe credential status booleans such as `has_api_key` and `has_api_secret`; those flags are the approved public shape, while raw `api_key`, `api_secret`, tokens, credentials, and passwords still need redaction.
+- Debug jobs should rewrite or delete command-generated artifacts after redaction, not only sanitize the database copy. On Windows, normalize both `storage_path('app')` and artifact paths before stripping the storage root, or mixed separators can leave absolute paths in persisted JSON.
+- Admin editors that accept arbitrary JSON should not persist raw drafts to localStorage. If local draft persistence is useful, write only a redacted parseable version and drop invalid drafts rather than storing partially typed secret-bearing text.
+- Text redactors need dedicated handling for auth schemes such as `Authorization: Bearer <token>`; generic key/value redaction that stops at whitespace can leave the actual token behind.
+- Retryable/debug jobs should clear stale result fields when moving a row back to `running`; otherwise a retry can show old reports or finished timestamps while new work is in progress.
+- Client-side diagnostic option builders should clamp to the same integer bounds as backend validation and avoid letting `NaN` reach `JSON.stringify()`, where it silently becomes `null`.
+- Browser storage calls can throw on both write and remove in restricted contexts. Treat localStorage persistence as optional and keep both paths guarded.
+- Debug report payload and command console output are separate artifacts: store the structured report in `report_payload`/report files and store only sanitized/truncated `Artisan::output()` in `output`.
+- Playwright tests that create global configuration rows through admin APIs should clean them up in `finally`; desktop/tablet projects share the same prepared SQLite DB and can otherwise influence provider ordering.
+- High-impact admin diagnostics can need stricter middleware than the rest of the demo shell. Use a dedicated config key so production defaults can require `auth` while tests/local smoke can opt out explicitly.
+- List endpoints for stored debug reports should not sanitize full report payloads just to build table rows. Extract and redact only the summary fields needed by the list, and hydrate full reports from the detail endpoint.
+- Queue-backed UI copy should account for `sync` queues in local/demo environments; a create response may already be `succeeded`, not merely queued/running.
+- Debug text redaction needs to handle authorization schemes beyond Bearer, such as Basic, without leaving the credential token after the scheme.
+- API resources should use `null` for missing detail payloads rather than empty arrays when the frontend uses nullish coalescing to decide whether detail hydration is needed.
+- Dedicated detail/report endpoints should use the same nullability contract as their parent resources; otherwise clients cannot reliably distinguish no payload yet from an intentionally empty payload.
+- Polling loops should schedule the next request only after the current one settles, and abort on cleanup, so slow debug/status responses cannot overlap or overwrite newer state.
 
 ## 2026-04-30
 

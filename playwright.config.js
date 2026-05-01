@@ -38,6 +38,7 @@ export default defineConfig({
       SESSION_DRIVER: 'file',
       QUEUE_CONNECTION: 'sync',
       PRODUCT_IMAGE_DISCOVERY_ROUTE_MIDDLEWARE: 'api',
+      PID_ADMIN_DEBUG_RUN_MIDDLEWARE: '',
     },
   },
   projects: [

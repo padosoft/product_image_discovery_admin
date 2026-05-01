@@ -14,6 +14,7 @@
 - Queue default: `sync`.
 - Frontend: Blade shell + Vite + React.
 - Admin route middleware is configurable through `pid-admin.route_middleware`, defaulting to `web`.
+- Debug-run endpoints use `pid-admin.debug_run_middleware`, defaulting to `auth`, because they can dispatch jobs and expose reports.
 - Admin JSON endpoints use session/CSRF, not browser-held Sanctum tokens.
 - Package API remains under `/api/product-image-discovery/...`.
 

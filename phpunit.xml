@@ -23,5 +23,6 @@
         <env name="QUEUE_CONNECTION" value="sync"/>
         <env name="PRODUCT_IMAGE_DISCOVERY_ROUTE_MIDDLEWARE" value="api"/>
         <env name="PID_ADMIN_ROUTE_MIDDLEWARE" value="web"/>
+        <env name="PID_ADMIN_DEBUG_RUN_MIDDLEWARE" value=""/>
     </php>
 </phpunit>

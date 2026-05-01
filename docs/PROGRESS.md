@@ -370,6 +370,116 @@
   - `npm run test` => 8 files, 38 tests
   - `npm run build`
   - `npm run e2e` => 12 Playwright tests
+- Copilot completed the follow-up review on PR #6 at `4e45b29` with no new comments.
+- Merged PR #6 into `main` at merge commit `38d34201fcf34b21ef3be568ac4cfcf5c81b2476`; GitHub Actions/status checks remained unconfigured rather than failing.
+- Continued Macro Task 5 on `task/diagnostics-debug-health` from updated `main`.
+- Implemented the Debug Flow runner slice:
+  - added `product_image_discovery_debug_runs` storage plus a local model for queued/running/succeeded/failed debug executions
+  - added admin JSON wrappers for listing, creating, showing, and reading debug-run reports under `/admin/product-image-discovery/debug-runs...`
+  - added a queueable job that writes the command input/report files, runs the package `product-image-discovery:debug-flow` command, stores sanitized output, and records status/timing/exit code
+  - added recursive backend and frontend redaction for debug request/report payloads while preserving safe credential status flags such as `has_api_key`
+  - added a dense Debug Flow page with request JSON editing, option controls, redacted preview, recent-run table, selected-run polling, and report display
+  - added PHP, Vitest, and Playwright coverage for fake-provider execution, secret redaction, safe credential flags, and desktop/tablet flow completion
+- Verification passed after the Debug Flow runner slice:
+  - `composer validate --strict`
+  - `npm run phpunit` => 40 tests, 319 assertions
+  - `npm run test` => 8 files, 39 tests
+  - `npm run build`
+  - `npm run e2e` => 14 Playwright tests
+- Copilot reviewed `e252185` and generated 3 comments; an automatic Codex review also generated 2 actionable debug-flow comments. Codex is not treated as a Copilot substitute, but the actionable findings were addressed:
+  - debug-run creation now has the same kind of route-level throttling used by provider tests
+  - the debug job now marks file-write/setup failures as failed runs instead of leaving rows stuck in `running`
+  - command-generated `report.json` is overwritten with the redacted payload after ingestion, and stale raw reports are deleted on job failure
+  - stored debug artifact paths are normalized to relative storage paths on Windows even when separators differ
+  - the Debug Flow editor persists only a redacted draft to localStorage, never raw secret-looking request fields
+  - opening a completed historical run now fetches the full debug report instead of rendering only the list summary
+- Verification passed after the PR #7 review fixes:
+  - `composer validate --strict`
+  - `npm run phpunit` => 40 tests, 321 assertions
+  - `npm run test` => 8 files, 40 tests
+  - `npm run build`
+  - `npm run e2e` => 14 Playwright tests
+- Copilot reviewed `66c611a` and generated 1 follow-up comment.
+- Addressed the latest Copilot PR #7 comment:
+  - debug text redaction now handles `Authorization: Bearer <token>` without leaking the token after the scheme
+  - added backend coverage for bearer-token and quoted-token text redaction
+- Verification passed after the bearer redaction follow-up:
+  - `composer validate --strict`
+  - `npm run phpunit` => 40 tests, 322 assertions
+  - `npm run test` => 8 files, 40 tests
+  - `npm run build`
+  - `npm run e2e` => 14 Playwright tests
+- Copilot reviewed `a072251` and generated 3 follow-up comments.
+- Addressed the latest Copilot PR #7 comments:
+  - rerunning an existing debug job now clears stale report/output/path/finished fields when it transitions back to `running`
+  - Debug Flow options now clamp integer inputs to backend validation bounds and turn invalid good-score input into `null` instead of `NaN`
+  - debug-run payload validation now requires `request_payload.client_id` to be a positive integer
+- Verification passed after the latest debug hardening fixes:
+  - `composer validate --strict`
+  - `npm run phpunit` => 41 tests, 325 assertions
+  - `npm run test` => 8 files, 40 tests
+  - `npm run build`
+  - `npm run e2e` => 14 Playwright tests
+- Copilot reviewed `039b384` and generated 2 follow-up comments.
+- Addressed the latest Copilot PR #7 comments:
+  - localStorage debug-draft persistence now catches both parse/remove failures and set failures without crashing storage-restricted browsers
+  - debug job `output` now stores sanitized/truncated Artisan console output instead of duplicating the redacted report JSON
+- Verification passed after the latest debug output/storage fixes:
+  - `composer validate --strict`
+  - `npm run phpunit` => 41 tests, 325 assertions
+  - `npm run test` => 8 files, 40 tests
+  - `npm run build`
+  - `npm run e2e` => 14 Playwright tests
+- Copilot reviewed `a5ac4dc` and generated 1 follow-up comment.
+- Addressed the latest Copilot PR #7 comment:
+  - the Debug Flow Playwright test now deletes its fake provider in a `finally` block so desktop/tablet projects do not leave shared DB rows behind
+- Verification passed after the e2e cleanup follow-up:
+  - `composer validate --strict`
+  - `npm run phpunit` => 41 tests, 325 assertions
+  - `npm run test` => 8 files, 40 tests
+  - `npm run build`
+  - `npm run e2e` => 14 Playwright tests
+- Copilot reviewed `2c08228` and generated 1 follow-up comment.
+- Addressed the latest Copilot PR #7 comment:
+  - debug-run routes now use dedicated `pid-admin.debug_run_middleware`, defaulting to `auth`, in addition to the broader admin wrapper middleware
+  - local PHPUnit and Playwright gates override the debug middleware to keep deterministic unauthenticated smoke coverage
+- Verification passed after the debug-run middleware follow-up:
+  - `composer validate --strict`
+  - `npm run phpunit` => 41 tests, 325 assertions
+  - `npm run test` => 8 files, 40 tests
+  - `npm run build`
+  - `npm run e2e` => 14 Playwright tests
+- Copilot reviewed `4b50d15` and generated 2 follow-up comments.
+- Addressed the latest Copilot PR #7 comments:
+  - debug-run list resources now avoid traversing/redacting the full report when `includeReport=false`, while still exposing redacted summary/request summary fields and `report_available`
+  - Debug Flow create notifications now say `Debug run completed.` when sync queues return `succeeded` immediately
+- Verification passed after the debug list/toast follow-up:
+  - `composer validate --strict`
+  - `npm run phpunit` => 41 tests, 329 assertions
+  - `npm run test` => 8 files, 40 tests
+  - `npm run build`
+  - `npm run e2e` => 14 Playwright tests
+- Copilot reviewed `9d3e0ed` and generated 2 follow-up comments.
+- Addressed the latest Copilot PR #7 comments:
+  - debug text redaction now handles non-Bearer auth schemes such as `Authorization: Basic <token>`
+  - debug-run resources now return `report: null` when no report is available, avoiding empty-array report rendering in the UI
+- Verification passed after the auth-scheme/report-null follow-up:
+  - `composer validate --strict`
+  - `npm run phpunit` => 42 tests, 333 assertions
+  - `npm run test` => 8 files, 40 tests
+  - `npm run build`
+  - `npm run e2e` => 14 Playwright tests
+- Copilot reviewed `b2c9cfb` and generated 3 follow-up comments.
+- Addressed the latest Copilot PR #7 comments:
+  - the dedicated debug-run report endpoint now returns `report: null` plus `report_available: false` when no report payload exists, matching show/list resources
+  - Debug Flow polling now uses a one-at-a-time timeout loop with an `AbortController`, avoiding overlapping requests and stale status overwrites
+  - `openDebugRun()` now uses an explicit `hasHydratedReport` guard for the completed-run hydration path
+- Verification passed after the debug report/polling follow-up:
+  - `composer validate --strict`
+  - `npm run phpunit` => 42 tests, 336 assertions
+  - `npm run test` => 8 files, 41 tests
+  - `npm run build`
+  - `npm run e2e` => 14 Playwright tests
 
 ## 2026-04-30
 
@@ -399,7 +509,7 @@
 
 ## Open Items
 
-- Continue Macro Task 5 after the Health status slice: Debug Flow, Debug Reports, and API Test Workbench.
+- Continue Macro Task 5 after the Debug Flow runner slice: Debug Reports and API Test Workbench.
 - Keep using the GraphQL `requestReviewsByLogin` fallback for Copilot Code Review when `gh pr edit --add-reviewer @copilot` is blocked by the missing `read:project` scope.
 
 ## 2026-04-30 - Macro 2 Slice

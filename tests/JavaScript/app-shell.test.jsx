@@ -36,6 +36,9 @@ describe('admin product image discovery shell', () => {
       clear: vi.fn(() => {
         store.clear();
       }),
+      removeItem: vi.fn((key) => {
+        store.delete(key);
+      }),
     });
     document.documentElement.dataset.theme = 'light';
     document.head.innerHTML = '<meta name="csrf-token" content="test-token">';
@@ -750,6 +753,287 @@ describe('admin product image discovery shell', () => {
     expect(document.body).not.toHaveTextContent('app-secret');
     expect(document.body).not.toHaveTextContent('anthropic-secret');
     expect(document.body).not.toHaveTextContent('provider-secret');
+  });
+
+  it('runs debug flow from JSON and redacts previewed secrets', async () => {
+    window.history.replaceState({}, '', '/admin/product-image-discovery/debug');
+    let createdPayload = null;
+
+    vi.stubGlobal('fetch', vi.fn((url, options = {}) => {
+      const requestUrl = new URL(String(url));
+      const path = requestUrl.pathname;
+      const method = options.method ?? 'GET';
+
+      if (path.endsWith('/dashboard-summary')) {
+        return Promise.resolve(mockJsonResponse({
+          counts: { total: 0, manual_review: 0, ready_to_publish: 0, failed: 0, no_candidates_found: 0 },
+          provider_status: [],
+        }));
+      }
+
+      if (path.includes('/requests/search')) {
+        return Promise.resolve(mockJsonResponse({ data: [] }));
+      }
+
+      if (path.endsWith('/debug-runs') && method === 'POST') {
+        createdPayload = JSON.parse(options.body);
+
+        return Promise.resolve(mockJsonResponse({
+          data: {
+            id: 7,
+            status: 'succeeded',
+            request_payload: { ...createdPayload.request_payload, api_key: '[redacted]' },
+            options: createdPayload.options,
+            summary: { candidate_count: 1, candidates_checked: 1 },
+            request_summary: {
+              erp_model_color_id: createdPayload.request_payload.erp_model_color_id,
+              final_score: 82,
+            },
+            report_available: true,
+            report: {
+              summary: { candidate_count: 1, candidates_checked: 1 },
+              request: { erp_model_color_id: createdPayload.request_payload.erp_model_color_id },
+              config: { api_key: 'server-secret' },
+              provider: { has_api_key: true, has_api_secret: false },
+            },
+            exit_code: 0,
+            updated_at: '2026-05-01T12:00:00Z',
+          },
+        }));
+      }
+
+      if (path.endsWith('/debug-runs')) {
+        return Promise.resolve(mockJsonResponse({ data: [] }));
+      }
+
+      return Promise.reject(new Error(`Unexpected request: ${method} ${path}`));
+    }));
+
+    render(<App />);
+
+    expect(await screen.findByRole('heading', { name: 'Run Debug Flow' })).toBeVisible();
+    const requestPayload = {
+      client_id: 1,
+      erp_model_id: 'HERNO-PI002223D',
+      erp_model_color_id: 'HERNO-PI002223D-CAMMELLO',
+      brand: 'Herno',
+      api_key: 'front-secret',
+    };
+
+    fireEvent.change(screen.getByLabelText('Request JSON'), {
+      target: { value: JSON.stringify(requestPayload, null, 2) },
+    });
+    fireEvent.change(screen.getByLabelText('Max candidates'), { target: { value: '100' } });
+    fireEvent.change(screen.getByLabelText('Good score'), { target: { value: 'not-a-score' } });
+
+    expect(screen.getByRole('region', { name: 'Debug payload preview' })).not.toHaveTextContent('front-secret');
+    await waitFor(() => expect(window.localStorage.getItem('pid-debug-flow-draft')).not.toContain('front-secret'));
+    expect(window.localStorage.getItem('pid-debug-flow-draft')).toContain('[redacted]');
+    fireEvent.click(screen.getByRole('button', { name: 'Run debug flow' }));
+
+    await waitFor(() => expect(createdPayload).toMatchObject({
+      request_payload: requestPayload,
+      options: { max_candidates: 50, good_score: null, no_download: true, no_env_brave: true },
+    }));
+    expect(await screen.findByRole('region', { name: 'Debug run result' })).toHaveTextContent('HERNO-PI002223D-CAMMELLO');
+    expect(screen.getByRole('region', { name: 'Debug run report' })).not.toHaveTextContent('server-secret');
+    expect(screen.getByRole('region', { name: 'Debug run report' })).toHaveTextContent('"has_api_key": true');
+    expect(screen.getByText('Debug run completed.')).toBeVisible();
+  });
+
+  it('fetches a completed debug run report when opening a historical row', async () => {
+    window.history.replaceState({}, '', '/admin/product-image-discovery/debug');
+
+    vi.stubGlobal('fetch', vi.fn((url, options = {}) => {
+      const requestUrl = new URL(String(url));
+      const path = requestUrl.pathname;
+      const method = options.method ?? 'GET';
+
+      if (path.endsWith('/dashboard-summary')) {
+        return Promise.resolve(mockJsonResponse({
+          counts: { total: 0, manual_review: 0, ready_to_publish: 0, failed: 0, no_candidates_found: 0 },
+          provider_status: [],
+        }));
+      }
+
+      if (path.includes('/requests/search')) {
+        return Promise.resolve(mockJsonResponse({ data: [] }));
+      }
+
+      if (path.endsWith('/debug-runs/9') && method === 'GET') {
+        return Promise.resolve(mockJsonResponse({
+          data: {
+            id: 9,
+            status: 'succeeded',
+            request_payload: { erp_model_color_id: 'ARCHIVE-COLOR' },
+            summary: { candidate_count: 1 },
+            request_summary: { erp_model_color_id: 'ARCHIVE-COLOR' },
+            report: { evidence: { marker: 'full archived report' } },
+            report_available: true,
+            updated_at: '2026-05-01T12:00:00Z',
+          },
+        }));
+      }
+
+      if (path.endsWith('/debug-runs') && method === 'GET') {
+        return Promise.resolve(mockJsonResponse({
+          data: [{
+            id: 9,
+            status: 'succeeded',
+            request_payload: { erp_model_color_id: 'ARCHIVE-COLOR' },
+            summary: { candidate_count: 1 },
+            request_summary: { erp_model_color_id: 'ARCHIVE-COLOR' },
+            report: null,
+            report_available: true,
+            updated_at: '2026-05-01T12:00:00Z',
+          }],
+        }));
+      }
+
+      return Promise.reject(new Error(`Unexpected request: ${method} ${path}`));
+    }));
+
+    render(<App />);
+
+    await screen.findByRole('row', { name: /ARCHIVE-COLOR/ });
+    fireEvent.click(screen.getByRole('button', { name: 'Open' }));
+
+    expect(await screen.findByRole('region', { name: 'Debug run report' })).toHaveTextContent('full archived report');
+  });
+
+  it('waits for each debug run poll before scheduling the next one', async () => {
+    window.history.replaceState({}, '', '/admin/product-image-discovery/debug');
+    const debugTimers = [];
+    const debugTimerIds = new Set();
+    const realSetTimeout = window.setTimeout.bind(window);
+    const realClearTimeout = window.clearTimeout.bind(window);
+    const firstPoll = deferredJsonResponse({
+      data: {
+        id: 12,
+        status: 'running',
+        request_payload: { erp_model_color_id: 'POLL-COLOR' },
+        summary: null,
+        request_summary: { erp_model_color_id: 'POLL-COLOR' },
+        report: null,
+        report_available: false,
+        updated_at: '2026-05-01T12:00:00Z',
+      },
+    });
+    const secondPoll = deferredJsonResponse({
+      data: {
+        id: 12,
+        status: 'succeeded',
+        request_payload: { erp_model_color_id: 'POLL-COLOR' },
+        summary: { candidate_count: 1 },
+        request_summary: { erp_model_color_id: 'POLL-COLOR' },
+        report: { done: true },
+        report_available: true,
+        updated_at: '2026-05-01T12:00:01Z',
+      },
+    });
+    let pollReads = 0;
+
+    vi.spyOn(window, 'setTimeout').mockImplementation((callback, delay, ...args) => {
+      if (delay === 1500) {
+        const timerId = { debugPoll: true };
+
+        debugTimers.push(() => (typeof callback === 'function' ? callback(...args) : undefined));
+        debugTimerIds.add(timerId);
+
+        return timerId;
+      }
+
+      return realSetTimeout(callback, delay, ...args);
+    });
+    vi.spyOn(window, 'clearTimeout').mockImplementation((id) => {
+      if (debugTimerIds.has(id)) {
+        debugTimerIds.delete(id);
+
+        return undefined;
+      }
+
+      return realClearTimeout(id);
+    });
+
+    vi.stubGlobal('fetch', vi.fn((url, options = {}) => {
+      const requestUrl = new URL(String(url));
+      const path = requestUrl.pathname;
+      const method = options.method ?? 'GET';
+
+      if (path.endsWith('/dashboard-summary')) {
+        return Promise.resolve(mockJsonResponse({
+          counts: { total: 0, manual_review: 0, ready_to_publish: 0, failed: 0, no_candidates_found: 0 },
+          provider_status: [],
+        }));
+      }
+
+      if (path.includes('/requests/search')) {
+        return Promise.resolve(mockJsonResponse({ data: [] }));
+      }
+
+      if (path.endsWith('/debug-runs') && method === 'POST') {
+        return Promise.resolve(mockJsonResponse({
+          data: {
+            id: 12,
+            status: 'running',
+            request_payload: { erp_model_color_id: 'POLL-COLOR' },
+            summary: null,
+            request_summary: { erp_model_color_id: 'POLL-COLOR' },
+            report: null,
+            report_available: false,
+            updated_at: '2026-05-01T12:00:00Z',
+          },
+        }));
+      }
+
+      if (path.endsWith('/debug-runs/12') && method === 'GET') {
+        pollReads += 1;
+
+        return pollReads === 1 ? firstPoll.promise : secondPoll.promise;
+      }
+
+      if (path.endsWith('/debug-runs') && method === 'GET') {
+        return Promise.resolve(mockJsonResponse({ data: [] }));
+      }
+
+      return Promise.reject(new Error(`Unexpected request: ${method} ${path}`));
+    }));
+
+    render(<App />);
+
+    expect(await screen.findByRole('heading', { name: 'Run Debug Flow' })).toBeVisible();
+    fireEvent.click(screen.getByRole('button', { name: 'Run debug flow' }));
+
+    await waitFor(() => expect(debugTimers).toHaveLength(1));
+    const runFirstPoll = debugTimers.shift();
+
+    act(() => {
+      runFirstPoll();
+    });
+
+    expect(pollReads).toBe(1);
+    expect(debugTimers).toHaveLength(0);
+
+    await act(async () => {
+      firstPoll.resolve();
+      await Promise.resolve();
+    });
+
+    await waitFor(() => expect(debugTimers).toHaveLength(1));
+    const runSecondPoll = debugTimers.shift();
+
+    act(() => {
+      runSecondPoll();
+    });
+
+    expect(pollReads).toBe(2);
+
+    await act(async () => {
+      secondPoll.resolve();
+      await Promise.resolve();
+    });
+
+    expect(await screen.findByRole('region', { name: 'Debug run report' })).toHaveTextContent('"done": true');
   });
 
   it('keeps the request detail drawer open while loading selected request data', async () => {

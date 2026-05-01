@@ -4,8 +4,11 @@ declare(strict_types=1);
 
 namespace Tests\Feature;
 
+use App\Models\ProductImageDiscoveryDebugRun;
+use App\Support\ProductImageDiscovery\DebugPayloadRedactor;
 use Carbon\CarbonImmutable;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\File;
 use Illuminate\Support\Facades\Route;
 use Illuminate\Support\Facades\Storage;
 use Padosoft\ProductImageDiscovery\Models\ProductImageDiscoveryCandidate;
@@ -134,6 +137,168 @@ final class AdminWrapperEndpointsTest extends TestCase
         $this->getJson('/admin/product-image-discovery/health')
             ->assertOk()
             ->assertJsonStructure(['data' => ['app', 'env_status', 'ai', 'storage', 'queue', 'providers']]);
+    }
+
+    public function test_admin_debug_run_executes_fake_flow_and_redacts_payload(): void
+    {
+        config(['product-image-discovery.ai.enabled' => false]);
+        File::deleteDirectory(storage_path('app/product-image-discovery/debug-runs'));
+
+        ProductImageSearchProvider::query()->create([
+            'code' => 'fake-debug-admin',
+            'name' => 'Fake Debug Admin',
+            'driver' => 'fake',
+            'base_url' => 'https://example.test',
+            'config' => [
+                'supports_image_search' => true,
+                'supports_site_filter' => true,
+                'image_results' => [
+                    [
+                        'title' => 'Herno PI002223D Cappa In Nylon Ultralight Cammello',
+                        'page_url' => 'https://example.test/herno-pi002223d-cammello',
+                        'image_url' => 'data:image/jpeg;base64,'.base64_encode(str_repeat('a', 1200)),
+                        'source_domain' => 'example.test',
+                        'width' => 1200,
+                        'height' => 1200,
+                    ],
+                ],
+            ],
+            'priority' => 1,
+            'timeout_seconds' => 5,
+            'rate_limit_per_minute' => 60,
+            'is_active' => true,
+        ]);
+
+        $response = $this->postJson('/admin/product-image-discovery/debug-runs', [
+            'request_payload' => [
+                'client_id' => 1,
+                'erp_model_id' => 'HERNO-PI002223D',
+                'erp_model_color_id' => 'HERNO-PI002223D-CAMMELLO',
+                'brand' => 'Herno',
+                'supplier' => 'Herno',
+                'supplier_sku' => 'PI002223D',
+                'model_code' => 'PI002223D',
+                'color_code' => 'CAMMELLO',
+                'color_name' => 'Cammello',
+                'api_key' => 'request-secret',
+            ],
+            'options' => [
+                'max_candidates' => 1,
+                'fresh' => true,
+                'no_download' => true,
+                'no_env_brave' => true,
+            ],
+        ])
+            ->assertCreated()
+            ->assertJsonPath('data.status', 'succeeded')
+            ->assertJsonPath('data.request_payload.api_key', '[redacted]')
+            ->assertJsonPath('data.summary.candidate_count', 1)
+            ->assertJsonPath('data.summary.candidates_checked', 1)
+            ->assertJsonPath('data.report.search.provider', 'fake-debug-admin');
+
+        $debugRunId = $response->json('data.id');
+        $content = $response->getContent();
+
+        $this->assertDatabaseHas('product_image_discovery_debug_runs', [
+            'id' => $debugRunId,
+            'status' => 'succeeded',
+        ]);
+        $this->assertStringNotContainsString('request-secret', $content);
+        $debugRun = ProductImageDiscoveryDebugRun::query()->findOrFail($debugRunId);
+        $this->assertIsString($debugRun->report_path);
+        $this->assertStringNotContainsString(
+            'request-secret',
+            (string) File::get(storage_path('app/'.$debugRun->report_path)),
+        );
+
+        $this->getJson('/admin/product-image-discovery/debug-runs/'.$debugRunId)
+            ->assertOk()
+            ->assertJsonPath('data.status', 'succeeded')
+            ->assertJsonPath('data.report_available', true);
+
+        $this->getJson('/admin/product-image-discovery/debug-runs')
+            ->assertOk()
+            ->assertJsonPath('data.0.report', null)
+            ->assertJsonPath('data.0.report_available', true)
+            ->assertJsonPath('data.0.summary.candidate_count', 1);
+
+        $this->getJson('/admin/product-image-discovery/debug-runs/'.$debugRunId.'/report')
+            ->assertOk()
+            ->assertJsonPath('data.report.request.erp_model_color_id', 'HERNO-PI002223D-CAMMELLO')
+            ->assertJsonPath('data.report.search.provider', 'fake-debug-admin')
+            ->assertJsonMissing(['request-secret']);
+    }
+
+    public function test_admin_debug_run_requires_integer_client_id(): void
+    {
+        $this->postJson('/admin/product-image-discovery/debug-runs', [
+            'request_payload' => [
+                'client_id' => 'not-integer',
+                'erp_model_color_id' => 'HERNO-PI002223D-CAMMELLO',
+                'brand' => 'Herno',
+            ],
+        ])
+            ->assertUnprocessable()
+            ->assertJsonValidationErrors(['request_payload.client_id']);
+    }
+
+    public function test_admin_debug_run_without_report_returns_null_report(): void
+    {
+        $run = ProductImageDiscoveryDebugRun::query()->create([
+            'status' => 'queued',
+            'request_payload' => [
+                'client_id' => 1,
+                'erp_model_color_id' => 'HERNO-EMPTY',
+                'brand' => 'Herno',
+            ],
+            'options' => [],
+        ]);
+
+        $this->getJson('/admin/product-image-discovery/debug-runs/'.$run->getKey())
+            ->assertOk()
+            ->assertJsonPath('data.report_available', false)
+            ->assertJsonPath('data.report', null);
+
+        $this->getJson('/admin/product-image-discovery/debug-runs/'.$run->getKey().'/report')
+            ->assertOk()
+            ->assertJsonPath('data.report_available', false)
+            ->assertJsonPath('data.report', null);
+    }
+
+    public function test_debug_payload_redactor_preserves_safe_credential_status_flags(): void
+    {
+        $redacted = DebugPayloadRedactor::redact([
+            'has_api_key' => true,
+            'has_api_secret' => false,
+            'api_key' => 'secret-key',
+            'nested' => [
+                'token' => 'secret-token',
+                'has_api_key' => true,
+            ],
+        ]);
+
+        $this->assertSame([
+            'has_api_key' => true,
+            'has_api_secret' => false,
+            'api_key' => '[redacted]',
+            'nested' => [
+                'token' => '[redacted]',
+                'has_api_key' => true,
+            ],
+        ], $redacted);
+
+        $this->assertSame(
+            'authorization: [redacted] api_key=[redacted]',
+            DebugPayloadRedactor::redactText('authorization: Bearer-secret api_key=secret-key'),
+        );
+        $this->assertSame(
+            'Authorization: Bearer [redacted] token="[redacted]"',
+            DebugPayloadRedactor::redactText('Authorization: Bearer secret-token token="quoted secret"'),
+        );
+        $this->assertSame(
+            'Authorization: Basic [redacted]',
+            DebugPayloadRedactor::redactText('Authorization: Basic base64-secret'),
+        );
     }
 
     public function test_request_search_applies_zero_score_filters(): void
