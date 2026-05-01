@@ -26,6 +26,7 @@
 - Timeline display code should compose optional event message/level fields from filtered parts; direct template literals can render database nulls as visible `null` or `undefined`.
 - Frontend tests for debounced behavior should use observable calls or fake timers, not real sleeps, or the suite becomes slower and timing-dependent.
 - Drawer/detail fetch handlers need stale-response guards when operators can open records in quick succession; otherwise a slower earlier response can overwrite the newer selection.
+- Candidate source URLs should be parsed and restricted to `http:`/`https:` before calling `window.open`; backend candidate data must not be trusted as executable navigation.
 
 ## 2026-04-30
 

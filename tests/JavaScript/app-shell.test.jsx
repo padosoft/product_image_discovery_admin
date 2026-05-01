@@ -215,6 +215,7 @@ describe('admin product image discovery shell', () => {
   it('keeps the request detail drawer open while loading selected request data', async () => {
     window.PID_ADMIN = { apiBase: '/custom-admin/product-image-discovery' };
     window.history.replaceState({}, '', '/custom-admin/product-image-discovery/requests');
+    const openSpy = vi.spyOn(window, 'open').mockImplementation(() => null);
     vi.stubGlobal(
       'fetch',
       vi
@@ -283,7 +284,7 @@ describe('admin product image discovery shell', () => {
                 status: 'candidate',
                 final_score: 91,
                 source_domain: 'cdn.example.test',
-                source_page_url: 'https://cdn.example.test/products/model.html',
+                source_page_url: 'javascript:alert(1)',
               },
             ],
           }),
@@ -298,7 +299,9 @@ describe('admin product image discovery shell', () => {
     expect(await screen.findByRole('dialog', { name: 'Request 44' })).toBeVisible();
     expect(screen.getByText('Summary')).toBeVisible();
     expect(screen.getByRole('heading', { name: 'Compare mode' })).toBeVisible();
-    expect(screen.getByRole('button', { name: 'Open source' })).toBeVisible();
+    expect(screen.getByRole('button', { name: 'Open source' })).toBeDisabled();
+    fireEvent.click(screen.getByRole('button', { name: 'Open source' }));
+    expect(openSpy).not.toHaveBeenCalled();
     expect(screen.getByText('info')).toBeVisible();
     expect(screen.queryByText('null')).not.toBeInTheDocument();
     expect((await screen.findAllByAltText('Candidate 301 preview'))[0]).toHaveAttribute(

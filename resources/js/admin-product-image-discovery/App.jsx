@@ -265,6 +265,24 @@ function candidateImageUrl(candidateId) {
   return buildAdminApiPath(`/candidates/${encodeURIComponent(candidateId)}/image`);
 }
 
+function safeExternalHttpUrl(value) {
+  const rawValue = String(value ?? '').trim();
+
+  if (!rawValue) {
+    return '';
+  }
+
+  try {
+    const url = new URL(rawValue, window.location.origin);
+
+    return ['http:', 'https:'].includes(url.protocol) ? url.toString() : '';
+  } catch (err) {
+    void err;
+
+    return '';
+  }
+}
+
 async function fetchOverviewData(signal) {
   const [summaryResult, requestsResult] = await Promise.all([
     pidFetch('/dashboard-summary', { signal }),
@@ -654,6 +672,7 @@ function RequestDetailDrawer({
   const compareCandidate = candidates.find((candidate) => String(candidate.id) === String(compareCandidateId))
     ?? candidates[0]
     ?? null;
+  const compareSourceUrl = compareCandidate ? safeExternalHttpUrl(compareCandidate.source_page_url) : '';
   const requestCanRetry = detail && ['failed', 'no_candidates_found'].includes(detail.status);
   const eventTimeline = events.map((event) => {
     const detail = [event.message, event.level]
@@ -802,7 +821,13 @@ function RequestDetailDrawer({
                     <button
                       type="button"
                       className="pid-chip-button"
-                      onClick={() => window.open(compareCandidate.source_page_url, '_blank', 'noopener,noreferrer')}
+                      onClick={() => {
+                        if (compareSourceUrl) {
+                          window.open(compareSourceUrl, '_blank', 'noopener,noreferrer');
+                        }
+                      }}
+                      disabled={!compareSourceUrl}
+                      title={compareSourceUrl ? 'Open source' : 'Unsafe or missing source URL'}
                     >
                       Open source
                     </button>
