@@ -11,6 +11,7 @@ use Illuminate\Http\Resources\Json\AnonymousResourceCollection;
 use Illuminate\Routing\Controller;
 use Illuminate\Validation\Rule;
 use Padosoft\ProductImageDiscovery\Enums\ProductImageDiscoveryRejectionReason;
+use Padosoft\ProductImageDiscovery\Enums\ProductImageDiscoveryRequestStatus;
 use Padosoft\ProductImageDiscovery\Http\Resources\ProductImageDiscoveryCandidateResource;
 use Padosoft\ProductImageDiscovery\Http\Resources\ProductImageDiscoveryRequestResource;
 use Padosoft\ProductImageDiscovery\Models\ProductImageDiscoveryCandidate;
@@ -111,14 +112,26 @@ final class AdminRequestCandidateController extends Controller
         $selectedCandidateId = $record->getAttribute('selected_candidate_id');
         $bestCandidateId = $record->getAttribute('best_candidate_id');
         $rejectedCandidateId = $candidateRecord->getKey();
+        $candidateWasSelected = $selectedCandidateId !== null && (string) $selectedCandidateId === (string) $rejectedCandidateId;
         $candidateWasBest = $bestCandidateId !== null && (string) $bestCandidateId === (string) $rejectedCandidateId;
+        $currentStatus = $record->getAttribute('status');
+        $currentStatusValue = $currentStatus instanceof ProductImageDiscoveryRequestStatus
+            ? $currentStatus->value
+            : $currentStatus;
+        $shouldKeepPublishReadyStatus = $hasRemainingCandidates
+            && ! $candidateWasSelected
+            && $selectedCandidateId !== null
+            && in_array($currentStatusValue, [
+                ProductImageDiscoveryRequestStatus::ReadyToPublish->value,
+                ProductImageDiscoveryRequestStatus::Published->value,
+            ], true);
 
         $record->fill([
-            'status' => $hasRemainingCandidates ? 'manual_review' : 'rejected',
+            'status' => $shouldKeepPublishReadyStatus
+                ? $currentStatusValue
+                : ($hasRemainingCandidates ? 'manual_review' : 'rejected'),
             'rejection_reason' => $hasRemainingCandidates ? null : $payload['reason'],
-            'selected_candidate_id' => $selectedCandidateId !== null && (string) $selectedCandidateId === (string) $rejectedCandidateId
-                ? null
-                : $selectedCandidateId,
+            'selected_candidate_id' => $candidateWasSelected ? null : $selectedCandidateId,
             'best_candidate_id' => $candidateWasBest ? $remainingBestCandidate?->getKey() : $bestCandidateId,
             'final_score' => $candidateWasBest ? $remainingBestCandidate?->getAttribute('final_score') : $record->getAttribute('final_score'),
         ]);
