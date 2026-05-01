@@ -43,10 +43,17 @@ final class AdminRequestCandidateControllerTest extends TestCase
             'status' => 'manual_review',
             'final_score' => 61,
         ]);
+        $previousSelected = $this->createCandidate($requestRecord, [
+            'status' => 'selected',
+            'final_score' => 72,
+        ]);
         $candidate = $this->createCandidate($requestRecord, [
             'status' => 'candidate',
             'final_score' => 88,
         ]);
+        $requestRecord->forceFill([
+            'selected_candidate_id' => $previousSelected->getKey(),
+        ])->save();
 
         $this->postJson('/admin/product-image-discovery/requests/'.$requestRecord->getKey().'/candidates/'.$candidate->getKey().'/approve')
             ->assertOk()
@@ -63,6 +70,10 @@ final class AdminRequestCandidateControllerTest extends TestCase
         $this->assertDatabaseHas('product_image_discovery_candidates', [
             'id' => $candidate->getKey(),
             'status' => 'selected',
+        ]);
+        $this->assertDatabaseHas('product_image_discovery_candidates', [
+            'id' => $previousSelected->getKey(),
+            'status' => 'candidate',
         ]);
         $this->assertDatabaseHas('product_image_discovery_events', [
             'request_id' => $requestRecord->getKey(),
@@ -90,13 +101,17 @@ final class AdminRequestCandidateControllerTest extends TestCase
     {
         $requestRecord = $this->createDiscoveryRequest([
             'status' => 'manual_review',
+            'final_score' => 42,
         ]);
         $rejectedCandidate = $this->createCandidate($requestRecord, [
             'final_score' => 42,
         ]);
-        $this->createCandidate($requestRecord, [
+        $remainingCandidate = $this->createCandidate($requestRecord, [
             'final_score' => 67,
         ]);
+        $requestRecord->forceFill([
+            'best_candidate_id' => $rejectedCandidate->getKey(),
+        ])->save();
 
         $this->postJson('/admin/product-image-discovery/requests/'.$requestRecord->getKey().'/candidates/'.$rejectedCandidate->getKey().'/reject', [
             'reason' => 'LOW_CONFIDENCE',
@@ -111,11 +126,45 @@ final class AdminRequestCandidateControllerTest extends TestCase
             'id' => $requestRecord->getKey(),
             'status' => 'manual_review',
             'rejection_reason' => null,
+            'best_candidate_id' => $remainingCandidate->getKey(),
+            'final_score' => 67,
         ]);
         $this->assertDatabaseHas('product_image_discovery_events', [
             'request_id' => $requestRecord->getKey(),
             'candidate_id' => $rejectedCandidate->getKey(),
             'event_type' => 'candidate_rejected',
+        ]);
+    }
+
+    public function test_candidate_reject_clears_selected_and_best_when_no_candidates_remain(): void
+    {
+        $requestRecord = $this->createDiscoveryRequest([
+            'status' => 'manual_review',
+            'final_score' => 77,
+        ]);
+        $candidate = $this->createCandidate($requestRecord, [
+            'final_score' => 77,
+        ]);
+        $requestRecord->forceFill([
+            'selected_candidate_id' => $candidate->getKey(),
+            'best_candidate_id' => $candidate->getKey(),
+        ])->save();
+
+        $this->postJson('/admin/product-image-discovery/requests/'.$requestRecord->getKey().'/candidates/'.$candidate->getKey().'/reject', [
+            'reason' => 'LOW_CONFIDENCE',
+            'notes' => 'No suitable image remains.',
+        ])
+            ->assertOk()
+            ->assertJsonPath('request.status', 'rejected')
+            ->assertJsonPath('request.selected_candidate', null)
+            ->assertJsonPath('request.best_candidate', null);
+
+        $this->assertDatabaseHas('product_image_discovery_requests', [
+            'id' => $requestRecord->getKey(),
+            'status' => 'rejected',
+            'selected_candidate_id' => null,
+            'best_candidate_id' => null,
+            'final_score' => null,
         ]);
     }
 
@@ -142,6 +191,25 @@ final class AdminRequestCandidateControllerTest extends TestCase
         $this->assertDatabaseHas('product_image_discovery_events', [
             'request_id' => $requestRecord->getKey(),
             'event_type' => 'request_retry_requested',
+        ]);
+    }
+
+    public function test_request_retry_rejects_non_retryable_statuses(): void
+    {
+        $requestRecord = $this->createDiscoveryRequest([
+            'status' => 'ready_to_publish',
+            'attempts' => 2,
+        ]);
+
+        $this->postJson('/admin/product-image-discovery/requests/'.$requestRecord->getKey().'/retry')
+            ->assertStatus(409)
+            ->assertJsonPath('message', 'This request cannot be retried from its current status.')
+            ->assertJsonPath('status', 'ready_to_publish');
+
+        $this->assertDatabaseHas('product_image_discovery_requests', [
+            'id' => $requestRecord->getKey(),
+            'status' => 'ready_to_publish',
+            'attempts' => 2,
         ]);
     }
 

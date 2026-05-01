@@ -35,6 +35,15 @@ final class AdminRequestCandidateController extends Controller
     {
         [$record, $candidateRecord] = $this->resolveRequestAndCandidate($request, $candidate);
 
+        ProductImageDiscoveryCandidate::query()
+            ->where('request_id', $record->getKey())
+            ->whereKeyNot($candidateRecord->getKey())
+            ->where('status', 'selected')
+            ->update([
+                'status' => 'candidate',
+                'rejection_reason' => null,
+            ]);
+
         $candidateRecord->fill([
             'status' => 'selected',
             'rejection_reason' => null,
@@ -95,14 +104,23 @@ final class AdminRequestCandidateController extends Controller
             ->where('status', '!=', 'rejected');
 
         $hasRemainingCandidates = $otherCandidatesQuery->exists();
+        $remainingBestCandidate = (clone $otherCandidatesQuery)
+            ->orderByDesc('final_score')
+            ->orderBy('id')
+            ->first();
         $selectedCandidateId = $record->getAttribute('selected_candidate_id');
+        $bestCandidateId = $record->getAttribute('best_candidate_id');
+        $rejectedCandidateId = $candidateRecord->getKey();
+        $candidateWasBest = $bestCandidateId !== null && (string) $bestCandidateId === (string) $rejectedCandidateId;
 
         $record->fill([
             'status' => $hasRemainingCandidates ? 'manual_review' : 'rejected',
             'rejection_reason' => $hasRemainingCandidates ? null : $payload['reason'],
-            'selected_candidate_id' => $selectedCandidateId !== null && (string) $selectedCandidateId === (string) $candidateRecord->getKey()
+            'selected_candidate_id' => $selectedCandidateId !== null && (string) $selectedCandidateId === (string) $rejectedCandidateId
                 ? null
                 : $selectedCandidateId,
+            'best_candidate_id' => $candidateWasBest ? $remainingBestCandidate?->getKey() : $bestCandidateId,
+            'final_score' => $candidateWasBest ? $remainingBestCandidate?->getAttribute('final_score') : $record->getAttribute('final_score'),
         ]);
         $record->save();
 

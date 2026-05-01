@@ -25,3 +25,4 @@
 !/database/.gitkeep
 /bootstrap/cache/*
 !/bootstrap/cache/.gitkeep
+/.codex/

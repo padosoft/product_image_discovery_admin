@@ -11,6 +11,9 @@
 - For this Windows/Herd setup, direct PowerShell calls to `C:\Users\lopad\.config\herd\bin\php84\php.exe` or `php84.bat` may fail until the command prefix is trusted. Running PHP through the repo wrapper `npm run phpunit` consistently resolves Herd PHP 8.4.20 after approval and avoids falling back to XAMPP.
 - Deterministic admin demo data is safer as direct seeded rows than as a shared fake-provider pipeline run because the package fake provider does not filter multi-product image results by product identity.
 - Inline generated PNG data URIs are enough for candidate preview smoke data and avoid remote image downloads while still exercising the protected admin image endpoint.
+- If `npm run phpunit -- --filter ...` fails to resolve Herd PHP and falls back to missing `php` on PATH, rerun the full `npm run phpunit` gate or set `PHP_BINARY` explicitly for the filtered run.
+- Admin approve/reject wrappers need to maintain request candidate pointers, not just the clicked candidate row: approving should demote any prior selected candidate, and rejecting the current best/selected candidate should clear or recompute `best_candidate_id`, `selected_candidate_id`, and `final_score`.
+- Server-side retry validation should use `ProductImageDiscoveryRequestStatus::isRetryable()` so direct admin JSON calls cannot requeue published, ready-to-publish, manual-review, or other non-retryable requests.
 
 ## 2026-04-30
 

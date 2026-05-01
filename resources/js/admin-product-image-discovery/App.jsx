@@ -647,7 +647,7 @@ function RequestDetailDrawer({
   const compareCandidate = candidates.find((candidate) => String(candidate.id) === String(compareCandidateId))
     ?? candidates[0]
     ?? null;
-  const requestCanRetry = detail && !['published', 'ready_to_publish'].includes(detail.status);
+  const requestCanRetry = detail && ['failed', 'no_candidates_found'].includes(detail.status);
   const eventTimeline = events.map((event) => ({
     id: event.id,
     title: event.event_type,

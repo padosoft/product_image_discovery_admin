@@ -7,6 +7,7 @@ namespace App\Http\Controllers\ProductImageDiscovery;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Routing\Controller;
+use Padosoft\ProductImageDiscovery\Enums\ProductImageDiscoveryRequestStatus;
 use Padosoft\ProductImageDiscovery\Http\Resources\ProductImageDiscoveryRequestResource;
 use Padosoft\ProductImageDiscovery\Models\ProductImageDiscoveryEvent;
 use Padosoft\ProductImageDiscovery\Models\ProductImageDiscoveryRequest;
@@ -20,6 +21,18 @@ final class AdminRequestRetryController extends Controller
         }
 
         $record = ProductImageDiscoveryRequest::query()->findOrFail($request);
+        $statusValue = $record->getAttribute('status');
+        $statusValue = $statusValue instanceof ProductImageDiscoveryRequestStatus
+            ? $statusValue->value
+            : (string) $statusValue;
+        $status = ProductImageDiscoveryRequestStatus::tryFrom($statusValue);
+
+        if ($status === null || ! $status->isRetryable()) {
+            return response()->json([
+                'message' => 'This request cannot be retried from its current status.',
+                'status' => $statusValue,
+            ], 409);
+        }
 
         $record->fill([
             'status' => 'queued',

@@ -35,6 +35,17 @@
   - `npm run test`
   - `npm run build`
   - `npm run e2e`
+- Opened PR #2 for Macro Task 3 into `main`, then merged `origin/main` into the branch to make the PR mergeable.
+- Addressed automated review comments on PR #2:
+  - approving a candidate now demotes any previously selected candidate row for the same request
+  - rejecting a candidate now clears/recomputes stale best/selected candidate pointers and `final_score`
+  - retry now rejects non-retryable request statuses server-side using the package status enum
+  - the drawer retry action is enabled only for retryable failed/no-candidates requests
+- Verification passed after PR #2 review fixes:
+  - `npm run phpunit`
+  - `npm run test`
+  - `npm run build`
+  - `npm run e2e`
 
 ## 2026-04-30
 
@@ -64,9 +75,9 @@
 
 ## Open Items
 
-- Push `task/request-review-workflows` after `2ae421b`.
-- Open the Macro Task 3 PR into `main`.
-- Request Copilot review, poll for CI/review comments, and fix until green/resolved. If GitHub Actions remain unavailable, record that no remote CI workflow runs were present.
+- Push the PR #2 review fixes.
+- Poll PR #2 review threads and status checks again.
+- If no remote CI workflow runs are present, record that GitHub Actions/status checks are unavailable for PR #2 before merging.
 
 ## 2026-04-30 - Macro 2 Slice
 
