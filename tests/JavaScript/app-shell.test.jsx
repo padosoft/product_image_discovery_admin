@@ -214,6 +214,75 @@ describe('admin product image discovery shell', () => {
     await waitFor(() => expect(window.location.search).toContain('manual_review_required=true'));
   });
 
+  it('loads settings and submits typed setting payloads from the configuration page', async () => {
+    window.history.replaceState({}, '', '/admin/product-image-discovery/settings');
+    let createdPayload = null;
+    const settingsPayload = {
+      data: [
+        {
+          id: 7,
+          client_id: null,
+          setting_key: 'decision.manual_review_threshold',
+          setting_value: 55,
+          value_type: 'integer',
+          description: 'Manual review threshold',
+          is_active: true,
+          updated_at: '2026-05-01T10:00:00Z',
+        },
+      ],
+    };
+
+    vi.stubGlobal('fetch', vi.fn((url, options = {}) => {
+      const requestUrl = new URL(String(url));
+      const path = requestUrl.pathname;
+      const method = options.method ?? 'GET';
+
+      if (path.endsWith('/dashboard-summary')) {
+        return Promise.resolve(mockJsonResponse({
+          counts: { total: 0, manual_review: 0, ready_to_publish: 0, failed: 0, no_candidates_found: 0 },
+          provider_status: [],
+        }));
+      }
+
+      if (path.includes('/requests/search')) {
+        return Promise.resolve(mockJsonResponse({ data: [] }));
+      }
+
+      if (path.endsWith('/settings') && method === 'POST') {
+        createdPayload = JSON.parse(options.body);
+        return Promise.resolve(mockJsonResponse({ data: { id: 8, ...createdPayload } }));
+      }
+
+      if (path.endsWith('/settings')) {
+        return Promise.resolve(mockJsonResponse(settingsPayload));
+      }
+
+      return Promise.reject(new Error(`Unexpected request: ${method} ${path}`));
+    }));
+
+    render(<App />);
+
+    expect(await screen.findByRole('heading', { name: 'Create Setting' })).toBeVisible();
+    expect(await screen.findByText('decision.manual_review_threshold')).toBeVisible();
+    expect(screen.getByRole('region', { name: 'Setting JSON preview' })).toBeVisible();
+
+    fireEvent.change(screen.getByLabelText('Setting key'), { target: { value: 'decision.auto_publish_threshold' } });
+    fireEvent.change(screen.getByLabelText('Client override'), { target: { value: '5' } });
+    fireEvent.change(screen.getByLabelText('Setting value'), { target: { value: '88' } });
+    fireEvent.change(screen.getByLabelText('Description'), { target: { value: 'Client threshold' } });
+    fireEvent.change(screen.getByLabelText('State'), { target: { value: 'false' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Create setting' }));
+
+    await waitFor(() => expect(createdPayload).toEqual({
+      client_id: 5,
+      setting_key: 'decision.auto_publish_threshold',
+      setting_value: 88,
+      value_type: 'integer',
+      description: 'Client threshold',
+      is_active: false,
+    }));
+  });
+
   it('keeps the request detail drawer open while loading selected request data', async () => {
     window.PID_ADMIN = { apiBase: '/custom-admin/product-image-discovery' };
     window.history.replaceState({}, '', '/custom-admin/product-image-discovery/requests');

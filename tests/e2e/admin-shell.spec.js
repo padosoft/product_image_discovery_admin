@@ -46,3 +46,28 @@ test('admin shell keeps sidebar and main content separated on tablet', async ({ 
   expect(headerBox.x).toBeGreaterThanOrEqual(sidebarBox.x + sidebarBox.width - 1);
   expect(contentBox.y).toBeGreaterThanOrEqual(headerBox.y + headerBox.height - 1);
 });
+
+test('settings page creates and deletes a typed override', async ({ page }, testInfo) => {
+  const settingKey = `e2e.${testInfo.project.name}.manual_review_threshold`;
+
+  await page.goto('/admin/product-image-discovery/settings');
+
+  await expect(page.getByRole('heading', { name: 'Create Setting' })).toBeVisible();
+  await page.getByLabel('Setting key').fill(settingKey);
+  await page.getByLabel('Client override').fill('77');
+  await page.getByLabel('Setting value').fill('64');
+  await page.getByLabel('Description').fill('E2E typed setting override');
+  await page.getByRole('button', { name: 'Create setting' }).click();
+
+  await expect(page.getByText('Setting created.')).toBeVisible();
+  const row = page.getByRole('row', { name: new RegExp(settingKey) });
+  await expect(row).toBeVisible();
+  await expect(row).toContainText('Client 77');
+  await expect(row).toContainText('64');
+
+  await row.getByRole('button', { name: 'Delete' }).click();
+  await page.getByRole('dialog', { name: `Delete ${settingKey}` }).getByRole('button', { name: 'Delete' }).click();
+
+  await expect(page.getByText('Setting deleted.')).toBeVisible();
+  await expect(page.getByRole('row', { name: new RegExp(settingKey) })).toHaveCount(0);
+});

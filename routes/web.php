@@ -9,9 +9,11 @@ use App\Http\Controllers\ProductImageDiscovery\AdminRequestEventsController;
 use App\Http\Controllers\ProductImageDiscovery\AdminRequestShowController;
 use App\Http\Controllers\ProductImageDiscovery\AdminRequestSearchController;
 use App\Http\Controllers\ProductImageDiscovery\AdminRequestRetryController;
+use App\Http\Controllers\ProductImageDiscovery\AdminSettingIndexController;
 use App\Http\Controllers\ProductImageDiscovery\AdminShellController;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Support\Facades\Route;
+use Padosoft\ProductImageDiscovery\Http\Controllers\Api\ProductImageDiscoverySettingController as PackageSettingController;
 
 $adminPrefix = trim((string) config('pid-admin.route_prefix', 'admin/product-image-discovery'), '/');
 
@@ -32,6 +34,11 @@ Route::prefix($adminPrefix)
         Route::post('requests/{request}/candidates/{candidate}/approve', [AdminRequestCandidateController::class, 'approve'])->name('requests.candidates.approve');
         Route::post('requests/{request}/candidates/{candidate}/reject', [AdminRequestCandidateController::class, 'reject'])->name('requests.candidates.reject');
         Route::get('candidates/{candidate}/image', AdminCandidateImageController::class)->name('candidates.image');
+        Route::get('settings', AdminSettingIndexController::class)->name('settings.index');
+        Route::post('settings', [PackageSettingController::class, 'store'])->name('settings.store');
+        Route::get('settings/{setting}', [PackageSettingController::class, 'show'])->name('settings.show');
+        Route::put('settings/{setting}', [PackageSettingController::class, 'update'])->name('settings.update');
+        Route::delete('settings/{setting}', [PackageSettingController::class, 'destroy'])->name('settings.destroy');
 
         Route::get('/', AdminShellController::class)->name('shell');
         Route::get('{path}', AdminShellController::class)

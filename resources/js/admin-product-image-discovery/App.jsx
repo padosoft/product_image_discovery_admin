@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
-import { pidFetch, normalizeLaravelPagination, buildRequestSearchPath, buildAdminApiPath } from './api';
+import { pidFetch, normalizeLaravelPagination, buildRequestSearchPath, buildAdminApiPath, normalizeAdminApiBase } from './api';
 import { DataTable } from './components/DataTable';
 import { ConfirmModal } from './components/ConfirmModal';
 import { Drawer } from './components/Drawer';
@@ -17,6 +17,12 @@ import {
   requestFiltersToActiveChips,
   requestFiltersToSearchParams,
 } from './request-filters';
+import {
+  DEFAULT_SETTING_FORM,
+  SETTING_VALUE_TYPES,
+  buildSettingPayload,
+  settingToForm,
+} from './settings-form';
 
 const DEFAULT_SUMMARY = {
   counts: {},
@@ -54,6 +60,23 @@ const navGroups = [
 const pageIndex = Object.fromEntries(
   navGroups.flatMap((group) => group.items.map((item) => [item.id, item])),
 );
+
+function pageFromPath(pathname) {
+  const pageIds = new Set(Object.keys(pageIndex));
+  const segments = String(pathname || '').split('/').filter(Boolean).reverse();
+
+  return segments.find((segment) => pageIds.has(segment) && segment !== 'overview') ?? 'overview';
+}
+
+function pathForPage(page) {
+  const base = normalizeAdminApiBase();
+
+  if (page === 'overview') {
+    return `${base}/`;
+  }
+
+  return `${base}/${page}`;
+}
 
 function ShellIcon({ name }) {
   const sharedProps = {
@@ -313,6 +336,12 @@ async function fetchRequestDetail(requestId, signal) {
     events: normalizeLaravelPagination(eventsResult).data,
     candidates: normalizeLaravelPagination(candidatesResult).data,
   };
+}
+
+async function fetchSettings(signal) {
+  const result = await pidFetch('/settings', { signal });
+
+  return normalizeLaravelPagination(result).data;
 }
 
 function Sidebar({ page, onPage }) {
@@ -962,6 +991,275 @@ function Requests({
   );
 }
 
+function settingScope(setting) {
+  return setting.client_id ? `Client ${setting.client_id}` : 'Global';
+}
+
+function settingValuePreview(value) {
+  if (value === null || value === undefined) {
+    return 'null';
+  }
+
+  const preview = typeof value === 'object' ? JSON.stringify(value) : String(value);
+
+  return preview.length > 80 ? `${preview.slice(0, 77)}...` : preview;
+}
+
+function SettingsPage({ onNotify }) {
+  const [settings, setSettings] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState('');
+  const [form, setForm] = useState(() => ({ ...DEFAULT_SETTING_FORM }));
+  const [formError, setFormError] = useState('');
+  const [actionLoading, setActionLoading] = useState(false);
+  const [deleteSetting, setDeleteSetting] = useState(null);
+
+  const formPayload = useMemo(() => buildSettingPayload(form), [form]);
+  const previewValue = formPayload.ok ? formPayload.value : { error: formPayload.error };
+
+  async function reloadSettings(signal) {
+    setLoading(true);
+    setError('');
+
+    try {
+      const result = await fetchSettings(signal);
+      setSettings(result);
+    } catch (err) {
+      if (err.name !== 'AbortError') {
+        setSettings([]);
+        setError(err.message || 'Unable to load settings.');
+      }
+    } finally {
+      if (!signal?.aborted) {
+        setLoading(false);
+      }
+    }
+  }
+
+  useEffect(() => {
+    const controller = new AbortController();
+
+    reloadSettings(controller.signal);
+
+    return () => controller.abort();
+  }, []);
+
+  function updateForm(name, value) {
+    setForm((current) => ({ ...current, [name]: value }));
+    setFormError('');
+  }
+
+  function resetForm() {
+    setForm({ ...DEFAULT_SETTING_FORM });
+    setFormError('');
+  }
+
+  async function submitSetting(event) {
+    event.preventDefault();
+
+    if (actionLoading) {
+      return;
+    }
+
+    if (!form.setting_key.trim()) {
+      setFormError('Setting key is required.');
+      return;
+    }
+
+    const payload = buildSettingPayload(form);
+
+    if (!payload.ok) {
+      setFormError(payload.error);
+      return;
+    }
+
+    setActionLoading(true);
+    setFormError('');
+
+    try {
+      const path = form.id ? `/settings/${form.id}` : '/settings';
+      await pidFetch(path, {
+        method: form.id ? 'PUT' : 'POST',
+        body: JSON.stringify(payload.value),
+      });
+      await reloadSettings();
+      onNotify(form.id ? 'Setting updated.' : 'Setting created.', 'success');
+      resetForm();
+    } catch (err) {
+      setFormError(err.message || 'Unable to save setting.');
+      onNotify(err.message || 'Unable to save setting.', 'danger');
+    } finally {
+      setActionLoading(false);
+    }
+  }
+
+  async function confirmDeleteSetting() {
+    if (actionLoading || !deleteSetting?.id) {
+      return;
+    }
+
+    setActionLoading(true);
+
+    try {
+      await pidFetch(`/settings/${deleteSetting.id}`, { method: 'DELETE' });
+      await reloadSettings();
+      onNotify('Setting deleted.', 'success');
+      setDeleteSetting(null);
+      if (form.id === deleteSetting.id) {
+        resetForm();
+      }
+    } catch (err) {
+      setError(err.message || 'Unable to delete setting.');
+      onNotify(err.message || 'Unable to delete setting.', 'danger');
+    } finally {
+      setActionLoading(false);
+    }
+  }
+
+  const columns = [
+    { key: 'setting_key', label: 'Key', render: (setting) => <code>{setting.setting_key}</code> },
+    { key: 'scope', label: 'Scope', render: settingScope },
+    { key: 'value_type', label: 'Type' },
+    { key: 'setting_value', label: 'Value', render: (setting) => <code>{settingValuePreview(setting.setting_value)}</code> },
+    {
+      key: 'active',
+      label: 'State',
+      render: (setting) => (
+        <span className={`pid-badge pid-badge--${setting.is_active ? 'ok' : 'neutral'}`}>
+          {setting.is_active ? 'active' : 'inactive'}
+        </span>
+      ),
+    },
+    { key: 'updated_at', label: 'Updated', render: (setting) => formatUpdatedAt(setting.updated_at) },
+    {
+      key: 'actions',
+      label: 'Actions',
+      className: 'pid-table__actions',
+      render: (setting) => (
+        <div className="pid-row-actions">
+          <button type="button" className="pid-chip-button" onClick={() => setForm(settingToForm(setting))}>
+            Edit
+          </button>
+          <button type="button" className="pid-chip-button" onClick={() => setDeleteSetting(setting)}>
+            Delete
+          </button>
+        </div>
+      ),
+    },
+  ];
+
+  return (
+    <div className="pid-stack">
+      {error ? (
+        <div className="pid-alert pid-alert--danger" role="alert">
+          {error}
+        </div>
+      ) : null}
+      <section className="pid-config-layout" aria-label="Settings management">
+        <section className="pid-panel">
+          <div className="pid-panel__header">
+            <h2>{form.id ? 'Edit Setting' : 'Create Setting'}</h2>
+            <span>{form.id ? `#${form.id}` : 'Global or client override'}</span>
+          </div>
+          <form className="pid-config-form" onSubmit={submitSetting}>
+            <label>
+              <span>Setting key</span>
+              <input
+                value={form.setting_key}
+                onChange={(event) => updateForm('setting_key', event.target.value)}
+                placeholder="decision.manual_review_threshold"
+              />
+            </label>
+            <label>
+              <span>Client override</span>
+              <input
+                type="number"
+                min="1"
+                inputMode="numeric"
+                value={form.client_id}
+                onChange={(event) => updateForm('client_id', event.target.value)}
+                placeholder="Global"
+              />
+            </label>
+            <label>
+              <span>Value type</span>
+              <select value={form.value_type} onChange={(event) => updateForm('value_type', event.target.value)}>
+                {SETTING_VALUE_TYPES.map((type) => <option key={type} value={type}>{type}</option>)}
+              </select>
+            </label>
+            <label>
+              <span>Setting value</span>
+              <textarea
+                value={form.setting_value}
+                onChange={(event) => updateForm('setting_value', event.target.value)}
+                placeholder={form.value_type === 'json' ? '{"enabled":true}' : '60'}
+                disabled={form.value_type === 'null'}
+              />
+            </label>
+            <label>
+              <span>Description</span>
+              <textarea
+                value={form.description}
+                onChange={(event) => updateForm('description', event.target.value)}
+                placeholder="Operational note for this setting"
+              />
+            </label>
+            <label>
+              <span>State</span>
+              <select
+                value={form.is_active ? 'true' : 'false'}
+                onChange={(event) => updateForm('is_active', event.target.value === 'true')}
+              >
+                <option value="true">Active</option>
+                <option value="false">Inactive</option>
+              </select>
+            </label>
+            {formError ? (
+              <div className="pid-alert pid-alert--danger" role="alert">
+                {formError}
+              </div>
+            ) : null}
+            <div className="pid-form-actions">
+              <button type="button" className="pid-chip-button" onClick={resetForm}>
+                Reset
+              </button>
+              <button type="submit" className="pid-chip-button pid-chip-button--accent" disabled={actionLoading}>
+                {actionLoading ? 'Saving...' : form.id ? 'Update setting' : 'Create setting'}
+              </button>
+            </div>
+          </form>
+        </section>
+
+        <JsonViewer value={previewValue} label="Setting JSON preview" />
+      </section>
+
+      <section className="pid-panel">
+        <div className="pid-panel__header">
+          <h2>Settings</h2>
+          <span>{loading ? 'Loading' : `${settings.length} rows`}</span>
+        </div>
+        <DataTable
+          ariaLabel="Product image discovery settings"
+          columns={columns}
+          rows={settings}
+          loading={loading}
+          emptyTitle="No settings"
+          emptyDescription="Seed defaults or create an override to tune the pipeline."
+        />
+      </section>
+
+      <ConfirmModal
+        open={Boolean(deleteSetting)}
+        title={deleteSetting ? `Delete ${deleteSetting.setting_key}` : 'Delete setting'}
+        description="Delete this setting record. Client overrides fall back to the global/default value after deletion."
+        confirmLabel={actionLoading ? 'Working...' : 'Delete'}
+        onCancel={() => setDeleteSetting(null)}
+        onConfirm={confirmDeleteSetting}
+      />
+    </div>
+  );
+}
+
 function PlaceholderPage({ page }) {
   return (
     <div className="pid-stack">
@@ -985,19 +1283,7 @@ function PlaceholderPage({ page }) {
 }
 
 export default function App() {
-  const [page, setPage] = useState(() => {
-    const path = window.location.pathname;
-
-    if (path.includes('/review')) {
-      return 'review';
-    }
-
-    if (path.includes('/requests')) {
-      return 'requests';
-    }
-
-    return 'overview';
-  });
+  const [page, setPage] = useState(() => pageFromPath(window.location.pathname));
   const [theme, setTheme] = useState(() => localStorage.getItem('pid-admin-theme') || 'light');
   const [summary, setSummary] = useState(DEFAULT_SUMMARY);
   const [overviewRequests, setOverviewRequests] = useState([]);
@@ -1030,11 +1316,18 @@ export default function App() {
   }, [theme]);
 
   useEffect(() => {
+    const pagePath = pathForPage(page);
+
+    if (page !== 'requests' && page !== 'review') {
+      window.history.replaceState({}, '', `${pagePath}${window.location.hash}`);
+      return;
+    }
+
     const params = requestFiltersToSearchParams(
       page === 'review' ? { ...requestFilters, manual_review_required: 'true' } : requestFilters,
     );
     const query = params.toString();
-    const nextUrl = `${window.location.pathname}${query ? `?${query}` : ''}${window.location.hash}`;
+    const nextUrl = `${pagePath}${query ? `?${query}` : ''}${window.location.hash}`;
     window.history.replaceState({}, '', nextUrl);
   }, [page, requestFilters]);
 
@@ -1418,6 +1711,8 @@ export default function App() {
         manualReviewOnly
       />
     );
+  } else if (page === 'settings') {
+    body = <SettingsPage onNotify={notify} />;
   } else {
     body = <PlaceholderPage page={currentPage} />;
   }

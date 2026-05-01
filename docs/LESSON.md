@@ -30,6 +30,8 @@
 - Reject flows that move a request to terminal `rejected` must clear selected/best candidate pointers and `final_score` unconditionally when no non-rejected candidates remain, even if the just-rejected row was not the recorded best.
 - Pinned UI filters should be disabled/read-only in the control itself, not only enforced in derived fetch state, or operators see an editable value that cannot actually change the query.
 - PHP runner helpers must distinguish executable names from filesystem paths. Only path-like `PHP_BINARY` candidates should be checked with `existsSync()`; command names such as `php84` need to reach `spawnSync()` so they can resolve through `PATH`.
+- When a configuration page path and an admin JSON collection share the same URL, route by request intent: browser `Accept: text/html` should return the React shell, while `Accept: application/json` should return the wrapper payload. Otherwise direct navigation to pages such as `/settings` renders raw JSON.
+- Setting form payloads need typed client-side parsing before submit so the operator sees JSON/integer/float/boolean/null errors before the package FormRequest rejects the request.
 
 ## 2026-04-30
 

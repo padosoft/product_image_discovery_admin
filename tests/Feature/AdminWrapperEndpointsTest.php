@@ -10,6 +10,7 @@ use Illuminate\Support\Facades\Storage;
 use Padosoft\ProductImageDiscovery\Models\ProductImageDiscoveryCandidate;
 use Padosoft\ProductImageDiscovery\Models\ProductImageDiscoveryEvent;
 use Padosoft\ProductImageDiscovery\Models\ProductImageDiscoveryRequest;
+use Padosoft\ProductImageDiscovery\Models\ProductImageDiscoverySetting;
 use Padosoft\ProductImageDiscovery\Models\ProductImageSearchProvider;
 use Symfony\Component\HttpFoundation\StreamedResponse;
 use Tests\TestCase;
@@ -73,6 +74,76 @@ final class AdminWrapperEndpointsTest extends TestCase
             ->assertJsonCount(1, 'data')
             ->assertJsonPath('data.0.id', $zeroScore->getKey())
             ->assertJsonPath('data.0.final_score', 0);
+    }
+
+    public function test_admin_settings_wrapper_supports_crud_and_type_validation(): void
+    {
+        ProductImageDiscoverySetting::query()->create([
+            'client_id' => null,
+            'setting_key' => 'decision.manual_review_threshold',
+            'setting_value' => 55,
+            'value_type' => 'integer',
+            'description' => 'Manual review threshold',
+            'is_active' => true,
+        ]);
+
+        $this->getJson('/admin/product-image-discovery/settings')
+            ->assertOk()
+            ->assertJsonPath('data.0.setting_key', 'decision.manual_review_threshold')
+            ->assertJsonPath('data.0.setting_value', 55)
+            ->assertJsonPath('data.0.is_active', true);
+
+        $createdId = $this->postJson('/admin/product-image-discovery/settings', [
+            'client_id' => 42,
+            'setting_key' => 'quality.allowed_mime_types',
+            'setting_value' => '["image/jpeg","image/webp"]',
+            'value_type' => 'json',
+            'description' => 'Client mime allow list',
+            'is_active' => true,
+        ])
+            ->assertCreated()
+            ->assertJsonPath('data.client_id', 42)
+            ->assertJsonPath('data.setting_value.0', 'image/jpeg')
+            ->json('data.id');
+
+        $this->putJson('/admin/product-image-discovery/settings/'.$createdId, [
+            'client_id' => 42,
+            'setting_key' => 'quality.allowed_mime_types',
+            'setting_value' => ['image/png'],
+            'value_type' => 'json',
+            'description' => 'Updated mime allow list',
+            'is_active' => false,
+        ])
+            ->assertOk()
+            ->assertJsonPath('data.setting_value.0', 'image/png')
+            ->assertJsonPath('data.is_active', false);
+
+        $this->postJson('/admin/product-image-discovery/settings', [
+            'setting_key' => 'broken.json',
+            'setting_value' => '{bad json',
+            'value_type' => 'json',
+        ])
+            ->assertUnprocessable()
+            ->assertJsonValidationErrors(['setting_value']);
+
+        $this->deleteJson('/admin/product-image-discovery/settings/'.$createdId)
+            ->assertNoContent();
+
+        $this->assertDatabaseMissing('product_image_discovery_settings', [
+            'id' => $createdId,
+        ]);
+    }
+
+    public function test_settings_ui_path_serves_shell_for_browser_requests(): void
+    {
+        $this->get('/admin/product-image-discovery/settings')
+            ->assertOk()
+            ->assertHeader('Content-Type', 'text/html; charset=UTF-8')
+            ->assertSee('product-image-discovery-admin');
+
+        $this->getJson('/admin/product-image-discovery/settings')
+            ->assertOk()
+            ->assertJsonStructure(['data']);
     }
 
     public function test_request_search_date_to_filters_include_the_full_day(): void
