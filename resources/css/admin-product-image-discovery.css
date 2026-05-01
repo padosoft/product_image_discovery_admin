@@ -863,8 +863,7 @@ textarea {
   gap: 6px;
 }
 
-.pid-config-form label:nth-of-type(4),
-.pid-config-form label:nth-of-type(5),
+.pid-config-form__full,
 .pid-config-form .pid-alert,
 .pid-form-actions {
   grid-column: 1 / -1;

@@ -36,6 +36,7 @@
 - Create and edit form defaults should come from the same constant; drifting fallback value types can make an unchanged edit parse values differently from a new setting.
 - URL synchronization should emit the canonical configured admin base path for the overview page; avoid adding a trailing slash from the client when server routes and PR reviewers expect the no-slash form.
 - Async page-local reload helpers need a mounted guard for mutation-triggered reloads too, not only for the initial effect with an AbortController.
+- Prefer explicit layout utility classes over `nth-of-type` selectors in evolving admin forms; tests should avoid raw `RegExp` from dynamic strings unless the value is escaped first.
 
 ## 2026-04-30
 

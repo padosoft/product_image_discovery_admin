@@ -60,7 +60,7 @@ test('settings page creates and deletes a typed override', async ({ page }, test
   await page.getByRole('button', { name: 'Create setting' }).click();
 
   await expect(page.getByText('Setting created.')).toBeVisible();
-  const row = page.getByRole('row', { name: new RegExp(settingKey) });
+  const row = page.getByRole('row').filter({ hasText: settingKey });
   await expect(row).toBeVisible();
   await expect(row).toContainText('Client 77');
   await expect(row).toContainText('64');
@@ -69,5 +69,5 @@ test('settings page creates and deletes a typed override', async ({ page }, test
   await page.getByRole('dialog', { name: `Delete ${settingKey}` }).getByRole('button', { name: 'Delete' }).click();
 
   await expect(page.getByText('Setting deleted.')).toBeVisible();
-  await expect(page.getByRole('row', { name: new RegExp(settingKey) })).toHaveCount(0);
+  await expect(page.getByRole('row').filter({ hasText: settingKey })).toHaveCount(0);
 });

@@ -1019,6 +1019,10 @@ function SettingsPage({ onNotify }) {
   const previewValue = formPayload.ok ? formPayload.value : { error: formPayload.error };
 
   async function reloadSettings(signal) {
+    if (!mountedRef.current || signal?.aborted) {
+      return;
+    }
+
     setLoading(true);
     setError('');
 
@@ -1211,7 +1215,7 @@ function SettingsPage({ onNotify }) {
                 {SETTING_VALUE_TYPES.map((type) => <option key={type} value={type}>{type}</option>)}
               </select>
             </label>
-            <label>
+            <label className="pid-config-form__full">
               <span>Setting value</span>
               <textarea
                 value={form.setting_value}
@@ -1220,7 +1224,7 @@ function SettingsPage({ onNotify }) {
                 disabled={form.value_type === 'null'}
               />
             </label>
-            <label>
+            <label className="pid-config-form__full">
               <span>Description</span>
               <textarea
                 value={form.description}
