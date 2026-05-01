@@ -184,6 +184,14 @@
   - `npm run test` => 5 files, 25 tests
   - `npm run build`
   - `npm run e2e` => 6 Playwright tests
+- Copilot reviewed `1197fc4` and generated 1 routing comment.
+- Addressed the latest Copilot PR #3 comment:
+  - overview URL sync now uses the canonical admin base path without adding a trailing slash
+- Verification passed after the overview URL fix:
+  - `npm run phpunit` => 30 tests, 203 assertions
+  - `npm run test` => 5 files, 25 tests
+  - `npm run build`
+  - `npm run e2e` => 6 Playwright tests
 
 ## 2026-04-30
 

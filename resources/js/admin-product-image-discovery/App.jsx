@@ -72,7 +72,7 @@ function pathForPage(page) {
   const base = normalizeAdminApiBase();
 
   if (page === 'overview') {
-    return `${base}/`;
+    return base;
   }
 
   return `${base}/${page}`;

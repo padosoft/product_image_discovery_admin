@@ -102,6 +102,7 @@ describe('admin product image discovery shell', () => {
     expect(screen.getByText('Provider Health')).toBeVisible();
     expect(fetchMock).toHaveBeenCalledTimes(2);
     expect(setTimeoutSpy).not.toHaveBeenCalledWith(expect.any(Function), 280);
+    expect(window.location.pathname).toBe('/admin/product-image-discovery');
   });
 
   it('keeps the shell mounted when API calls fail', async () => {
