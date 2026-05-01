@@ -263,6 +263,18 @@
   - `npm run test` => 8 files, 37 tests
   - `npm run build`
   - `npm run e2e` => 10 Playwright tests
+- Continued Macro Task 4 with the provider/credential test wrapper:
+  - added `POST /admin/product-image-discovery/search-providers/{provider}/test`
+  - the wrapper runs the selected provider through a single-provider search manager and returns only sanitized status, latency, result count, credential booleans, and attempt summaries
+  - added the Providers page `Test` action, last-test badge, and sanitized result panel
+  - added PHP coverage for success/failure test results without exposing stored secrets
+  - extended the provider shell and Playwright flows to exercise the test action
+- Verification passed after the provider test wrapper slice:
+  - `composer validate --strict`
+  - `npm run phpunit` => 34 tests, 265 assertions
+  - `npm run test` => 8 files, 37 tests
+  - `npm run build`
+  - `npm run e2e` => 10 Playwright tests
 
 ## 2026-04-30
 
@@ -292,8 +304,8 @@
 
 ## Open Items
 
-- Push the Settings configuration slice, open the next PR, request Copilot Code Review through the GraphQL fallback if `gh pr edit` is blocked, and poll until comments/checks are resolved.
-- Continue Macro Task 4 with Providers and Trusted Sources after the Settings slice PR loop is resolved.
+- Finish the provider test wrapper PR loop for Macro Task 4: push, open PR, request Copilot Code Review through the GraphQL fallback if `gh pr edit` is blocked, and poll until comments/checks are resolved.
+- Start Macro Task 5 after Macro Task 4 is merged: Debug Flow, Debug Reports, Health, and API Test Workbench.
 
 ## 2026-04-30 - Macro 2 Slice
 

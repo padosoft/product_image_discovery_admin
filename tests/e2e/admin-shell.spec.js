@@ -92,6 +92,11 @@ test('providers page replaces and clears write-only credentials', async ({ page 
   await expect(row).toBeVisible();
   await expect(row).toContainText('key configured / secret configured');
 
+  await row.getByRole('button', { name: 'Test' }).click();
+  await expect(page.getByText('Provider test completed.')).toBeVisible();
+  await expect(page.getByRole('region', { name: 'Provider test result' })).toContainText(providerCode);
+  await expect(row).toContainText('empty');
+
   await row.getByRole('button', { name: 'Edit' }).click();
   await page.getByLabel('API secret action').selectOption('clear');
   await page.getByRole('button', { name: 'Save provider' }).click();

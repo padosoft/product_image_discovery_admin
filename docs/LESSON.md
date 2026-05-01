@@ -43,6 +43,7 @@
 - Admin pages backed by paginated package resources need either pagination controls or all-page loading. A single first-page fetch silently hides records past the package default page size.
 - Do not reuse request workflow status labels for configuration booleans; provider/source `is_active` should render as active/inactive or enabled/disabled.
 - Shared admin form validation should live in a common helper once multiple configuration forms depend on the same rules; duplicate numeric parsers drift quickly in both behavior and error copy.
+- Provider health tests should execute a single selected provider through an isolated manager/repository and return attempt summaries only; never include raw search results, headers, provider definitions with secrets, or exception text before redacting stored credential values.
 
 ## 2026-04-30
 

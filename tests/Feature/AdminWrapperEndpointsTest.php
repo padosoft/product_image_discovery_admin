@@ -289,6 +289,73 @@ final class AdminWrapperEndpointsTest extends TestCase
             ->assertJsonPath('meta.last_page', 2);
     }
 
+    public function test_admin_search_provider_test_runs_single_provider_without_exposing_secrets(): void
+    {
+        $provider = ProductImageSearchProvider::query()->create([
+            'code' => 'fake-health',
+            'name' => 'Fake Health',
+            'driver' => 'fake',
+            'api_key_encrypted' => 'provider-test-secret',
+            'config' => [
+                'image_results' => [
+                    [
+                        'title' => 'Result',
+                        'page_url' => 'https://brand.example.test/product',
+                        'image_url' => 'https://brand.example.test/product.jpg',
+                        'source_domain' => 'brand.example.test',
+                    ],
+                ],
+            ],
+            'priority' => 5,
+            'timeout_seconds' => 15,
+            'is_active' => true,
+        ]);
+
+        $response = $this->postJson('/admin/product-image-discovery/search-providers/'.$provider->getKey().'/test', [
+            'mode' => 'images',
+            'query' => 'brand product',
+            'limit' => 1,
+        ])
+            ->assertOk()
+            ->assertJsonPath('data.code', 'fake-health')
+            ->assertJsonPath('data.driver', 'fake')
+            ->assertJsonPath('data.provider_active', true)
+            ->assertJsonPath('data.has_api_key', true)
+            ->assertJsonPath('data.status', 'success')
+            ->assertJsonPath('data.results_count', 1)
+            ->assertJsonPath('data.attempts.0.status', 'success')
+            ->assertJsonPath('data.attempts.0.results_count', 1)
+            ->assertJsonMissingPath('data.results')
+            ->assertJsonMissingPath('data.provider.api_key');
+
+        $this->assertStringNotContainsString('provider-test-secret', $response->getContent());
+    }
+
+    public function test_admin_search_provider_test_returns_sanitized_failures(): void
+    {
+        $provider = ProductImageSearchProvider::query()->create([
+            'code' => 'fake-failure',
+            'name' => 'Fake Failure',
+            'driver' => 'fake',
+            'api_key_encrypted' => 'failure-secret',
+            'config' => ['throw' => true],
+            'priority' => 5,
+            'timeout_seconds' => 15,
+            'is_active' => false,
+        ]);
+
+        $response = $this->postJson('/admin/product-image-discovery/search-providers/'.$provider->getKey().'/test')
+            ->assertOk()
+            ->assertJsonPath('data.code', 'fake-failure')
+            ->assertJsonPath('data.provider_active', false)
+            ->assertJsonPath('data.status', 'failed')
+            ->assertJsonPath('data.results_count', 0)
+            ->assertJsonPath('data.attempts.0.status', 'failed')
+            ->assertJsonStructure(['data' => ['latency_ms', 'attempts' => [['error']]]]);
+
+        $this->assertStringNotContainsString('failure-secret', $response->getContent());
+    }
+
     public function test_request_search_date_to_filters_include_the_full_day(): void
     {
         $included = $this->createDiscoveryRequest([

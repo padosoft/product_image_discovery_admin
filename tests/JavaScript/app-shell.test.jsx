@@ -420,6 +420,7 @@ describe('admin product image discovery shell', () => {
   it('loads providers and submits write-only credential actions', async () => {
     window.history.replaceState({}, '', '/admin/product-image-discovery/providers');
     let createdPayload = null;
+    let testedPayload = null;
     const providerPages = {
       1: {
         data: [
@@ -482,6 +483,28 @@ describe('admin product image discovery shell', () => {
         return Promise.resolve(mockJsonResponse({ data: { id: 5, ...createdPayload, has_api_key: true, has_api_secret: false } }));
       }
 
+      if (path.endsWith('/search-providers/4/test') && method === 'POST') {
+        testedPayload = JSON.parse(options.body);
+
+        return Promise.resolve(mockJsonResponse({
+          data: {
+            provider_id: 4,
+            code: 'brave',
+            driver: 'brave',
+            provider_active: false,
+            has_api_key: true,
+            has_api_secret: false,
+            mode: 'images',
+            status: 'empty',
+            latency_ms: 12,
+            results_count: 0,
+            attempts: [{ sequence: 1, method: 'searchImages', status: 'empty' }],
+            message: 'Provider responded without results for the test query.',
+            tested_at: '2026-05-01T18:00:00.000000Z',
+          },
+        }));
+      }
+
       if (path.endsWith('/search-providers')) {
         const page = Number(requestUrl.searchParams.get('page') ?? 1);
 
@@ -498,6 +521,12 @@ describe('admin product image discovery shell', () => {
     expect(providerHeading).toBeVisible();
     expect(await screen.findByRole('table', { name: 'Product image discovery search providers' })).toHaveTextContent('brave');
     expect(screen.getByRole('table', { name: 'Product image discovery search providers' })).toHaveTextContent('google_custom_search');
+    const braveRow = screen.getByRole('row', { name: /brave/i });
+    fireEvent.click(within(braveRow).getByRole('button', { name: 'Test' }));
+
+    await waitFor(() => expect(testedPayload).toEqual({ mode: 'images', limit: 1 }));
+    expect(await screen.findByRole('region', { name: 'Provider test details' })).toHaveTextContent('empty');
+    expect(screen.getByRole('region', { name: 'Provider test result' })).toHaveTextContent('key configured');
 
     fireEvent.change(within(providerForm).getByLabelText('Code'), { target: { value: 'serpapi-client' } });
     fireEvent.change(within(providerForm).getByLabelText('Name'), { target: { value: 'SerpAPI Client' } });
