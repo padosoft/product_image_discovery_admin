@@ -59,6 +59,11 @@ If a tool is unavailable, blocked by sandbox/network, or requires remote CI, rec
 - Update `docs/LESSON.md` after finding a non-obvious setup fact, API contract detail, or test workaround.
 - Keep entries dated with `YYYY-MM-DD`.
 
+## Review Rules
+
+- Request GitHub Copilot Code Review through the PR Reviewers menu or `gh pr edit <PR> --add-reviewer @copilot`.
+- Do not use `@codex review` as a replacement for Copilot review unless the user explicitly asks for Codex review.
+
 ## Agent Model Rules
 
 - Use `gpt-5.5` high/xhigh for backend/package/security slices.
