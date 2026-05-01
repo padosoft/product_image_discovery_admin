@@ -42,6 +42,7 @@
 - Payload previews must apply the same secret redaction rules as API resources; write-only credential replacement values should never appear in JSON preview panes.
 - Admin pages backed by paginated package resources need either pagination controls or all-page loading. A single first-page fetch silently hides records past the package default page size.
 - Do not reuse request workflow status labels for configuration booleans; provider/source `is_active` should render as active/inactive or enabled/disabled.
+- Shared admin form validation should live in a common helper once multiple configuration forms depend on the same rules; duplicate numeric parsers drift quickly in both behavior and error copy.
 
 ## 2026-04-30
 

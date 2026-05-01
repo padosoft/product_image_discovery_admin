@@ -253,6 +253,16 @@
   - `npm run test` => 7 files, 36 tests
   - `npm run build`
   - `npm run e2e` => 10 Playwright tests
+- Copilot reviewed `5e7434c` and generated 2 shared-form-helper comments.
+- Addressed the latest Copilot PR #4 comments:
+  - provider and trusted-source integer parsing now use the shared `form-utils.js` helper instead of duplicate local implementations
+  - added focused Vitest coverage for nullable, whole-number, and bounded integer parsing
+- Verification passed after the shared parser fix:
+  - `composer validate --strict`
+  - `npm run phpunit` => 32 tests, 241 assertions
+  - `npm run test` => 8 files, 37 tests
+  - `npm run build`
+  - `npm run e2e` => 10 Playwright tests
 
 ## 2026-04-30
 
