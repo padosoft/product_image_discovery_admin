@@ -71,3 +71,68 @@ test('settings page creates and deletes a typed override', async ({ page }, test
   await expect(page.getByText('Setting deleted.')).toBeVisible();
   await expect(page.getByRole('row').filter({ hasText: settingKey })).toHaveCount(0);
 });
+
+test('providers page replaces and clears write-only credentials', async ({ page }, testInfo) => {
+  const providerCode = `e2e-${testInfo.project.name}-provider`;
+
+  await page.goto('/admin/product-image-discovery/providers');
+
+  await expect(page.getByRole('heading', { name: 'Create Provider' })).toBeVisible();
+  await page.getByLabel('Code').fill(providerCode);
+  await page.getByLabel('Name').fill('E2E Provider');
+  await page.getByLabel('Driver').selectOption('fake');
+  await page.getByLabel('API key action').selectOption('replace');
+  await page.getByLabel('API key value').fill('e2e-key');
+  await page.getByLabel('API secret action').selectOption('replace');
+  await page.getByLabel('API secret value').fill('e2e-secret');
+  await page.getByRole('button', { name: 'Create provider' }).click();
+
+  await expect(page.getByText('Provider created.')).toBeVisible();
+  const row = page.getByRole('row').filter({ hasText: providerCode });
+  await expect(row).toBeVisible();
+  await expect(row).toContainText('key configured / secret configured');
+
+  await row.getByRole('button', { name: 'Edit' }).click();
+  await page.getByLabel('API secret action').selectOption('clear');
+  await page.getByRole('button', { name: 'Save provider' }).click();
+
+  await expect(page.getByText('Provider updated.')).toBeVisible();
+  await expect(row).toContainText('key configured / secret missing');
+
+  await row.getByRole('button', { name: 'Delete' }).click();
+  await page.getByRole('dialog', { name: `Delete ${providerCode}` }).getByRole('button', { name: 'Delete' }).click();
+
+  await expect(page.getByText('Provider deleted.')).toBeVisible();
+  await expect(page.getByRole('row').filter({ hasText: providerCode })).toHaveCount(0);
+});
+
+test('trusted sources page creates policy flags and deletes the source', async ({ page }, testInfo) => {
+  const domain = `e2e-${testInfo.project.name}.example.test`;
+
+  await page.goto('/admin/product-image-discovery/trusted');
+
+  await expect(page.getByRole('heading', { name: 'Create Trusted Source' })).toBeVisible();
+  const form = page.locator('section.pid-panel').filter({ has: page.getByRole('heading', { name: 'Create Trusted Source' }) });
+  await form.getByLabel('Client override').fill('77');
+  await form.getByLabel('Domain', { exact: true }).fill(domain);
+  await form.getByLabel('Source name').fill('E2E Supplier');
+  await form.getByLabel('Source type').selectOption('supplier');
+  await form.getByLabel('Trust score', { exact: true }).fill('91');
+  await form.getByLabel('Allow auto publish').selectOption('true');
+  await form.getByLabel('Requires manual review').selectOption('false');
+  await form.getByLabel('Brand scope').fill('Acme');
+  await form.getByLabel('URL patterns').fill(`https://${domain}/*`);
+  await form.getByRole('button', { name: 'Create trusted source' }).click();
+
+  await expect(page.getByText('Trusted source created.')).toBeVisible();
+  const row = page.getByRole('row').filter({ hasText: domain });
+  await expect(row).toBeVisible();
+  await expect(row).toContainText('auto publish');
+  await expect(row).toContainText('Acme');
+
+  await row.getByRole('button', { name: 'Delete' }).click();
+  await page.getByRole('dialog', { name: `Delete ${domain}` }).getByRole('button', { name: 'Delete' }).click();
+
+  await expect(page.getByText('Trusted source deleted.')).toBeVisible();
+  await expect(page.getByRole('row').filter({ hasText: domain })).toHaveCount(0);
+});

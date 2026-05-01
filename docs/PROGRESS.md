@@ -219,6 +219,50 @@
   - `npm run test` => 5 files, 27 tests
   - `npm run build`
   - `npm run e2e` => 6 Playwright tests
+- Copilot completed review on `0673dea` with no new comments.
+- Merged PR #3 into `main` at merge commit `2ed797dae9fbdb842aed14afe2593a6637bf59b5`; GitHub Actions/status checks remained unconfigured rather than failing.
+- Continued Macro Task 4 on a fresh `task/configuration-management` branch from updated `main`.
+- Implemented the Providers and Trusted Sources configuration slice:
+  - added admin JSON wrappers for search provider and trusted source CRUD
+  - added a local provider wrapper that treats omitted credentials as keep, empty strings as clear, and non-empty values as write-only replacements
+  - added dense Providers UI with JSON config editor, active state, limits, and write-only key/secret controls
+  - added dense Trusted Sources UI with filters, trust score control, policy toggles, scopes, URL patterns, permission reference, and CRUD actions
+  - added PHP, Vitest, and Playwright coverage for provider secrets, trusted source policies, and desktop/tablet CRUD flows
+- Verification passed after the Providers and Trusted Sources slice:
+  - `composer validate --strict`
+  - `npm run phpunit` => 31 tests, 237 assertions
+  - `npm run test` => 7 files, 35 tests
+  - `npm run build`
+  - `npm run e2e` => 10 Playwright tests
+- An automatic Codex review on PR #4 generated two actionable comments; these are not treated as a Copilot substitute, but were addressed:
+  - provider payload preview now redacts write-only credential values as `(replace)`/`(clear)` instead of rendering raw secrets
+  - provider loading now fetches all paginated result pages, and the admin wrapper honors a bounded `per_page` query
+- Verification passed after the PR #4 automated-review fixes:
+  - `composer validate --strict`
+  - `npm run phpunit` => 32 tests, 241 assertions
+  - `npm run test` => 7 files, 36 tests
+  - `npm run build`
+  - `npm run e2e` => 10 Playwright tests
+- Copilot reviewed `19bfb95` and generated 3 comments.
+- Addressed the latest Copilot PR #4 comments:
+  - provider and trusted-source state columns now render configuration-specific `active`/`inactive` labels instead of request workflow statuses
+  - `AdminSearchProviderController::index()` now declares an `AnonymousResourceCollection` return type
+- Verification passed after the latest Copilot PR #4 fixes:
+  - `composer validate --strict`
+  - `npm run phpunit` => 32 tests, 241 assertions
+  - `npm run test` => 7 files, 36 tests
+  - `npm run build`
+  - `npm run e2e` => 10 Playwright tests
+- Copilot reviewed `5e7434c` and generated 2 shared-form-helper comments.
+- Addressed the latest Copilot PR #4 comments:
+  - provider and trusted-source integer parsing now use the shared `form-utils.js` helper instead of duplicate local implementations
+  - added focused Vitest coverage for nullable, whole-number, and bounded integer parsing
+- Verification passed after the shared parser fix:
+  - `composer validate --strict`
+  - `npm run phpunit` => 32 tests, 241 assertions
+  - `npm run test` => 8 files, 37 tests
+  - `npm run build`
+  - `npm run e2e` => 10 Playwright tests
 
 ## 2026-04-30
 
