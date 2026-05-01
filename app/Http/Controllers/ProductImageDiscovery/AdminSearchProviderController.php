@@ -20,6 +20,7 @@ use Padosoft\ProductImageDiscovery\Services\Search\SearchProviderConfigRepositor
 use Padosoft\ProductImageDiscovery\Services\Search\SearchProviderFactoryInterface;
 use Padosoft\ProductImageDiscovery\Services\Search\SearchProviderManager;
 use ReflectionClass;
+use ReflectionException;
 
 final class AdminSearchProviderController extends Controller
 {
@@ -181,10 +182,14 @@ final class AdminSearchProviderController extends Controller
     private function factoriesFromManager(SearchProviderManager $manager): array
     {
         // SearchProviderManager has no public registry accessor; read the app-bound registry so host-added drivers remain testable.
-        $reflection = new ReflectionClass($manager);
-        $property = $reflection->getProperty('factories');
-        $property->setAccessible(true);
-        $factories = $property->getValue($manager);
+        try {
+            $reflection = new ReflectionClass($manager);
+            $property = $reflection->getProperty('factories');
+            $property->setAccessible(true);
+            $factories = $property->getValue($manager);
+        } catch (ReflectionException) {
+            return [];
+        }
 
         return is_array($factories) ? $factories : [];
     }

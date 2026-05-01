@@ -295,6 +295,15 @@
   - `npm run test` => 8 files, 37 tests
   - `npm run build`
   - `npm run e2e` => 10 Playwright tests
+- Copilot reviewed `e886f59` and generated 1 follow-up comment.
+- Addressed the latest Copilot PR #5 comment:
+  - `factoriesFromManager()` now catches `ReflectionException` and degrades to an empty registry, producing a controlled sanitized provider-test failure instead of a 500 if the upstream manager internals change
+- Verification passed after the reflection guard follow-up:
+  - `composer validate --strict`
+  - `npm run phpunit` => 36 tests, 272 assertions
+  - `npm run test` => 8 files, 37 tests
+  - `npm run build`
+  - `npm run e2e` => 10 Playwright tests
 
 ## 2026-04-30
 
