@@ -2280,7 +2280,15 @@ function HealthPage() {
   const aiColumns = [
     { key: 'provider', label: 'Provider' },
     { key: 'api_key_configured', label: 'API key', render: (row) => <HealthStatusBadge configured={row.api_key_configured} /> },
-    { key: 'base_url_configured', label: 'Base URL', render: (row) => <HealthStatusBadge configured={row.base_url_configured} configuredLabel="set" missingLabel="default" /> },
+    {
+      key: 'base_url_configured',
+      label: 'Base URL',
+      render: (row) => (
+        <span className={`pid-badge pid-badge--${row.base_url_configured ? 'ok' : 'neutral'}`}>
+          {row.base_url_configured ? 'set' : 'default'}
+        </span>
+      ),
+    },
   ];
   const queueColumns = [
     { key: 'phase', label: 'Phase' },
@@ -2292,7 +2300,15 @@ function HealthPage() {
     { key: 'driver', label: 'Driver' },
     { key: 'active', label: 'State', render: (provider) => <ConfigStateBadge active={provider.active} /> },
     { key: 'credentials', label: 'Credentials', render: (provider) => providerCredentials({ has_api_key: provider.has_api_key, has_api_secret: provider.has_api_secret }) },
-    { key: 'limits', label: 'Limits', render: (provider) => `${provider.timeout_seconds ?? '-'}s / ${provider.rate_limit_per_minute ?? 'no rate'}` },
+    {
+      key: 'limits',
+      label: 'Limits',
+      render: (provider) => {
+        const timeoutLabel = provider.timeout_seconds == null ? '-' : `${provider.timeout_seconds}s`;
+
+        return `${timeoutLabel} / ${provider.rate_limit_per_minute ?? 'no rate'}`;
+      },
+    },
   ];
 
   return (

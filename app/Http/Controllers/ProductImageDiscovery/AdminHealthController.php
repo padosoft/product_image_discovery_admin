@@ -19,6 +19,7 @@ final class AdminHealthController extends Controller
         $storageDisk = (string) config('product-image-discovery.storage.disk', 'local');
         $storageConfig = config('filesystems.disks.'.$storageDisk);
         $aiProvider = (string) config('product-image-discovery.ai.provider', 'anthropic');
+        $providers = $this->providerStatus();
 
         return response()->json([
             'data' => [
@@ -28,7 +29,7 @@ final class AdminHealthController extends Controller
                     'admin_prefix' => trim((string) config('pid-admin.route_prefix', 'admin/product-image-discovery'), '/'),
                     'package_api_prefix' => trim((string) config('pid-admin.package_api_prefix', 'api/product-image-discovery'), '/'),
                 ],
-                'env_status' => $this->environmentStatus(),
+                'env_status' => $this->environmentStatus($providers),
                 'ai' => [
                     'enabled' => (bool) config('product-image-discovery.ai.enabled', false),
                     'provider' => $aiProvider,
@@ -49,30 +50,32 @@ final class AdminHealthController extends Controller
                     'connection' => (string) config('queue.default', 'sync'),
                     'queues' => $this->queueStatus(),
                 ],
-                'providers' => $this->providerStatus(),
+                'providers' => $providers,
             ],
         ]);
     }
 
     /**
+     * @param  array<int, array<string, mixed>>  $providers
      * @return array<int, array<string, mixed>>
      */
-    private function environmentStatus(): array
+    private function environmentStatus(array $providers): array
     {
         return [
-            ['key' => 'BRAVE_SEARCH_API_KEY', 'configured' => $this->braveSearchKeyConfigured(), 'scope' => 'search'],
+            ['key' => 'BRAVE_SEARCH_API_KEY', 'configured' => $this->braveSearchKeyConfigured($providers), 'scope' => 'search'],
             ['key' => 'ANTHROPIC_API_KEY', 'configured' => filled(config('product-image-discovery.ai.providers.anthropic.api_key')), 'scope' => 'ai'],
             ['key' => 'OPENAI_API_KEY', 'configured' => filled(config('product-image-discovery.ai.providers.openai.api_key')), 'scope' => 'ai'],
             ['key' => 'OPENROUTER_API_KEY', 'configured' => filled(config('product-image-discovery.ai.providers.openrouter.api_key')), 'scope' => 'ai'],
         ];
     }
 
-    private function braveSearchKeyConfigured(): bool
+    /**
+     * @param  array<int, array<string, mixed>>  $providers
+     */
+    private function braveSearchKeyConfigured(array $providers): bool
     {
-        return ProductImageSearchProvider::query()
-            ->where('driver', 'brave')
-            ->get(['id', 'api_key_encrypted'])
-            ->contains(static fn (ProductImageSearchProvider $provider): bool => filled($provider->getRawOriginal('api_key_encrypted')));
+        return collect($providers)
+            ->contains(static fn (array $provider): bool => $provider['driver'] === 'brave' && $provider['has_api_key']);
     }
 
     /**

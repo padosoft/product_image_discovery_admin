@@ -52,6 +52,7 @@
 - Diagnostics page URLs that also have JSON endpoints need the same request-intent routing as configuration pages: browser requests return the React shell, while `Accept: application/json` requests return the wrapper payload.
 - Controller-level health checks should not call `env()` for runtime key status. Use config values for AI keys and stored provider configuration for search keys so cached config environments still report accurately.
 - Health payload route-prefix fields should use the same config keys as the shell bootstrap (`pid-admin.route_prefix` and `pid-admin.package_api_prefix`) so diagnostics match the URLs the UI actually uses.
+- When a health response already includes provider rows, derive aggregate provider booleans from those rows instead of adding a second query for the same table.
 
 ## 2026-04-30
 

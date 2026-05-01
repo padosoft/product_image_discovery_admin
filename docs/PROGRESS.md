@@ -349,6 +349,18 @@
   - `npm run test` => 8 files, 38 tests
   - `npm run build`
   - `npm run e2e` => 12 Playwright tests
+- Copilot reviewed `ecf98c4` and generated 4 comments.
+- Addressed the latest Copilot PR #6 comments:
+  - Health now derives the Brave key boolean from the already-loaded provider status rows instead of issuing a separate provider query
+  - provider timeout display now renders `- / no rate` instead of `-s / no rate` when timeout is missing
+  - AI provider Base URL defaults now render as a neutral `default` badge instead of a danger badge
+  - RTL coverage now checks both the neutral Base URL default label and the missing-timeout display
+- Verification passed after the latest Copilot PR #6 fixes:
+  - `composer validate --strict`
+  - `npm run phpunit` => 38 tests, 302 assertions
+  - `npm run test` => 8 files, 38 tests
+  - `npm run build`
+  - `npm run e2e` => 12 Playwright tests
 
 ## 2026-04-30
 
