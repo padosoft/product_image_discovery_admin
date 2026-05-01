@@ -216,6 +216,16 @@ test('debug flow page runs a fake provider flow to completion', async ({ page },
     await expect(page.getByRole('region', { name: 'Debug run result' })).toContainText('succeeded');
     await expect(page.getByRole('region', { name: 'Debug run result' })).toContainText(`HERNO-${testInfo.project.name}-CAMMELLO`);
     await expect(page.getByRole('region', { name: 'Debug run report' })).toContainText('verified_match');
+
+    await page.getByRole('button', { name: 'Debug Reports section' }).click();
+    await expect(page.getByRole('heading', { name: 'Load Debug Report' })).toBeVisible();
+    await expect(page.getByRole('table', { name: 'Stored debug reports' })).toContainText(`HERNO-${testInfo.project.name}-CAMMELLO`);
+    await page.getByRole('table', { name: 'Stored debug reports' }).getByRole('row').filter({ hasText: `HERNO-${testInfo.project.name}-CAMMELLO` }).first().getByRole('button', { name: 'Open' }).click();
+    await expect(page.getByRole('region', { name: 'Debug report summary' })).toContainText('matched');
+    await page.getByRole('button', { name: 'Candidates' }).click();
+    await expect(page.getByRole('table', { name: 'Debug report candidates' })).toContainText('verified match');
+    await page.getByLabel('Only verified').check();
+    await expect(page.getByRole('table', { name: 'Debug report candidates' })).toContainText('verified match');
   } finally {
     if (providerId) {
       await page.request.delete(`/admin/product-image-discovery/search-providers/${providerId}`, {

@@ -73,6 +73,13 @@
 - API resources should use `null` for missing detail payloads rather than empty arrays when the frontend uses nullish coalescing to decide whether detail hydration is needed.
 - Dedicated detail/report endpoints should use the same nullability contract as their parent resources; otherwise clients cannot reliably distinguish no payload yet from an intentionally empty payload.
 - Polling loops should schedule the next request only after the current one settles, and abort on cleanup, so slow debug/status responses cannot overlap or overwrite newer state.
+- Debug report viewer tests should identify reports by request identity rather than provider code; parallel Playwright projects can have multiple fake providers active at the same priority while each debug run is executing.
+- If a segmented control is implemented with ordinary buttons, use button semantics such as `aria-pressed`; only use `tablist`/`aria-selected` when the full ARIA tabs pattern is implemented.
+- JSON path search should filter while traversing and enforce row/depth limits, not flatten entire debug reports before slicing, because reports can grow quickly with provider payloads and candidate evidence.
+- Report-level KPIs should be derived from unfiltered report data; candidate table filters are view state and must not change summary totals.
+- Detail/report loaders that can be triggered repeatedly should keep their own `AbortController` ref and abort the previous request before starting the next one.
+- JSON traversal limits need both output limits and enqueue/traversal budgets; limiting rendered rows alone still lets huge arrays or objects allocate large stacks before the UI returns.
+- Candidate status badge maps should include report-only statuses such as `verified_match` and `quality_failed`, not only request workflow statuses.
 
 ## 2026-04-30
 

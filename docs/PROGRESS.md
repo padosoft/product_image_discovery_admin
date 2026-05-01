@@ -480,6 +480,62 @@
   - `npm run test` => 8 files, 41 tests
   - `npm run build`
   - `npm run e2e` => 14 Playwright tests
+- Copilot completed the follow-up review on PR #7 at `aec6ccc` with no new comments.
+- Merged PR #7 into `main` at merge commit `01aa79eaf38032aa6fba7ce08a7b9a185fbc3873`; GitHub Actions/status checks remained unconfigured rather than failing.
+- Continued Macro Task 5 on `task/diagnostics-debug-health` from updated `main`.
+- Implemented the Debug Report Viewer slice:
+  - the Reports page now supports stored server reports, pasted JSON, and uploaded JSON files
+  - reports are redacted before display, summarized with operational KPIs, and split into request/search/candidates/AI/downloads/quality/events/raw tabs
+  - candidate filters cover mismatches, AI failures, downloaded candidates, and verified candidates
+  - JSON search exposes path/value rows with copy actions
+  - Vitest and Playwright coverage now exercise stored report loading, candidate filtering, search, and copy behavior
+- Verification passed after the Debug Report Viewer slice:
+  - `composer validate --strict`
+  - `npm run phpunit` => 42 tests, 336 assertions
+  - `npm run test` => 8 files, 42 tests
+  - `npm run build`
+  - `npm run e2e` => 14 Playwright tests
+- Opened PR #8 for the Debug Report Viewer slice and requested Copilot Code Review with the GraphQL fallback.
+- Copilot reviewed `09f3845` and generated 3 comments.
+- Addressed the Copilot PR #8 comments:
+  - report source and section controls now use ordinary segmented-button semantics with `aria-pressed` instead of incomplete ARIA tab markup
+  - JSON path search now traverses iteratively with row/depth limits and filters while walking the report, avoiding full-report flattening for large payloads
+- Verification passed after the Copilot PR #8 fixes:
+  - `composer validate --strict`
+  - `npm run phpunit` => 42 tests, 336 assertions
+  - `npm run test` => 8 files, 42 tests
+  - `npm run build`
+  - `npm run e2e` => 14 Playwright tests
+- Copilot reviewed `312c63d` and generated 2 follow-up comments.
+- Addressed the latest Copilot PR #8 comments:
+  - pasted/uploaded report parsing now returns the raw report and redaction is centralized in the report-loading state transition
+  - report summary candidate/verified KPIs now use unfiltered candidate rows so toggling candidate filters cannot change report-level totals
+- Verification passed after the latest Copilot PR #8 fixes:
+  - `composer validate --strict`
+  - `npm run phpunit` => 42 tests, 336 assertions
+  - `npm run test` => 8 files, 42 tests
+  - `npm run build`
+  - `npm run e2e` => 14 Playwright tests
+- Copilot reviewed `959ddd8` and generated 2 follow-up comments.
+- Addressed the latest Copilot PR #8 comments:
+  - server report loading now aborts any previous in-flight report request and cancels on unmount
+  - the Recent Server Reports header count now matches the report-available rows rendered in the table
+- Verification passed after the report loader/count follow-up:
+  - `composer validate --strict`
+  - `npm run phpunit` => 42 tests, 336 assertions
+  - `npm run test` => 8 files, 42 tests
+  - `npm run build`
+  - `npm run e2e` => 14 Playwright tests
+- Copilot reviewed `07ece5e` and generated 3 follow-up comments.
+- Addressed the latest Copilot PR #8 comments:
+  - debug report JSON flattening now limits traversal/enqueue budget as well as rendered row count
+  - status badge mapping now treats `verified_match` as OK and report failure statuses such as `quality_failed` as danger
+- Re-ran the full local gate after the latest Copilot follow-up fixes:
+  - `composer validate --strict`
+  - `npm run phpunit` => 42 tests, 336 assertions
+  - `npm run test` => 8 files, 43 tests
+  - `npm run build`
+  - `npm run e2e` => 14 Playwright tests
 
 ## 2026-04-30
 

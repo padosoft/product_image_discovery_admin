@@ -962,6 +962,95 @@ textarea {
   justify-content: flex-end;
 }
 
+.pid-report-source,
+.pid-report-toolbar {
+  display: grid;
+  gap: 12px;
+  padding: 12px;
+}
+
+.pid-report-source label,
+.pid-report-search {
+  display: grid;
+  gap: 6px;
+}
+
+.pid-report-source span,
+.pid-report-search span,
+.pid-report-filters span {
+  color: var(--pid-muted);
+  font-size: 12px;
+}
+
+.pid-report-source input,
+.pid-report-source select,
+.pid-report-source textarea,
+.pid-report-search input {
+  min-height: 34px;
+  border: 1px solid var(--pid-border);
+  border-radius: 6px;
+  background: var(--pid-surface);
+  color: var(--pid-text);
+  padding: 6px 8px;
+}
+
+.pid-report-source textarea {
+  min-height: 160px;
+  resize: vertical;
+}
+
+.pid-segmented,
+.pid-tabs,
+.pid-report-filters {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.pid-segmented__item,
+.pid-tabs__item {
+  min-height: 30px;
+  border: 1px solid var(--pid-border);
+  border-radius: 6px;
+  background: var(--pid-surface-2);
+  color: var(--pid-text);
+  cursor: pointer;
+  padding: 4px 10px;
+}
+
+.pid-segmented__item--active,
+.pid-tabs__item--active {
+  border-color: var(--pid-accent);
+  background: var(--pid-accent-soft);
+  color: var(--pid-accent);
+}
+
+.pid-segmented__item:hover,
+.pid-segmented__item:focus-visible,
+.pid-tabs__item:hover,
+.pid-tabs__item:focus-visible {
+  border-color: var(--pid-accent);
+  outline: none;
+}
+
+.pid-report-filters label {
+  display: inline-flex;
+  min-height: 30px;
+  align-items: center;
+  gap: 6px;
+  border: 1px solid var(--pid-border);
+  border-radius: 6px;
+  padding: 4px 8px;
+}
+
+.pid-report-value {
+  display: block;
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
 .pid-filter-actions {
   padding: 0 12px 12px;
 }
