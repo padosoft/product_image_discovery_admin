@@ -74,6 +74,8 @@
 - Dedicated detail/report endpoints should use the same nullability contract as their parent resources; otherwise clients cannot reliably distinguish no payload yet from an intentionally empty payload.
 - Polling loops should schedule the next request only after the current one settles, and abort on cleanup, so slow debug/status responses cannot overlap or overwrite newer state.
 - Debug report viewer tests should identify reports by request identity rather than provider code; parallel Playwright projects can have multiple fake providers active at the same priority while each debug run is executing.
+- If a segmented control is implemented with ordinary buttons, use button semantics such as `aria-pressed`; only use `tablist`/`aria-selected` when the full ARIA tabs pattern is implemented.
+- JSON path search should filter while traversing and enforce row/depth limits, not flatten entire debug reports before slicing, because reports can grow quickly with provider payloads and candidate evidence.
 
 ## 2026-04-30
 

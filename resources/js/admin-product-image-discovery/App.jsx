@@ -2383,26 +2383,75 @@ function formatReportValue(value) {
   return String(value);
 }
 
-function flattenReportValue(value, basePath = '$') {
-  if (Array.isArray(value)) {
-    if (value.length === 0) {
-      return [{ path: basePath, value: [] }];
+function flattenReportValue(value, basePath = '$', options = {}) {
+  const maxRows = options.maxRows ?? 80;
+  const maxDepth = options.maxDepth ?? 10;
+  const query = String(options.query ?? '').trim().toLowerCase();
+  const rows = [];
+  const stack = [{ value, path: basePath, depth: 0 }];
+  const seen = new WeakSet();
+
+  function pushRow(row) {
+    if (rows.length >= maxRows) {
+      return;
     }
 
-    return value.flatMap((item, index) => flattenReportValue(item, `${basePath}[${index}]`));
+    if (!query || `${row.path} ${formatReportValue(row.value)}`.toLowerCase().includes(query)) {
+      rows.push(row);
+    }
   }
 
-  if (value && typeof value === 'object') {
-    const entries = Object.entries(value);
+  while (stack.length > 0 && rows.length < maxRows) {
+    const item = stack.pop();
 
-    if (entries.length === 0) {
-      return [{ path: basePath, value: {} }];
+    if (!item) {
+      continue;
     }
 
-    return entries.flatMap(([key, item]) => flattenReportValue(item, `${basePath}.${key}`));
+    if (item.depth > maxDepth) {
+      pushRow({ path: item.path, value: '[max depth]' });
+      continue;
+    }
+
+    if (Array.isArray(item.value)) {
+      if (item.value.length === 0) {
+        pushRow({ path: item.path, value: [] });
+        continue;
+      }
+
+      for (let index = item.value.length - 1; index >= 0; index -= 1) {
+        stack.push({ value: item.value[index], path: `${item.path}[${index}]`, depth: item.depth + 1 });
+      }
+
+      continue;
+    }
+
+    if (item.value && typeof item.value === 'object') {
+      if (seen.has(item.value)) {
+        pushRow({ path: item.path, value: '[circular]' });
+        continue;
+      }
+
+      seen.add(item.value);
+      const entries = Object.entries(item.value);
+
+      if (entries.length === 0) {
+        pushRow({ path: item.path, value: {} });
+        continue;
+      }
+
+      for (let index = entries.length - 1; index >= 0; index -= 1) {
+        const [key, nestedValue] = entries[index];
+        stack.push({ value: nestedValue, path: `${item.path}.${key}`, depth: item.depth + 1 });
+      }
+
+      continue;
+    }
+
+    pushRow({ path: item.path, value: item.value });
   }
 
-  return [{ path: basePath, value }];
+  return rows;
 }
 
 function debugCandidateHasMismatch(candidate) {
@@ -2528,16 +2577,6 @@ function reportSectionValue(report, activeTab, candidateRows) {
   return report;
 }
 
-function filterReportSearchRows(rows, query) {
-  const normalized = query.trim().toLowerCase();
-
-  if (!normalized) {
-    return rows;
-  }
-
-  return rows.filter((row) => `${row.path} ${formatReportValue(row.value)}`.toLowerCase().includes(normalized));
-}
-
 function DebugReportsPage({ onNotify }) {
   const [mode, setMode] = useState('server');
   const [runs, setRuns] = useState([]);
@@ -2596,7 +2635,7 @@ function DebugReportsPage({ onNotify }) {
   const candidateRows = useMemo(() => debugReportCandidateRows(report, filters), [report, filters]);
   const activeValue = useMemo(() => reportSectionValue(report, activeTab, candidateRows), [report, activeTab, candidateRows]);
   const searchRows = useMemo(
-    () => filterReportSearchRows(flattenReportValue(activeValue), searchQuery).slice(0, 80),
+    () => flattenReportValue(activeValue, '$', { query: searchQuery, maxRows: 80, maxDepth: 10 }),
     [activeValue, searchQuery],
   );
 
@@ -2756,7 +2795,7 @@ function DebugReportsPage({ onNotify }) {
             <span>{loadingRuns ? 'Loading' : `${runs.filter((run) => run.report_available).length} available`}</span>
           </div>
           <div className="pid-report-source">
-            <div className="pid-segmented" role="tablist" aria-label="Report source">
+            <div className="pid-segmented" aria-label="Report source">
               {[
                 ['server', 'Server'],
                 ['paste', 'Paste'],
@@ -2766,7 +2805,7 @@ function DebugReportsPage({ onNotify }) {
                   key={id}
                   type="button"
                   className={mode === id ? 'pid-segmented__item pid-segmented__item--active' : 'pid-segmented__item'}
-                  aria-selected={mode === id}
+                  aria-pressed={mode === id}
                   onClick={() => setMode(id)}
                 >
                   {label}
@@ -2871,13 +2910,13 @@ function DebugReportsPage({ onNotify }) {
               <span>{debugReportTabLabel(activeTab)}</span>
             </div>
             <div className="pid-report-toolbar">
-              <div className="pid-tabs" role="tablist" aria-label="Debug report sections">
+              <div className="pid-tabs" aria-label="Debug report sections">
                 {DEBUG_REPORT_TABS.map((tab) => (
                   <button
                     key={tab.id}
                     type="button"
                     className={activeTab === tab.id ? 'pid-tabs__item pid-tabs__item--active' : 'pid-tabs__item'}
-                    aria-selected={activeTab === tab.id}
+                    aria-pressed={activeTab === tab.id}
                     onClick={() => setActiveTab(tab.id)}
                   >
                     {tab.label}
