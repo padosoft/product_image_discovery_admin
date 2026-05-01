@@ -74,6 +74,20 @@
   - `npm run phpunit` => 27 tests, 174 assertions
   - `npm run test` => 4 files, 18 tests
   - `npm run build`
+- Resumed the PR #2 loop after `gh auth login` was refreshed by the user:
+  - local branch and `origin/task/request-review-workflows` are aligned at `e456ebc`
+  - `gh auth status` succeeds for `lopadova`
+  - thread-aware review polling found 8 review threads, with 0 unresolved non-outdated threads; the 4 unresolved threads are all outdated against the current head
+  - GitHub Actions/status checks are still unavailable for the branch (`gh pr checks 2` reports no checks, and the Actions runs API returns 0 workflow runs)
+- Verification passed after the resumed PR #2 loop:
+  - `npm run phpunit` => 27 tests, 174 assertions
+  - `npm run test` => 4 files, 18 tests
+  - `npm run build`
+  - `npm run e2e` => 4 Playwright tests
+- Attempted to request GitHub Copilot Code Review on PR #2 after the final local gates:
+  - `gh pr edit 2 --add-reviewer '@copilot'` is blocked by a missing `read:project` token scope
+  - `gh auth refresh -h github.com -s read:project` timed out waiting for interactive auth
+  - REST fallback `POST /repos/padosoft/product_image_discovery_admin/pulls/2/requested_reviewers` with `reviewers[]=copilot` returned 200, but subsequent API reads still expose no pending reviewer, so Copilot review could not be verified from CLI/API
 
 ## 2026-04-30
 
@@ -103,10 +117,9 @@
 
 ## Open Items
 
-- Request/verify GitHub Copilot Code Review manually from the PR Reviewers menu if the API-visible reviewer state remains empty.
-- Poll PR #2 review threads and status checks again after the reject/retry concurrency fix is published.
-- If GitHub CLI GraphQL remains 401, use REST/connector reads for comments and record that thread-level resolution/status checks could not be verified through `gh`.
-- If no remote CI workflow runs are present, record that GitHub Actions/status checks are unavailable for PR #2 before merging.
+- Request/verify GitHub Copilot Code Review manually from the PR Reviewers menu if the API-visible reviewer state remains empty, or refresh `gh` with `gh auth refresh -h github.com -s read:project` in an interactive shell and retry `gh pr edit 2 --add-reviewer '@copilot'`.
+- Continue polling PR #2 for a Copilot review result; current API-visible review threads have no unresolved non-outdated comments.
+- GitHub Actions/status checks remain unavailable for PR #2; do not treat CI as green, only as unconfigured.
 
 ## 2026-04-30 - Macro 2 Slice
 
