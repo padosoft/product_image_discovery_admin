@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Tests\Feature;
 
+use App\Models\ProductImageDiscoveryDebugRun;
 use App\Support\ProductImageDiscovery\DebugPayloadRedactor;
 use Carbon\CarbonImmutable;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -203,6 +204,12 @@ final class AdminWrapperEndpointsTest extends TestCase
             'status' => 'succeeded',
         ]);
         $this->assertStringNotContainsString('request-secret', $content);
+        $debugRun = ProductImageDiscoveryDebugRun::query()->findOrFail($debugRunId);
+        $this->assertIsString($debugRun->report_path);
+        $this->assertStringNotContainsString(
+            'request-secret',
+            (string) File::get(storage_path('app/'.$debugRun->report_path)),
+        );
 
         $this->getJson('/admin/product-image-discovery/debug-runs/'.$debugRunId)
             ->assertOk()

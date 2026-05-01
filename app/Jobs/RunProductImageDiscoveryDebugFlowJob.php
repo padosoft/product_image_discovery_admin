@@ -41,11 +41,12 @@ final class RunProductImageDiscoveryDebugFlowJob implements ShouldQueue
         ])->save();
 
         $paths = $this->paths($run);
-        File::ensureDirectoryExists(dirname($paths['request']));
-        File::ensureDirectoryExists(dirname($paths['report']));
-        File::put($paths['request'], json_encode($run->request_payload, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES | JSON_THROW_ON_ERROR).PHP_EOL);
 
         try {
+            File::ensureDirectoryExists(dirname($paths['request']));
+            File::ensureDirectoryExists(dirname($paths['report']));
+            File::put($paths['request'], json_encode($run->request_payload, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES | JSON_THROW_ON_ERROR).PHP_EOL);
+
             if (! array_key_exists('product-image-discovery:debug-flow', Artisan::all())) {
                 Artisan::registerCommand(app(ProductImageDiscoveryDebugFlowCommand::class));
             }
@@ -53,11 +54,14 @@ final class RunProductImageDiscoveryDebugFlowJob implements ShouldQueue
             $exitCode = Artisan::call('product-image-discovery:debug-flow', $this->commandArguments($run, $paths));
             $report = $this->readReport($paths['report']);
             $redactedReport = DebugPayloadRedactor::redact($report);
+            $redactedJson = json_encode($redactedReport, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES | JSON_THROW_ON_ERROR);
+
+            File::put($paths['report'], $redactedJson.PHP_EOL);
 
             $run->forceFill([
                 'status' => $exitCode === 0 ? 'succeeded' : 'failed',
                 'report_payload' => $redactedReport,
-                'output' => json_encode($redactedReport, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES | JSON_THROW_ON_ERROR),
+                'output' => $redactedJson,
                 'error_message' => $exitCode === 0 ? null : $this->sanitizeMessage(Artisan::output() ?: 'Debug flow failed.'),
                 'request_path' => $this->relativeStoragePath($paths['request']),
                 'report_path' => $this->relativeStoragePath($paths['report']),
@@ -65,6 +69,10 @@ final class RunProductImageDiscoveryDebugFlowJob implements ShouldQueue
                 'finished_at' => Carbon::now(),
             ])->save();
         } catch (Throwable $exception) {
+            if (is_file($paths['report'])) {
+                File::delete($paths['report']);
+            }
+
             $run->forceFill([
                 'status' => 'failed',
                 'output' => null,
@@ -135,7 +143,12 @@ final class RunProductImageDiscoveryDebugFlowJob implements ShouldQueue
 
     private function relativeStoragePath(string $path): string
     {
-        return str_replace('\\', '/', str_replace(storage_path('app').DIRECTORY_SEPARATOR, '', $path));
+        $normalizedPath = str_replace('\\', '/', $path);
+        $storageRoot = rtrim(str_replace('\\', '/', storage_path('app')), '/').'/';
+
+        return str_starts_with($normalizedPath, $storageRoot)
+            ? substr($normalizedPath, strlen($storageRoot))
+            : $normalizedPath;
     }
 
     private function sanitizeMessage(string $message): string

@@ -386,6 +386,19 @@
   - `npm run test` => 8 files, 39 tests
   - `npm run build`
   - `npm run e2e` => 14 Playwright tests
+- Copilot reviewed `e252185` and generated 3 comments; an automatic Codex review also generated 2 actionable debug-flow comments. Codex is not treated as a Copilot substitute, but the actionable findings were addressed:
+  - debug-run creation now has the same kind of route-level throttling used by provider tests
+  - the debug job now marks file-write/setup failures as failed runs instead of leaving rows stuck in `running`
+  - command-generated `report.json` is overwritten with the redacted payload after ingestion, and stale raw reports are deleted on job failure
+  - stored debug artifact paths are normalized to relative storage paths on Windows even when separators differ
+  - the Debug Flow editor persists only a redacted draft to localStorage, never raw secret-looking request fields
+  - opening a completed historical run now fetches the full debug report instead of rendering only the list summary
+- Verification passed after the PR #7 review fixes:
+  - `composer validate --strict`
+  - `npm run phpunit` => 40 tests, 321 assertions
+  - `npm run test` => 8 files, 40 tests
+  - `npm run build`
+  - `npm run e2e` => 14 Playwright tests
 
 ## 2026-04-30
 

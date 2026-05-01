@@ -36,6 +36,9 @@ describe('admin product image discovery shell', () => {
       clear: vi.fn(() => {
         store.clear();
       }),
+      removeItem: vi.fn((key) => {
+        store.delete(key);
+      }),
     });
     document.documentElement.dataset.theme = 'light';
     document.head.innerHTML = '<meta name="csrf-token" content="test-token">';
@@ -822,6 +825,8 @@ describe('admin product image discovery shell', () => {
     });
 
     expect(screen.getByRole('region', { name: 'Debug payload preview' })).not.toHaveTextContent('front-secret');
+    await waitFor(() => expect(window.localStorage.getItem('pid-debug-flow-draft')).not.toContain('front-secret'));
+    expect(window.localStorage.getItem('pid-debug-flow-draft')).toContain('[redacted]');
     fireEvent.click(screen.getByRole('button', { name: 'Run debug flow' }));
 
     await waitFor(() => expect(createdPayload).toMatchObject({
@@ -831,6 +836,66 @@ describe('admin product image discovery shell', () => {
     expect(await screen.findByRole('region', { name: 'Debug run result' })).toHaveTextContent('HERNO-PI002223D-CAMMELLO');
     expect(screen.getByRole('region', { name: 'Debug run report' })).not.toHaveTextContent('server-secret');
     expect(screen.getByRole('region', { name: 'Debug run report' })).toHaveTextContent('"has_api_key": true');
+  });
+
+  it('fetches a completed debug run report when opening a historical row', async () => {
+    window.history.replaceState({}, '', '/admin/product-image-discovery/debug');
+
+    vi.stubGlobal('fetch', vi.fn((url, options = {}) => {
+      const requestUrl = new URL(String(url));
+      const path = requestUrl.pathname;
+      const method = options.method ?? 'GET';
+
+      if (path.endsWith('/dashboard-summary')) {
+        return Promise.resolve(mockJsonResponse({
+          counts: { total: 0, manual_review: 0, ready_to_publish: 0, failed: 0, no_candidates_found: 0 },
+          provider_status: [],
+        }));
+      }
+
+      if (path.includes('/requests/search')) {
+        return Promise.resolve(mockJsonResponse({ data: [] }));
+      }
+
+      if (path.endsWith('/debug-runs/9') && method === 'GET') {
+        return Promise.resolve(mockJsonResponse({
+          data: {
+            id: 9,
+            status: 'succeeded',
+            request_payload: { erp_model_color_id: 'ARCHIVE-COLOR' },
+            summary: { candidate_count: 1 },
+            request_summary: { erp_model_color_id: 'ARCHIVE-COLOR' },
+            report: { evidence: { marker: 'full archived report' } },
+            report_available: true,
+            updated_at: '2026-05-01T12:00:00Z',
+          },
+        }));
+      }
+
+      if (path.endsWith('/debug-runs') && method === 'GET') {
+        return Promise.resolve(mockJsonResponse({
+          data: [{
+            id: 9,
+            status: 'succeeded',
+            request_payload: { erp_model_color_id: 'ARCHIVE-COLOR' },
+            summary: { candidate_count: 1 },
+            request_summary: { erp_model_color_id: 'ARCHIVE-COLOR' },
+            report: null,
+            report_available: true,
+            updated_at: '2026-05-01T12:00:00Z',
+          }],
+        }));
+      }
+
+      return Promise.reject(new Error(`Unexpected request: ${method} ${path}`));
+    }));
+
+    render(<App />);
+
+    await screen.findByRole('row', { name: /ARCHIVE-COLOR/ });
+    fireEvent.click(screen.getByRole('button', { name: 'Open' }));
+
+    expect(await screen.findByRole('region', { name: 'Debug run report' })).toHaveTextContent('full archived report');
   });
 
   it('keeps the request detail drawer open while loading selected request data', async () => {

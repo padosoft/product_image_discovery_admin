@@ -58,6 +58,8 @@
 - Laravel validation of nested arrays returns only validated nested keys; when the admin must pass through a full product request payload, validate required fields and then read the raw nested input with `$request->input('request_payload', [])`.
 - Playwright projects share the same prepared database when they run in parallel, so e2e assertions should not depend on a globally prioritized provider remaining unique to one project unless the test isolates that data or runs serially.
 - Debug payload redaction should preserve safe credential status booleans such as `has_api_key` and `has_api_secret`; those flags are the approved public shape, while raw `api_key`, `api_secret`, tokens, credentials, and passwords still need redaction.
+- Debug jobs should rewrite or delete command-generated artifacts after redaction, not only sanitize the database copy. On Windows, normalize both `storage_path('app')` and artifact paths before stripping the storage root, or mixed separators can leave absolute paths in persisted JSON.
+- Admin editors that accept arbitrary JSON should not persist raw drafts to localStorage. If local draft persistence is useful, write only a redacted parseable version and drop invalid drafts rather than storing partially typed secret-bearing text.
 
 ## 2026-04-30
 

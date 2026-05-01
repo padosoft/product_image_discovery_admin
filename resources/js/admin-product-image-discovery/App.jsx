@@ -2362,9 +2362,11 @@ function DebugFlowPage({ onNotify }) {
 
   useEffect(() => {
     try {
-      localStorage.setItem(DEBUG_DRAFT_KEY, requestJson);
+      const parsed = JSON.parse(requestJson);
+      localStorage.setItem(DEBUG_DRAFT_KEY, JSON.stringify(redactDebugPreview(parsed), null, 2));
     } catch (err) {
       void err;
+      localStorage.removeItem(DEBUG_DRAFT_KEY);
     }
   }, [requestJson]);
 
@@ -2443,6 +2445,28 @@ function DebugFlowPage({ onNotify }) {
     }
   }
 
+  async function openDebugRun(run) {
+    setSelectedRun(run);
+    setError('');
+
+    if (!run?.id || run.report !== null && run.report !== undefined) {
+      return;
+    }
+
+    try {
+      const result = await fetchDebugRun(run.id);
+
+      if (mountedRef.current) {
+        setSelectedRun(result);
+        setRuns((current) => current.map((item) => (item.id === result.id ? result : item)));
+      }
+    } catch (err) {
+      if (mountedRef.current) {
+        setError(err.message || 'Unable to load debug run report.');
+      }
+    }
+  }
+
   const columns = [
     { key: 'id', label: 'ID', render: (run) => <code>#{run.id}</code> },
     { key: 'status', label: 'Status', render: (run) => <DebugRunStatusBadge status={run.status} /> },
@@ -2455,7 +2479,7 @@ function DebugFlowPage({ onNotify }) {
       label: 'Actions',
       className: 'pid-table__actions',
       render: (run) => (
-        <button type="button" className="pid-chip-button" onClick={() => setSelectedRun(run)}>
+        <button type="button" className="pid-chip-button" onClick={() => openDebugRun(run)}>
           Open
         </button>
       ),
