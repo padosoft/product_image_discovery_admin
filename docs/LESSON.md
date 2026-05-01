@@ -69,6 +69,8 @@
 - High-impact admin diagnostics can need stricter middleware than the rest of the demo shell. Use a dedicated config key so production defaults can require `auth` while tests/local smoke can opt out explicitly.
 - List endpoints for stored debug reports should not sanitize full report payloads just to build table rows. Extract and redact only the summary fields needed by the list, and hydrate full reports from the detail endpoint.
 - Queue-backed UI copy should account for `sync` queues in local/demo environments; a create response may already be `succeeded`, not merely queued/running.
+- Debug text redaction needs to handle authorization schemes beyond Bearer, such as Basic, without leaving the credential token after the scheme.
+- API resources should use `null` for missing detail payloads rather than empty arrays when the frontend uses nullish coalescing to decide whether detail hydration is needed.
 
 ## 2026-04-30
 

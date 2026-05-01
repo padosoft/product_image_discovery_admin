@@ -35,13 +35,13 @@ final class DebugPayloadRedactor
         ) ?? $value;
 
         $value = preg_replace(
-            '/((?:"|\')?authorization(?:"|\')?\s*[:=]\s*Bearer\s+)[^\s,;]+/i',
+            '/((?:"|\')?authorization(?:"|\')?\s*[:=]\s*(?:Bearer|Basic|Digest|Token)\s+)[^\s,;]+/i',
             '$1[redacted]',
             $value,
         ) ?? $value;
 
         $value = preg_replace(
-            '/((?:"|\')?authorization(?:"|\')?\s*[:=]\s*)(?!Bearer\s)(?!["\'])[^\s,;]+/i',
+            '/((?:"|\')?authorization(?:"|\')?\s*[:=]\s*)(?!Bearer\s|Basic\s|Digest\s|Token\s)(?!["\'])[^\s,;]+/i',
             '$1[redacted]',
             $value,
         ) ?? $value;

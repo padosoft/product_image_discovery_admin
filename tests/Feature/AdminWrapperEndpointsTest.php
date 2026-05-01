@@ -242,6 +242,24 @@ final class AdminWrapperEndpointsTest extends TestCase
             ->assertJsonValidationErrors(['request_payload.client_id']);
     }
 
+    public function test_admin_debug_run_without_report_returns_null_report(): void
+    {
+        $run = ProductImageDiscoveryDebugRun::query()->create([
+            'status' => 'queued',
+            'request_payload' => [
+                'client_id' => 1,
+                'erp_model_color_id' => 'HERNO-EMPTY',
+                'brand' => 'Herno',
+            ],
+            'options' => [],
+        ]);
+
+        $this->getJson('/admin/product-image-discovery/debug-runs/'.$run->getKey())
+            ->assertOk()
+            ->assertJsonPath('data.report_available', false)
+            ->assertJsonPath('data.report', null);
+    }
+
     public function test_debug_payload_redactor_preserves_safe_credential_status_flags(): void
     {
         $redacted = DebugPayloadRedactor::redact([
@@ -271,6 +289,10 @@ final class AdminWrapperEndpointsTest extends TestCase
         $this->assertSame(
             'Authorization: Bearer [redacted] token="[redacted]"',
             DebugPayloadRedactor::redactText('Authorization: Bearer secret-token token="quoted secret"'),
+        );
+        $this->assertSame(
+            'Authorization: Basic [redacted]',
+            DebugPayloadRedactor::redactText('Authorization: Basic base64-secret'),
         );
     }
 

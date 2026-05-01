@@ -125,7 +125,7 @@ final class AdminDebugRunController extends Controller
             'options' => $run->getAttribute('options') ?? [],
             'summary' => $summary,
             'request_summary' => $requestSummary,
-            'report' => $includeReport ? $report : null,
+            'report' => $includeReport && $reportAvailable ? $report : null,
             'report_available' => $reportAvailable,
             'output' => $includeReport ? $run->getAttribute('output') : null,
             'error_message' => $run->getAttribute('error_message'),

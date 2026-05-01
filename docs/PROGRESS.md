@@ -459,6 +459,16 @@
   - `npm run test` => 8 files, 40 tests
   - `npm run build`
   - `npm run e2e` => 14 Playwright tests
+- Copilot reviewed `9d3e0ed` and generated 2 follow-up comments.
+- Addressed the latest Copilot PR #7 comments:
+  - debug text redaction now handles non-Bearer auth schemes such as `Authorization: Basic <token>`
+  - debug-run resources now return `report: null` when no report is available, avoiding empty-array report rendering in the UI
+- Verification passed after the auth-scheme/report-null follow-up:
+  - `composer validate --strict`
+  - `npm run phpunit` => 42 tests, 333 assertions
+  - `npm run test` => 8 files, 40 tests
+  - `npm run build`
+  - `npm run e2e` => 14 Playwright tests
 
 ## 2026-04-30
 
