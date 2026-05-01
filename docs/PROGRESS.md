@@ -24,6 +24,17 @@
   - `npm run test`
   - `npm run build`
   - `npm run e2e`
+- Resolved the still-open Macro Task 1 PR loop on GitHub:
+  - Pushed `b6925b9` to `task/foundation-laravel-admin-app`.
+  - Addressed and resolved the remaining Copilot threads for normalized admin route prefix, dashboard aggregate counts, JsonViewer clipboard handling, and shell body memoization.
+  - Confirmed no GitHub Actions workflow runs/status checks were configured for the PR head.
+  - Merged PR #1 into `main` at merge commit `3b2142f`.
+- Cherry-picked the foundation review fixes into `task/request-review-workflows` as `2ae421b`.
+- Verification passed after carrying those fixes into Macro Task 3:
+  - `npm run phpunit`
+  - `npm run test`
+  - `npm run build`
+  - `npm run e2e`
 
 ## 2026-04-30
 
@@ -53,13 +64,9 @@
 
 ## Open Items
 
-- Remote PR/Copilot loop is pending until explicitly run:
-  - push branch `task/foundation-laravel-admin-app`
-  - open PR
-  - request Copilot review
-  - wait for CI/review comments
-  - fix until green
-- Continue Macro Task 2 after Macro 1 PR loop, unless the user explicitly wants to keep implementing locally first.
+- Push `task/request-review-workflows` after `2ae421b`.
+- Open the Macro Task 3 PR into `main`.
+- Request Copilot review, poll for CI/review comments, and fix until green/resolved. If GitHub Actions remain unavailable, record that no remote CI workflow runs were present.
 
 ## 2026-04-30 - Macro 2 Slice
 
