@@ -151,6 +151,74 @@
   - `npm run test` => 4 files, 19 tests
   - `npm run build`
   - `npm run e2e` => 4 Playwright tests
+- Copilot completed the follow-up review on PR #2 at `faa8e71` with no new comments.
+- Merged PR #2 into `main` at merge commit `bcb90b397230fc2f2383c7cad92995d3955347d1`; GitHub Actions/status checks remained unconfigured rather than failing.
+- Started Macro Task 4 on `task/configuration-management` from updated `main`.
+- Implemented the Settings configuration slice:
+  - added admin JSON wrappers for settings CRUD under `/admin/product-image-discovery/settings...`
+  - kept browser navigation to `/admin/product-image-discovery/settings` serving the React shell while JSON requests still receive the settings collection
+  - added a dense Settings page with typed value validation, global/client scope, active/inactive state, JSON preview, create/update form, and delete confirmation
+  - added typed setting form helpers and regression coverage for JSON/integer/float/boolean/null parsing
+  - added Playwright coverage for creating and deleting a typed client override on desktop and tablet
+- Verification passed after the Settings configuration slice:
+  - `composer validate --strict`
+  - `npm run phpunit` => 30 tests, 203 assertions
+  - `npm run test` => 5 files, 24 tests
+  - `npm run build`
+  - `npm run e2e` => 6 Playwright tests
+- Opened PR #3 for `task/configuration-management` and requested Copilot Code Review with the GraphQL fallback because `gh pr edit --add-reviewer @copilot` is still blocked by the missing `read:project` scope.
+- An automatic Codex review on PR #3 generated two actionable `settings-form.js` comments; these are not treated as a Copilot substitute, but were addressed:
+  - client override IDs now must be whole positive integer strings before numeric conversion
+  - float settings now reject non-finite values such as `Infinity`/`1e309` before JSON serialization
+- Verification passed after the numeric parsing follow-up:
+  - `composer validate --strict`
+  - `npm run phpunit` => 30 tests, 203 assertions
+  - `npm run test` => 5 files, 24 tests
+  - `npm run build`
+  - `npm run e2e` => 6 Playwright tests
+- Copilot completed review on `c9ecfea` and generated 1 settings form comment.
+- Addressed the Copilot PR #3 comment:
+  - edit-form fallback `value_type` now uses the same default as create-form state instead of falling back to JSON parsing
+- Verification passed after the Copilot fallback-type fix:
+  - `npm run phpunit` => 30 tests, 203 assertions
+  - `npm run test` => 5 files, 25 tests
+  - `npm run build`
+  - `npm run e2e` => 6 Playwright tests
+- Copilot reviewed `1197fc4` and generated 1 routing comment.
+- Addressed the latest Copilot PR #3 comment:
+  - overview URL sync now uses the canonical admin base path without adding a trailing slash
+- Verification passed after the overview URL fix:
+  - `npm run phpunit` => 30 tests, 203 assertions
+  - `npm run test` => 5 files, 25 tests
+  - `npm run build`
+  - `npm run e2e` => 6 Playwright tests
+- Copilot reviewed `5bcef9f` and generated 1 settings reload lifecycle comment.
+- Addressed the latest Copilot PR #3 comment:
+  - Settings reloads and mutation continuations now guard against updating component state after the Settings page unmounts
+- Verification passed after the Settings lifecycle guard fix:
+  - `npm run phpunit` => 30 tests, 203 assertions
+  - `npm run test` => 5 files, 26 tests
+  - `npm run build`
+  - `npm run e2e` => 6 Playwright tests
+- Copilot reviewed `95847e5` and generated 4 follow-up comments.
+- Addressed the latest Copilot PR #3 comments:
+  - `reloadSettings()` now returns before any state write when the Settings page is unmounted
+  - settings form full-width layout uses explicit classes instead of `nth-of-type`
+  - Playwright setting row locators use text filtering instead of unescaped regular expressions
+- Verification passed after the latest Copilot PR #3 fixes:
+  - `npm run phpunit` => 30 tests, 203 assertions
+  - `npm run test` => 5 files, 26 tests
+  - `npm run build`
+  - `npm run e2e` => 6 Playwright tests
+- Copilot reviewed `891d70e` and generated 1 additional settings reload race comment.
+- Addressed the latest Copilot PR #3 comment:
+  - concurrent Settings reloads now use a monotonic request id so only the newest in-flight request can update settings, loading, or error state
+  - added RTL coverage for a slow initial reload resolving after a mutation-triggered reload
+- Verification passed after the Settings reload race fix:
+  - `npm run phpunit` => 30 tests, 203 assertions
+  - `npm run test` => 5 files, 27 tests
+  - `npm run build`
+  - `npm run e2e` => 6 Playwright tests
 
 ## 2026-04-30
 
@@ -180,8 +248,8 @@
 
 ## Open Items
 
-- Push the latest PHP wrapper fix, resolve the addressed Copilot thread, request a fresh Copilot Code Review, and continue polling until new comments/checks are resolved.
-- GitHub Actions/status checks remain unavailable for PR #2; do not treat CI as green, only as unconfigured.
+- Push the Settings configuration slice, open the next PR, request Copilot Code Review through the GraphQL fallback if `gh pr edit` is blocked, and poll until comments/checks are resolved.
+- Continue Macro Task 4 with Providers and Trusted Sources after the Settings slice PR loop is resolved.
 
 ## 2026-04-30 - Macro 2 Slice
 

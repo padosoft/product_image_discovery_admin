@@ -1,6 +1,6 @@
 import '@testing-library/jest-dom/vitest';
 import React from 'react';
-import { fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { act, fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import App from '../../resources/js/admin-product-image-discovery/App';
 import { ImageTile } from '../../resources/js/admin-product-image-discovery/components/ImageTile';
@@ -102,6 +102,7 @@ describe('admin product image discovery shell', () => {
     expect(screen.getByText('Provider Health')).toBeVisible();
     expect(fetchMock).toHaveBeenCalledTimes(2);
     expect(setTimeoutSpy).not.toHaveBeenCalledWith(expect.any(Function), 280);
+    expect(window.location.pathname).toBe('/admin/product-image-discovery');
   });
 
   it('keeps the shell mounted when API calls fail', async () => {
@@ -212,6 +213,208 @@ describe('admin product image discovery shell', () => {
     expect(screen.getByLabelText('Manual review only')).toBeDisabled();
 
     await waitFor(() => expect(window.location.search).toContain('manual_review_required=true'));
+  });
+
+  it('loads settings and submits typed setting payloads from the configuration page', async () => {
+    window.history.replaceState({}, '', '/admin/product-image-discovery/settings');
+    let createdPayload = null;
+    const settingsPayload = {
+      data: [
+        {
+          id: 7,
+          client_id: null,
+          setting_key: 'decision.manual_review_threshold',
+          setting_value: 55,
+          value_type: 'integer',
+          description: 'Manual review threshold',
+          is_active: true,
+          updated_at: '2026-05-01T10:00:00Z',
+        },
+      ],
+    };
+
+    vi.stubGlobal('fetch', vi.fn((url, options = {}) => {
+      const requestUrl = new URL(String(url));
+      const path = requestUrl.pathname;
+      const method = options.method ?? 'GET';
+
+      if (path.endsWith('/dashboard-summary')) {
+        return Promise.resolve(mockJsonResponse({
+          counts: { total: 0, manual_review: 0, ready_to_publish: 0, failed: 0, no_candidates_found: 0 },
+          provider_status: [],
+        }));
+      }
+
+      if (path.includes('/requests/search')) {
+        return Promise.resolve(mockJsonResponse({ data: [] }));
+      }
+
+      if (path.endsWith('/settings') && method === 'POST') {
+        createdPayload = JSON.parse(options.body);
+        return Promise.resolve(mockJsonResponse({ data: { id: 8, ...createdPayload } }));
+      }
+
+      if (path.endsWith('/settings')) {
+        return Promise.resolve(mockJsonResponse(settingsPayload));
+      }
+
+      return Promise.reject(new Error(`Unexpected request: ${method} ${path}`));
+    }));
+
+    render(<App />);
+
+    expect(await screen.findByRole('heading', { name: 'Create Setting' })).toBeVisible();
+    expect(await screen.findByText('decision.manual_review_threshold')).toBeVisible();
+    expect(screen.getByRole('region', { name: 'Setting JSON preview' })).toBeVisible();
+
+    fireEvent.change(screen.getByLabelText('Setting key'), { target: { value: 'decision.auto_publish_threshold' } });
+    fireEvent.change(screen.getByLabelText('Client override'), { target: { value: '5' } });
+    fireEvent.change(screen.getByLabelText('Setting value'), { target: { value: '88' } });
+    fireEvent.change(screen.getByLabelText('Description'), { target: { value: 'Client threshold' } });
+    fireEvent.change(screen.getByLabelText('State'), { target: { value: 'false' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Create setting' }));
+
+    await waitFor(() => expect(createdPayload).toEqual({
+      client_id: 5,
+      setting_key: 'decision.auto_publish_threshold',
+      setting_value: 88,
+      value_type: 'integer',
+      description: 'Client threshold',
+      is_active: false,
+    }));
+  });
+
+  it('does not notify from settings reloads after leaving the page', async () => {
+    window.history.replaceState({}, '', '/admin/product-image-discovery/settings');
+    const delayedReload = deferredJsonResponse({ data: [] });
+    let settingsReads = 0;
+
+    vi.stubGlobal('fetch', vi.fn((url, options = {}) => {
+      const requestUrl = new URL(String(url));
+      const path = requestUrl.pathname;
+      const method = options.method ?? 'GET';
+
+      if (path.endsWith('/dashboard-summary')) {
+        return Promise.resolve(mockJsonResponse({
+          counts: { total: 0, manual_review: 0, ready_to_publish: 0, failed: 0, no_candidates_found: 0 },
+          provider_status: [],
+        }));
+      }
+
+      if (path.includes('/requests/search')) {
+        return Promise.resolve(mockJsonResponse({ data: [] }));
+      }
+
+      if (path.endsWith('/settings') && method === 'POST') {
+        return Promise.resolve(mockJsonResponse({ data: { id: 8 } }));
+      }
+
+      if (path.endsWith('/settings')) {
+        settingsReads += 1;
+
+        return settingsReads === 1
+          ? Promise.resolve(mockJsonResponse({ data: [] }))
+          : delayedReload.promise;
+      }
+
+      return Promise.reject(new Error(`Unexpected request: ${method} ${path}`));
+    }));
+
+    render(<App />);
+
+    expect(await screen.findByRole('heading', { name: 'Create Setting' })).toBeVisible();
+
+    fireEvent.change(screen.getByLabelText('Setting key'), { target: { value: 'decision.auto_publish_threshold' } });
+    fireEvent.change(screen.getByLabelText('Setting value'), { target: { value: '88' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Create setting' }));
+
+    await waitFor(() => expect(settingsReads).toBe(2));
+    fireEvent.click(screen.getByRole('button', { name: 'Overview section' }));
+    delayedReload.resolve();
+
+    await waitFor(() => expect(screen.getByRole('heading', { name: 'Overview' })).toBeVisible());
+    expect(screen.queryByText('Setting created.')).not.toBeInTheDocument();
+  });
+
+  it('keeps newer settings when an older reload resolves late', async () => {
+    window.history.replaceState({}, '', '/admin/product-image-discovery/settings');
+    const initialLoad = deferredJsonResponse({
+      data: [
+        {
+          id: 1,
+          client_id: null,
+          setting_key: 'stale.setting',
+          setting_value: 10,
+          value_type: 'integer',
+          description: '',
+          is_active: true,
+          updated_at: '2026-05-01T10:00:00Z',
+        },
+      ],
+    });
+    let settingsReads = 0;
+
+    vi.stubGlobal('fetch', vi.fn((url, options = {}) => {
+      const requestUrl = new URL(String(url));
+      const path = requestUrl.pathname;
+      const method = options.method ?? 'GET';
+
+      if (path.endsWith('/dashboard-summary')) {
+        return Promise.resolve(mockJsonResponse({
+          counts: { total: 0, manual_review: 0, ready_to_publish: 0, failed: 0, no_candidates_found: 0 },
+          provider_status: [],
+        }));
+      }
+
+      if (path.includes('/requests/search')) {
+        return Promise.resolve(mockJsonResponse({ data: [] }));
+      }
+
+      if (path.endsWith('/settings') && method === 'POST') {
+        return Promise.resolve(mockJsonResponse({ data: { id: 8 } }));
+      }
+
+      if (path.endsWith('/settings')) {
+        settingsReads += 1;
+
+        return settingsReads === 1
+          ? initialLoad.promise
+          : Promise.resolve(mockJsonResponse({
+            data: [
+              {
+                id: 8,
+                client_id: null,
+                setting_key: 'decision.auto_publish_threshold',
+                setting_value: 88,
+                value_type: 'integer',
+                description: '',
+                is_active: true,
+                updated_at: '2026-05-01T10:01:00Z',
+              },
+            ],
+          }));
+      }
+
+      return Promise.reject(new Error(`Unexpected request: ${method} ${path}`));
+    }));
+
+    render(<App />);
+
+    expect(await screen.findByRole('heading', { name: 'Create Setting' })).toBeVisible();
+
+    fireEvent.change(screen.getByLabelText('Setting key'), { target: { value: 'decision.auto_publish_threshold' } });
+    fireEvent.change(screen.getByLabelText('Setting value'), { target: { value: '88' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Create setting' }));
+
+    await waitFor(() => expect(settingsReads).toBe(2));
+    expect(await screen.findByText('decision.auto_publish_threshold')).toBeVisible();
+
+    await act(async () => {
+      initialLoad.resolve();
+    });
+
+    expect(screen.queryByText('stale.setting')).not.toBeInTheDocument();
+    expect(screen.getByText('decision.auto_publish_threshold')).toBeVisible();
   });
 
   it('keeps the request detail drawer open while loading selected request data', async () => {

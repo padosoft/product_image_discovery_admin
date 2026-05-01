@@ -30,6 +30,14 @@
 - Reject flows that move a request to terminal `rejected` must clear selected/best candidate pointers and `final_score` unconditionally when no non-rejected candidates remain, even if the just-rejected row was not the recorded best.
 - Pinned UI filters should be disabled/read-only in the control itself, not only enforced in derived fetch state, or operators see an editable value that cannot actually change the query.
 - PHP runner helpers must distinguish executable names from filesystem paths. Only path-like `PHP_BINARY` candidates should be checked with `existsSync()`; command names such as `php84` need to reach `spawnSync()` so they can resolve through `PATH`.
+- When a configuration page path and an admin JSON collection share the same URL, route by request intent: browser `Accept: text/html` should return the React shell, while `Accept: application/json` should return the wrapper payload. Otherwise direct navigation to pages such as `/settings` renders raw JSON.
+- Setting form payloads need typed client-side parsing before submit so the operator sees JSON/integer/float/boolean/null errors before the package FormRequest rejects the request.
+- Client-side numeric parsing should validate the full input string before conversion. `parseInt()` silently truncates values such as `5.9` and `1e2`, and non-finite floats serialize to JSON `null`.
+- Create and edit form defaults should come from the same constant; drifting fallback value types can make an unchanged edit parse values differently from a new setting.
+- URL synchronization should emit the canonical configured admin base path for the overview page; avoid adding a trailing slash from the client when server routes and PR reviewers expect the no-slash form.
+- Async page-local reload helpers need a mounted guard for mutation-triggered reloads too, not only for the initial effect with an AbortController.
+- Prefer explicit layout utility classes over `nth-of-type` selectors in evolving admin forms; tests should avoid raw `RegExp` from dynamic strings unless the value is escaped first.
+- Page-local reload helpers that can run concurrently need a latest-request guard, not just a mounted guard; otherwise an older slower response can overwrite newer mutation-triggered state.
 
 ## 2026-04-30
 
