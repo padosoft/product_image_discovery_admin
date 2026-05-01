@@ -37,6 +37,7 @@
 - URL synchronization should emit the canonical configured admin base path for the overview page; avoid adding a trailing slash from the client when server routes and PR reviewers expect the no-slash form.
 - Async page-local reload helpers need a mounted guard for mutation-triggered reloads too, not only for the initial effect with an AbortController.
 - Prefer explicit layout utility classes over `nth-of-type` selectors in evolving admin forms; tests should avoid raw `RegExp` from dynamic strings unless the value is escaped first.
+- Page-local reload helpers that can run concurrently need a latest-request guard, not just a mounted guard; otherwise an older slower response can overwrite newer mutation-triggered state.
 
 ## 2026-04-30
 

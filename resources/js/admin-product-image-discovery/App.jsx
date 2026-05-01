@@ -1014,6 +1014,7 @@ function SettingsPage({ onNotify }) {
   const [actionLoading, setActionLoading] = useState(false);
   const [deleteSetting, setDeleteSetting] = useState(null);
   const mountedRef = useRef(true);
+  const settingsReloadIdRef = useRef(0);
 
   const formPayload = useMemo(() => buildSettingPayload(form), [form]);
   const previewValue = formPayload.ok ? formPayload.value : { error: formPayload.error };
@@ -1023,24 +1024,32 @@ function SettingsPage({ onNotify }) {
       return;
     }
 
+    const reloadId = settingsReloadIdRef.current + 1;
+    settingsReloadIdRef.current = reloadId;
+    const isCurrentReload = () => (
+      mountedRef.current
+      && settingsReloadIdRef.current === reloadId
+      && !signal?.aborted
+    );
+
     setLoading(true);
     setError('');
 
     try {
       const result = await fetchSettings(signal);
 
-      if (!mountedRef.current || signal?.aborted) {
+      if (!isCurrentReload()) {
         return;
       }
 
       setSettings(result);
     } catch (err) {
-      if (mountedRef.current && err.name !== 'AbortError') {
+      if (isCurrentReload() && err.name !== 'AbortError') {
         setSettings([]);
         setError(err.message || 'Unable to load settings.');
       }
     } finally {
-      if (mountedRef.current && !signal?.aborted) {
+      if (isCurrentReload()) {
         setLoading(false);
       }
     }

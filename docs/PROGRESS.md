@@ -210,6 +210,15 @@
   - `npm run test` => 5 files, 26 tests
   - `npm run build`
   - `npm run e2e` => 6 Playwright tests
+- Copilot reviewed `891d70e` and generated 1 additional settings reload race comment.
+- Addressed the latest Copilot PR #3 comment:
+  - concurrent Settings reloads now use a monotonic request id so only the newest in-flight request can update settings, loading, or error state
+  - added RTL coverage for a slow initial reload resolving after a mutation-triggered reload
+- Verification passed after the Settings reload race fix:
+  - `npm run phpunit` => 30 tests, 203 assertions
+  - `npm run test` => 5 files, 27 tests
+  - `npm run build`
+  - `npm run e2e` => 6 Playwright tests
 
 ## 2026-04-30
 
