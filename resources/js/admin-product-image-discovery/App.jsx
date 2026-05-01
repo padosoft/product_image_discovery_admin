@@ -2364,7 +2364,7 @@ function parseReportJson(value) {
     throw new Error('Report JSON must decode to an object.');
   }
 
-  return redactDebugPreview(report);
+  return report;
 }
 
 function formatReportValue(value) {
@@ -2632,6 +2632,7 @@ function DebugReportsPage({ onNotify }) {
     };
   }, []);
 
+  const allCandidateRows = useMemo(() => debugReportCandidateRows(report), [report]);
   const candidateRows = useMemo(() => debugReportCandidateRows(report, filters), [report, filters]);
   const activeValue = useMemo(() => reportSectionValue(report, activeTab, candidateRows), [report, activeTab, candidateRows]);
   const searchRows = useMemo(
@@ -2891,11 +2892,11 @@ function DebugReportsPage({ onNotify }) {
               </div>
               <div className="pid-kpi pid-kpi--compact">
                 <span>Candidates</span>
-                <strong>{report.summary?.candidate_count ?? candidateRows.length}</strong>
+                <strong>{report.summary?.candidate_count ?? allCandidateRows.length}</strong>
               </div>
               <div className="pid-kpi pid-kpi--compact">
                 <span>Verified</span>
-                <strong>{report.summary?.verified_match_count ?? candidateRows.filter((candidate) => candidate._verified).length}</strong>
+                <strong>{report.summary?.verified_match_count ?? allCandidateRows.filter((candidate) => candidate._verified).length}</strong>
               </div>
               <div className="pid-kpi pid-kpi--compact">
                 <span>Provider</span>

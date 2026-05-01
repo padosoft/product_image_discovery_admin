@@ -506,6 +506,16 @@
   - `npm run test` => 8 files, 42 tests
   - `npm run build`
   - `npm run e2e` => 14 Playwright tests
+- Copilot reviewed `312c63d` and generated 2 follow-up comments.
+- Addressed the latest Copilot PR #8 comments:
+  - pasted/uploaded report parsing now returns the raw report and redaction is centralized in the report-loading state transition
+  - report summary candidate/verified KPIs now use unfiltered candidate rows so toggling candidate filters cannot change report-level totals
+- Verification passed after the latest Copilot PR #8 fixes:
+  - `composer validate --strict`
+  - `npm run phpunit` => 42 tests, 336 assertions
+  - `npm run test` => 8 files, 42 tests
+  - `npm run build`
+  - `npm run e2e` => 14 Playwright tests
 
 ## 2026-04-30
 

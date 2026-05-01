@@ -1041,8 +1041,6 @@ describe('admin product image discovery shell', () => {
     const writeText = vi.fn().mockResolvedValue(undefined);
     const reportPayload = {
       summary: {
-        candidate_count: 2,
-        verified_match_count: 1,
         completed_at: '2026-05-01T12:00:00Z',
       },
       config: { api_key: 'server-secret' },
@@ -1136,7 +1134,11 @@ describe('admin product image discovery shell', () => {
     await screen.findByRole('table', { name: 'Stored debug reports' });
     fireEvent.click(screen.getByRole('button', { name: 'Open' }));
 
-    expect(await screen.findByRole('region', { name: 'Debug report summary' })).toHaveTextContent('manual_review');
+    const summary = await screen.findByRole('region', { name: 'Debug report summary' });
+
+    expect(summary).toHaveTextContent('manual_review');
+    expect(summary).toHaveTextContent('Candidates2');
+    expect(summary).toHaveTextContent('Verified1');
     expect(screen.getByRole('region', { name: 'Debug report inspector' })).not.toHaveTextContent('server-secret');
 
     fireEvent.click(screen.getByRole('button', { name: 'Candidates' }));
@@ -1146,6 +1148,8 @@ describe('admin product image discovery shell', () => {
     fireEvent.click(screen.getByLabelText('Only mismatches'));
     expect(screen.getByRole('table', { name: 'Debug report candidates' })).toHaveTextContent('Mismatch candidate');
     expect(screen.getByRole('table', { name: 'Debug report candidates' })).not.toHaveTextContent('Clean candidate');
+    expect(summary).toHaveTextContent('Candidates2');
+    expect(summary).toHaveTextContent('Verified1');
 
     fireEvent.change(screen.getByLabelText('Search JSON'), { target: { value: 'color_mismatch' } });
     expect(screen.getByRole('table', { name: 'Debug report JSON matches' })).toHaveTextContent('color_mismatch');

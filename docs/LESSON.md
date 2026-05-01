@@ -76,6 +76,7 @@
 - Debug report viewer tests should identify reports by request identity rather than provider code; parallel Playwright projects can have multiple fake providers active at the same priority while each debug run is executing.
 - If a segmented control is implemented with ordinary buttons, use button semantics such as `aria-pressed`; only use `tablist`/`aria-selected` when the full ARIA tabs pattern is implemented.
 - JSON path search should filter while traversing and enforce row/depth limits, not flatten entire debug reports before slicing, because reports can grow quickly with provider payloads and candidate evidence.
+- Report-level KPIs should be derived from unfiltered report data; candidate table filters are view state and must not change summary totals.
 
 ## 2026-04-30
 
