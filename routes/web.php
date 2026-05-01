@@ -42,7 +42,9 @@ Route::prefix($adminPrefix)
                 Route::get('debug-runs/{debugRun}/report', [AdminDebugRunController::class, 'report'])->name('debug-runs.report');
             });
         Route::get('requests/search', AdminRequestSearchController::class)->name('requests.search');
-        Route::post('requests', [PackageRequestController::class, 'store'])->name('requests.store');
+        Route::post('requests', [PackageRequestController::class, 'store'])
+            ->middleware(config('pid-admin.debug_run_middleware', ['auth']))
+            ->name('requests.store');
         Route::get('requests/{request}', AdminRequestShowController::class)->name('requests.show');
         Route::get('requests/{request}/events', AdminRequestEventsController::class)->name('requests.events');
         Route::post('requests/{request}/retry', AdminRequestRetryController::class)->name('requests.retry');

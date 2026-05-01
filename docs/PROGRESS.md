@@ -552,6 +552,13 @@
   - `npm run test` => 8 files, 44 tests
   - `npm run build`
   - `npm run e2e` => 16 Playwright tests
+- Copilot reviewed PR #9 on `15268b6` and generated 1 comment; addressed it by applying the same configurable `pid-admin.debug_run_middleware` guard to `POST /admin/product-image-discovery/requests`, because that workbench/admin wrapper creates package requests and dispatches jobs.
+- Full local gate passed after the PR #9 middleware follow-up:
+  - `composer validate --strict`
+  - `npm run phpunit` => 43 tests, 342 assertions
+  - `npm run test` => 8 files, 44 tests
+  - `npm run build`
+  - `npm run e2e` => 16 Playwright tests
 
 ## 2026-04-30
 

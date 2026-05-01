@@ -81,6 +81,7 @@
 - JSON traversal limits need both output limits and enqueue/traversal budgets; limiting rendered rows alone still lets huge arrays or objects allocate large stacks before the UI returns.
 - Candidate status badge maps should include report-only statuses such as `verified_match` and `quality_failed`, not only request workflow statuses.
 - Workbench actions that create a request can return an id before the refreshed recent-list page includes that row; keep a synthetic selected option so the target selector does not lose its value.
+- Workbench/admin endpoints that create package requests also dispatch jobs, so they need the same stricter configurable middleware treatment as debug-run creation endpoints instead of relying only on the broad shell middleware.
 
 ## 2026-04-30
 
