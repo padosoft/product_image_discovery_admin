@@ -275,6 +275,15 @@
   - `npm run test` => 8 files, 37 tests
   - `npm run build`
   - `npm run e2e` => 10 Playwright tests
+- An automatic Codex review on PR #5 generated 1 actionable provider-test registry comment; this is not treated as a Copilot substitute, but was addressed:
+  - provider tests now build the isolated single-provider manager from the app-bound `SearchProviderManager` factory registry instead of duplicating a hard-coded fake/brave registry
+  - added PHP coverage proving a custom registered provider driver is exercised by the admin test endpoint
+- Verification passed after the provider factory registry follow-up:
+  - `composer validate --strict`
+  - `npm run phpunit` => 35 tests, 270 assertions
+  - `npm run test` => 8 files, 37 tests
+  - `npm run build`
+  - `npm run e2e` => 10 Playwright tests
 
 ## 2026-04-30
 

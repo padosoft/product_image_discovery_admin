@@ -13,6 +13,13 @@ use Padosoft\ProductImageDiscovery\Models\ProductImageDiscoveryRequest;
 use Padosoft\ProductImageDiscovery\Models\ProductImageDiscoverySetting;
 use Padosoft\ProductImageDiscovery\Models\ProductImageSearchProvider;
 use Padosoft\ProductImageDiscovery\Models\ProductImageTrustedSource;
+use Padosoft\ProductImageDiscovery\Services\Search\CallableSearchProviderFactory;
+use Padosoft\ProductImageDiscovery\Services\Search\Data\ProductImageSearchQueryData;
+use Padosoft\ProductImageDiscovery\Services\Search\Data\ProductImageSearchResultCollection;
+use Padosoft\ProductImageDiscovery\Services\Search\Data\SearchProviderDefinition;
+use Padosoft\ProductImageDiscovery\Services\Search\ProductImageSearchProviderInterface;
+use Padosoft\ProductImageDiscovery\Services\Search\SearchProviderConfigRepositoryInterface;
+use Padosoft\ProductImageDiscovery\Services\Search\SearchProviderManager;
 use Symfony\Component\HttpFoundation\StreamedResponse;
 use Tests\TestCase;
 
@@ -329,6 +336,69 @@ final class AdminWrapperEndpointsTest extends TestCase
             ->assertJsonMissingPath('data.provider.api_key');
 
         $this->assertStringNotContainsString('provider-test-secret', $response->getContent());
+    }
+
+    public function test_admin_search_provider_test_reuses_registered_provider_factories(): void
+    {
+        $this->app->forgetInstance(SearchProviderManager::class);
+        $this->app->singleton(SearchProviderManager::class, static function (): SearchProviderManager {
+            return new SearchProviderManager(
+                repository: new class implements SearchProviderConfigRepositoryInterface {
+                    public function getActiveProviders(): array
+                    {
+                        return [];
+                    }
+                },
+                factories: [
+                    'custom' => new CallableSearchProviderFactory(
+                        static fn (SearchProviderDefinition $definition): ProductImageSearchProviderInterface => new class implements ProductImageSearchProviderInterface {
+                            public function searchImages(ProductImageSearchQueryData $query): ProductImageSearchResultCollection
+                            {
+                                return new ProductImageSearchResultCollection([
+                                    [
+                                        'title' => 'Custom result',
+                                        'page_url' => 'https://custom.example.test/product',
+                                        'image_url' => 'https://custom.example.test/product.jpg',
+                                    ],
+                                ]);
+                            }
+
+                            public function searchWeb(ProductImageSearchQueryData $query): ProductImageSearchResultCollection
+                            {
+                                return $this->searchImages($query);
+                            }
+
+                            public function supportsImageSearch(): bool
+                            {
+                                return true;
+                            }
+
+                            public function supportsSiteFilter(): bool
+                            {
+                                return true;
+                            }
+                        },
+                    ),
+                ],
+            );
+        });
+
+        $provider = ProductImageSearchProvider::query()->create([
+            'code' => 'custom-health',
+            'name' => 'Custom Health',
+            'driver' => 'custom',
+            'config' => [],
+            'priority' => 5,
+            'timeout_seconds' => 15,
+            'is_active' => true,
+        ]);
+
+        $this->postJson('/admin/product-image-discovery/search-providers/'.$provider->getKey().'/test')
+            ->assertOk()
+            ->assertJsonPath('data.driver', 'custom')
+            ->assertJsonPath('data.status', 'success')
+            ->assertJsonPath('data.results_count', 1)
+            ->assertJsonPath('data.attempts.0.status', 'success');
     }
 
     public function test_admin_search_provider_test_returns_sanitized_failures(): void

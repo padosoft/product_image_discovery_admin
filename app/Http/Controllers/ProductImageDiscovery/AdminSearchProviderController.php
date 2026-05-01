@@ -14,13 +14,12 @@ use Illuminate\Support\Str;
 use Padosoft\ProductImageDiscovery\Http\Concerns\ResolvesProductImageDiscovery;
 use Padosoft\ProductImageDiscovery\Http\Requests\UpsertProductImageSearchProviderRequest;
 use Padosoft\ProductImageDiscovery\Http\Resources\ProductImageDiscoverySearchProviderResource;
-use Padosoft\ProductImageDiscovery\Services\Search\BraveSearchProvider;
-use Padosoft\ProductImageDiscovery\Services\Search\CallableSearchProviderFactory;
 use Padosoft\ProductImageDiscovery\Services\Search\Data\ProductImageSearchQueryData;
 use Padosoft\ProductImageDiscovery\Services\Search\Data\SearchProviderDefinition;
-use Padosoft\ProductImageDiscovery\Services\Search\FakeSearchProvider;
 use Padosoft\ProductImageDiscovery\Services\Search\SearchProviderConfigRepositoryInterface;
+use Padosoft\ProductImageDiscovery\Services\Search\SearchProviderFactoryInterface;
 use Padosoft\ProductImageDiscovery\Services\Search\SearchProviderManager;
+use ReflectionClass;
 
 final class AdminSearchProviderController extends Controller
 {
@@ -94,7 +93,8 @@ final class AdminSearchProviderController extends Controller
 
         $mode = $validated['mode'] ?? 'images';
         $started = hrtime(true);
-        $result = $this->singleProviderManager($definition)->{$mode === 'web' ? 'searchWeb' : 'searchImages'}($query);
+        $result = $this->singleProviderManager($definition, app(SearchProviderManager::class))
+            ->{$mode === 'web' ? 'searchWeb' : 'searchImages'}($query);
         $latencyMs = (int) round((hrtime(true) - $started) / 1_000_000);
         $attempts = $this->safeAttempts($result->attempts, $record);
         $lastAttempt = $attempts[array_key_last($attempts)] ?? [];
@@ -156,7 +156,7 @@ final class AdminSearchProviderController extends Controller
         ]);
     }
 
-    private function singleProviderManager(SearchProviderDefinition $definition): SearchProviderManager
+    private function singleProviderManager(SearchProviderDefinition $definition, SearchProviderManager $sourceManager): SearchProviderManager
     {
         $repository = new class($definition) implements SearchProviderConfigRepositoryInterface {
             public function __construct(private readonly SearchProviderDefinition $definition)
@@ -171,15 +171,22 @@ final class AdminSearchProviderController extends Controller
 
         return new SearchProviderManager(
             repository: $repository,
-            factories: [
-                'fake' => new CallableSearchProviderFactory(
-                    static fn (SearchProviderDefinition $definition): FakeSearchProvider => FakeSearchProvider::fromDefinition($definition),
-                ),
-                'brave' => new CallableSearchProviderFactory(
-                    static fn (SearchProviderDefinition $definition): BraveSearchProvider => new BraveSearchProvider($definition),
-                ),
-            ],
+            factories: $this->factoriesFromManager($sourceManager),
         );
+    }
+
+    /**
+     * @return array<string, SearchProviderFactoryInterface>
+     */
+    private function factoriesFromManager(SearchProviderManager $manager): array
+    {
+        // SearchProviderManager has no public registry accessor; read the app-bound registry so host-added drivers remain testable.
+        $reflection = new ReflectionClass($manager);
+        $property = $reflection->getProperty('factories');
+        $property->setAccessible(true);
+        $factories = $property->getValue($manager);
+
+        return is_array($factories) ? $factories : [];
     }
 
     /**
