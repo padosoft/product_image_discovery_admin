@@ -420,23 +420,45 @@ describe('admin product image discovery shell', () => {
   it('loads providers and submits write-only credential actions', async () => {
     window.history.replaceState({}, '', '/admin/product-image-discovery/providers');
     let createdPayload = null;
-    const providersPayload = {
-      data: [
-        {
-          id: 4,
-          code: 'brave',
-          name: 'Brave Search',
-          driver: 'brave',
-          base_url: 'https://api.search.brave.com',
-          config: { supports_image_search: true },
-          priority: 10,
-          timeout_seconds: 15,
-          rate_limit_per_minute: 60,
-          is_active: false,
-          has_api_key: true,
-          has_api_secret: false,
-        },
-      ],
+    const providerPages = {
+      1: {
+        data: [
+          {
+            id: 4,
+            code: 'brave',
+            name: 'Brave Search',
+            driver: 'brave',
+            base_url: 'https://api.search.brave.com',
+            config: { supports_image_search: true },
+            priority: 10,
+            timeout_seconds: 15,
+            rate_limit_per_minute: 60,
+            is_active: false,
+            has_api_key: true,
+            has_api_secret: false,
+          },
+        ],
+        meta: { current_page: 1, last_page: 2 },
+      },
+      2: {
+        data: [
+          {
+            id: 6,
+            code: 'google_custom_search',
+            name: 'Google Custom Search',
+            driver: 'google_custom_search',
+            base_url: 'https://customsearch.googleapis.com',
+            config: { supports_image_search: true },
+            priority: 30,
+            timeout_seconds: 15,
+            rate_limit_per_minute: 30,
+            is_active: false,
+            has_api_key: false,
+            has_api_secret: false,
+          },
+        ],
+        meta: { current_page: 2, last_page: 2 },
+      },
     };
 
     vi.stubGlobal('fetch', vi.fn((url, options = {}) => {
@@ -461,7 +483,9 @@ describe('admin product image discovery shell', () => {
       }
 
       if (path.endsWith('/search-providers')) {
-        return Promise.resolve(mockJsonResponse(providersPayload));
+        const page = Number(requestUrl.searchParams.get('page') ?? 1);
+
+        return Promise.resolve(mockJsonResponse(providerPages[page] ?? { data: [], meta: { current_page: page, last_page: page } }));
       }
 
       return Promise.reject(new Error(`Unexpected request: ${method} ${path}`));
@@ -473,6 +497,7 @@ describe('admin product image discovery shell', () => {
     const providerForm = providerHeading.closest('section');
     expect(providerHeading).toBeVisible();
     expect(await screen.findByRole('table', { name: 'Product image discovery search providers' })).toHaveTextContent('brave');
+    expect(screen.getByRole('table', { name: 'Product image discovery search providers' })).toHaveTextContent('google_custom_search');
 
     fireEvent.change(within(providerForm).getByLabelText('Code'), { target: { value: 'serpapi-client' } });
     fireEvent.change(within(providerForm).getByLabelText('Name'), { target: { value: 'SerpAPI Client' } });
@@ -480,6 +505,8 @@ describe('admin product image discovery shell', () => {
     fireEvent.change(within(providerForm).getByLabelText('API key action'), { target: { value: 'replace' } });
     fireEvent.change(within(providerForm).getByLabelText('API key value'), { target: { value: 'secret-key' } });
     fireEvent.change(within(providerForm).getByLabelText('API secret action'), { target: { value: 'clear' } });
+    expect(screen.getByRole('region', { name: 'Provider payload preview' })).not.toHaveTextContent('secret-key');
+    expect(screen.getByRole('region', { name: 'Provider payload preview' })).toHaveTextContent('(replace)');
     fireEvent.click(within(providerForm).getByRole('button', { name: 'Create provider' }));
 
     await waitFor(() => expect(createdPayload).toMatchObject({

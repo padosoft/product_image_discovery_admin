@@ -234,6 +234,15 @@
   - `npm run test` => 7 files, 35 tests
   - `npm run build`
   - `npm run e2e` => 10 Playwright tests
+- An automatic Codex review on PR #4 generated two actionable comments; these are not treated as a Copilot substitute, but were addressed:
+  - provider payload preview now redacts write-only credential values as `(replace)`/`(clear)` instead of rendering raw secrets
+  - provider loading now fetches all paginated result pages, and the admin wrapper honors a bounded `per_page` query
+- Verification passed after the PR #4 automated-review fixes:
+  - `composer validate --strict`
+  - `npm run phpunit` => 32 tests, 241 assertions
+  - `npm run test` => 7 files, 36 tests
+  - `npm run build`
+  - `npm run e2e` => 10 Playwright tests
 
 ## 2026-04-30
 

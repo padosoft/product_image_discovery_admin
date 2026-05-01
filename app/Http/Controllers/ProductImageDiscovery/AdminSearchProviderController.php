@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Http\Controllers\ProductImageDiscovery;
 
 use Illuminate\Http\Response;
+use Illuminate\Http\Request;
 use Illuminate\Routing\Controller;
 use Padosoft\ProductImageDiscovery\Http\Concerns\ResolvesProductImageDiscovery;
 use Padosoft\ProductImageDiscovery\Http\Requests\UpsertProductImageSearchProviderRequest;
@@ -14,10 +15,12 @@ final class AdminSearchProviderController extends Controller
 {
     use ResolvesProductImageDiscovery;
 
-    public function index()
+    public function index(Request $request)
     {
+        $perPage = max(1, min(100, (int) $request->integer('per_page', 25)));
+
         return ProductImageDiscoverySearchProviderResource::collection(
-            $this->newQuery('search_provider')->orderBy('priority')->orderBy('code')->paginate(25)
+            $this->newQuery('search_provider')->orderBy('priority')->orderBy('code')->paginate($perPage)
         );
     }
 

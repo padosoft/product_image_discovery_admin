@@ -29,6 +29,7 @@ import {
   PROVIDER_SECRET_MODES,
   buildProviderPayload,
   providerToForm,
+  redactProviderPayloadPreview,
 } from './provider-form';
 import {
   DEFAULT_TRUSTED_SOURCE_FORM,
@@ -357,16 +358,29 @@ async function fetchSettings(signal) {
   return normalizeLaravelPagination(result).data;
 }
 
-async function fetchSearchProviders(signal) {
-  const result = await pidFetch('/search-providers', { signal });
+async function fetchPaginatedAdminRecords(path, signal) {
+  const records = [];
+  let page = 1;
+  let lastPage = 1;
 
-  return normalizeLaravelPagination(result).data;
+  do {
+    const separator = path.includes('?') ? '&' : '?';
+    const result = await pidFetch(`${path}${separator}page=${page}`, { signal });
+    const pagination = normalizeLaravelPagination(result);
+    records.push(...pagination.data);
+    lastPage = Number(pagination.meta?.last_page ?? page);
+    page += 1;
+  } while (page <= lastPage);
+
+  return records;
+}
+
+async function fetchSearchProviders(signal) {
+  return fetchPaginatedAdminRecords('/search-providers?per_page=100', signal);
 }
 
 async function fetchTrustedSources(signal) {
-  const result = await pidFetch('/trusted-sources', { signal });
-
-  return normalizeLaravelPagination(result).data;
+  return fetchPaginatedAdminRecords('/trusted-sources?per_page=100', signal);
 }
 
 function Sidebar({ page, onPage }) {
@@ -1402,7 +1416,7 @@ function ProvidersPage({ onNotify }) {
   const reloadIdRef = useRef(0);
 
   const formPayload = useMemo(() => buildProviderPayload(form), [form]);
-  const previewValue = formPayload.ok ? formPayload.value : { error: formPayload.error };
+  const previewValue = useMemo(() => redactProviderPayloadPreview(formPayload), [formPayload]);
 
   async function reloadProviders(signal) {
     if (!mountedRef.current || signal?.aborted) {

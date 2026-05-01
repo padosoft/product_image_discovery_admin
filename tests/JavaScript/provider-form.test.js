@@ -3,6 +3,7 @@ import {
   DEFAULT_PROVIDER_FORM,
   buildProviderPayload,
   providerToForm,
+  redactProviderPayloadPreview,
 } from '../../resources/js/admin-product-image-discovery/provider-form';
 
 describe('provider form helpers', () => {
@@ -45,6 +46,24 @@ describe('provider form helpers', () => {
     expect(payload.ok).toBe(true);
     expect(payload.value.api_key).toBe('new-key');
     expect(payload.value.api_secret).toBe('');
+  });
+
+  it('redacts write-only credentials from JSON previews', () => {
+    const payload = buildProviderPayload({
+      ...DEFAULT_PROVIDER_FORM,
+      code: 'serpapi',
+      name: 'SerpAPI',
+      driver: 'serpapi',
+      api_key_mode: 'replace',
+      api_key: 'new-key',
+      api_secret_mode: 'clear',
+    });
+
+    expect(redactProviderPayloadPreview(payload)).toMatchObject({
+      api_key: '(replace)',
+      api_secret: '(clear)',
+    });
+    expect(JSON.stringify(redactProviderPayloadPreview(payload))).not.toContain('new-key');
   });
 
   it('validates JSON config and numeric limits before submit', () => {

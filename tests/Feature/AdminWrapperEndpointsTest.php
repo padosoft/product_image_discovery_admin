@@ -268,6 +268,27 @@ final class AdminWrapperEndpointsTest extends TestCase
         $this->assertSame(0, ProductImageTrustedSource::query()->whereKey($trustedSourceId)->count());
     }
 
+    public function test_admin_search_provider_index_honors_per_page_query(): void
+    {
+        foreach (range(1, 3) as $index) {
+            ProductImageSearchProvider::query()->create([
+                'code' => 'provider-'.$index,
+                'name' => 'Provider '.$index,
+                'driver' => 'fake',
+                'config' => [],
+                'priority' => $index,
+                'timeout_seconds' => 15,
+                'is_active' => true,
+            ]);
+        }
+
+        $this->getJson('/admin/product-image-discovery/search-providers?per_page=2')
+            ->assertOk()
+            ->assertJsonCount(2, 'data')
+            ->assertJsonPath('meta.per_page', 2)
+            ->assertJsonPath('meta.last_page', 2);
+    }
+
     public function test_request_search_date_to_filters_include_the_full_day(): void
     {
         $included = $this->createDiscoveryRequest([

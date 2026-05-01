@@ -187,3 +187,21 @@ export function buildProviderPayload(form) {
 
   return { ok: true, value: payload };
 }
+
+export function redactProviderPayloadPreview(payloadResult) {
+  if (!payloadResult.ok) {
+    return { error: payloadResult.error };
+  }
+
+  const preview = { ...payloadResult.value };
+
+  for (const field of ['api_key', 'api_secret']) {
+    if (!Object.prototype.hasOwnProperty.call(preview, field)) {
+      continue;
+    }
+
+    preview[field] = preview[field] === '' ? '(clear)' : '(replace)';
+  }
+
+  return preview;
+}

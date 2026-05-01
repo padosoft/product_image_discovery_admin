@@ -39,6 +39,8 @@
 - Prefer explicit layout utility classes over `nth-of-type` selectors in evolving admin forms; tests should avoid raw `RegExp` from dynamic strings unless the value is escaped first.
 - Page-local reload helpers that can run concurrently need a latest-request guard, not just a mounted guard; otherwise an older slower response can overwrite newer mutation-triggered state.
 - For provider credential wrappers, omitted `api_key`/`api_secret` must leave encrypted model attributes untouched; assigning the current raw encrypted value back through an encrypted cast can corrupt the stored secret. Use explicit write-only semantics: omitted means keep, empty string means clear, non-empty string means replace.
+- Payload previews must apply the same secret redaction rules as API resources; write-only credential replacement values should never appear in JSON preview panes.
+- Admin pages backed by paginated package resources need either pagination controls or all-page loading. A single first-page fetch silently hides records past the package default page size.
 
 ## 2026-04-30
 
