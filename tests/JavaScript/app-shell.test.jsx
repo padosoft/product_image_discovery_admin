@@ -299,4 +299,18 @@ describe('admin product image discovery shell', () => {
     expect(writeText).toHaveBeenCalledWith(JSON.stringify({ alpha: 1, beta: 'two' }, null, 2));
     expect(await screen.findByRole('button', { name: 'Copied' })).toBeVisible();
   });
+
+  it('keeps the json viewer stable when clipboard writes fail', async () => {
+    const writeText = vi.fn().mockRejectedValue(new Error('Clipboard blocked'));
+    vi.stubGlobal('navigator', {
+      clipboard: { writeText },
+    });
+
+    render(<JsonViewer value={{ alpha: 1 }} label="Preview" />);
+
+    fireEvent.click(screen.getByRole('button', { name: 'Copy' }));
+
+    await waitFor(() => expect(writeText).toHaveBeenCalled());
+    expect(screen.getByRole('button', { name: 'Copy' })).toBeVisible();
+  });
 });

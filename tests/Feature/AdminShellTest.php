@@ -21,7 +21,7 @@ final class AdminShellTest extends TestCase
 
     public function test_root_redirect_uses_configured_admin_prefix(): void
     {
-        config(['pid-admin.route_prefix' => 'custom/pid-admin']);
+        config(['pid-admin.route_prefix' => '/custom/pid-admin/']);
 
         $this->get('/')
             ->assertRedirect('/custom/pid-admin');

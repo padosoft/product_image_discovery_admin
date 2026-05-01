@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 
 function formatJson(value) {
   if (typeof value === 'string') {
@@ -14,17 +14,36 @@ function formatJson(value) {
 
 export function JsonViewer({ value, label = 'JSON preview' }) {
   const [copied, setCopied] = useState(false);
+  const resetTimer = useRef(null);
 
   const text = useMemo(() => formatJson(value), [value]);
+
+  useEffect(() => () => {
+    if (resetTimer.current) {
+      window.clearTimeout(resetTimer.current);
+    }
+  }, []);
 
   async function handleCopy() {
     if (!navigator.clipboard?.writeText) {
       return;
     }
 
-    await navigator.clipboard.writeText(text);
-    setCopied(true);
-    window.setTimeout(() => setCopied(false), 1200);
+    try {
+      await navigator.clipboard.writeText(text);
+      setCopied(true);
+
+      if (resetTimer.current) {
+        window.clearTimeout(resetTimer.current);
+      }
+
+      resetTimer.current = window.setTimeout(() => {
+        setCopied(false);
+        resetTimer.current = null;
+      }, 1200);
+    } catch {
+      setCopied(false);
+    }
   }
 
   return (

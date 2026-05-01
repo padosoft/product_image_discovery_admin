@@ -14,21 +14,31 @@ final class AdminDashboardSummaryController extends Controller
 {
     public function __invoke(): JsonResponse
     {
-        $requests = ProductImageDiscoveryRequest::query();
+        $summary = ProductImageDiscoveryRequest::query()
+            ->selectRaw('COUNT(*) as total')
+            ->selectRaw('SUM(CASE WHEN status = ? THEN 1 ELSE 0 END) as manual_review', [ProductImageDiscoveryRequestStatus::ManualReview->value])
+            ->selectRaw('SUM(CASE WHEN status = ? THEN 1 ELSE 0 END) as ready_to_publish', [ProductImageDiscoveryRequestStatus::ReadyToPublish->value])
+            ->selectRaw('SUM(CASE WHEN status = ? THEN 1 ELSE 0 END) as published', [ProductImageDiscoveryRequestStatus::Published->value])
+            ->selectRaw('SUM(CASE WHEN status = ? THEN 1 ELSE 0 END) as failed', [ProductImageDiscoveryRequestStatus::Failed->value])
+            ->selectRaw('SUM(CASE WHEN status = ? THEN 1 ELSE 0 END) as no_candidates_found', [ProductImageDiscoveryRequestStatus::NoCandidatesFound->value])
+            ->selectRaw('SUM(CASE WHEN final_score BETWEEN 0 AND 59 THEN 1 ELSE 0 END) as score_0_59')
+            ->selectRaw('SUM(CASE WHEN final_score BETWEEN 60 AND 79 THEN 1 ELSE 0 END) as score_60_79')
+            ->selectRaw('SUM(CASE WHEN final_score BETWEEN 80 AND 100 THEN 1 ELSE 0 END) as score_80_100')
+            ->first();
 
         $counts = [
-            'total' => (clone $requests)->count(),
-            'manual_review' => (clone $requests)->where('status', ProductImageDiscoveryRequestStatus::ManualReview->value)->count(),
-            'ready_to_publish' => (clone $requests)->where('status', ProductImageDiscoveryRequestStatus::ReadyToPublish->value)->count(),
-            'published' => (clone $requests)->where('status', ProductImageDiscoveryRequestStatus::Published->value)->count(),
-            'failed' => (clone $requests)->where('status', ProductImageDiscoveryRequestStatus::Failed->value)->count(),
-            'no_candidates_found' => (clone $requests)->where('status', ProductImageDiscoveryRequestStatus::NoCandidatesFound->value)->count(),
+            'total' => (int) ($summary?->getAttribute('total') ?? 0),
+            'manual_review' => (int) ($summary?->getAttribute('manual_review') ?? 0),
+            'ready_to_publish' => (int) ($summary?->getAttribute('ready_to_publish') ?? 0),
+            'published' => (int) ($summary?->getAttribute('published') ?? 0),
+            'failed' => (int) ($summary?->getAttribute('failed') ?? 0),
+            'no_candidates_found' => (int) ($summary?->getAttribute('no_candidates_found') ?? 0),
         ];
 
         $scoreBuckets = [
-            '0_59' => (clone $requests)->whereBetween('final_score', [0, 59])->count(),
-            '60_79' => (clone $requests)->whereBetween('final_score', [60, 79])->count(),
-            '80_100' => (clone $requests)->whereBetween('final_score', [80, 100])->count(),
+            '0_59' => (int) ($summary?->getAttribute('score_0_59') ?? 0),
+            '60_79' => (int) ($summary?->getAttribute('score_60_79') ?? 0),
+            '80_100' => (int) ($summary?->getAttribute('score_80_100') ?? 0),
         ];
 
         $providers = ProductImageSearchProvider::query()
