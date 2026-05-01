@@ -1013,6 +1013,7 @@ function SettingsPage({ onNotify }) {
   const [formError, setFormError] = useState('');
   const [actionLoading, setActionLoading] = useState(false);
   const [deleteSetting, setDeleteSetting] = useState(null);
+  const mountedRef = useRef(true);
 
   const formPayload = useMemo(() => buildSettingPayload(form), [form]);
   const previewValue = formPayload.ok ? formPayload.value : { error: formPayload.error };
@@ -1023,14 +1024,19 @@ function SettingsPage({ onNotify }) {
 
     try {
       const result = await fetchSettings(signal);
+
+      if (!mountedRef.current || signal?.aborted) {
+        return;
+      }
+
       setSettings(result);
     } catch (err) {
-      if (err.name !== 'AbortError') {
+      if (mountedRef.current && err.name !== 'AbortError') {
         setSettings([]);
         setError(err.message || 'Unable to load settings.');
       }
     } finally {
-      if (!signal?.aborted) {
+      if (mountedRef.current && !signal?.aborted) {
         setLoading(false);
       }
     }
@@ -1038,10 +1044,14 @@ function SettingsPage({ onNotify }) {
 
   useEffect(() => {
     const controller = new AbortController();
+    mountedRef.current = true;
 
     reloadSettings(controller.signal);
 
-    return () => controller.abort();
+    return () => {
+      mountedRef.current = false;
+      controller.abort();
+    };
   }, []);
 
   function updateForm(name, value) {
@@ -1083,13 +1093,20 @@ function SettingsPage({ onNotify }) {
         body: JSON.stringify(payload.value),
       });
       await reloadSettings();
-      onNotify(form.id ? 'Setting updated.' : 'Setting created.', 'success');
-      resetForm();
+
+      if (mountedRef.current) {
+        onNotify(form.id ? 'Setting updated.' : 'Setting created.', 'success');
+        resetForm();
+      }
     } catch (err) {
-      setFormError(err.message || 'Unable to save setting.');
-      onNotify(err.message || 'Unable to save setting.', 'danger');
+      if (mountedRef.current) {
+        setFormError(err.message || 'Unable to save setting.');
+        onNotify(err.message || 'Unable to save setting.', 'danger');
+      }
     } finally {
-      setActionLoading(false);
+      if (mountedRef.current) {
+        setActionLoading(false);
+      }
     }
   }
 
@@ -1103,16 +1120,23 @@ function SettingsPage({ onNotify }) {
     try {
       await pidFetch(`/settings/${deleteSetting.id}`, { method: 'DELETE' });
       await reloadSettings();
-      onNotify('Setting deleted.', 'success');
-      setDeleteSetting(null);
-      if (form.id === deleteSetting.id) {
-        resetForm();
+
+      if (mountedRef.current) {
+        onNotify('Setting deleted.', 'success');
+        setDeleteSetting(null);
+        if (form.id === deleteSetting.id) {
+          resetForm();
+        }
       }
     } catch (err) {
-      setError(err.message || 'Unable to delete setting.');
-      onNotify(err.message || 'Unable to delete setting.', 'danger');
+      if (mountedRef.current) {
+        setError(err.message || 'Unable to delete setting.');
+        onNotify(err.message || 'Unable to delete setting.', 'danger');
+      }
     } finally {
-      setActionLoading(false);
+      if (mountedRef.current) {
+        setActionLoading(false);
+      }
     }
   }
 

@@ -192,6 +192,14 @@
   - `npm run test` => 5 files, 25 tests
   - `npm run build`
   - `npm run e2e` => 6 Playwright tests
+- Copilot reviewed `5bcef9f` and generated 1 settings reload lifecycle comment.
+- Addressed the latest Copilot PR #3 comment:
+  - Settings reloads and mutation continuations now guard against updating component state after the Settings page unmounts
+- Verification passed after the Settings lifecycle guard fix:
+  - `npm run phpunit` => 30 tests, 203 assertions
+  - `npm run test` => 5 files, 26 tests
+  - `npm run build`
+  - `npm run e2e` => 6 Playwright tests
 
 ## 2026-04-30
 
