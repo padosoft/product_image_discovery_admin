@@ -81,8 +81,6 @@ final class AdminRequestCandidateController extends Controller
 
     public function reject(Request $httpRequest, int|string $request, int|string $candidate): JsonResponse
     {
-        [$record, $candidateRecord] = $this->resolveRequestAndCandidate($request, $candidate);
-
         $payload = $httpRequest->validate([
             'reason' => ['required', 'string', 'max:100', Rule::in(array_map(static fn (ProductImageDiscoveryRejectionReason $reason): string => $reason->value, ProductImageDiscoveryRejectionReason::cases()))],
             'notes' => [
@@ -98,57 +96,64 @@ final class AdminRequestCandidateController extends Controller
             ],
         ]);
 
-        $candidateRecord->fill([
-            'status' => 'rejected',
-            'rejection_reason' => $payload['reason'],
-        ]);
-        $candidateRecord->save();
+        [$record, $candidateRecord] = DB::transaction(function () use ($httpRequest, $request, $candidate, $payload): array {
+            [$record, $candidateRecord] = $this->resolveRequestAndCandidate($request, $candidate, true);
 
-        $otherCandidatesQuery = ProductImageDiscoveryCandidate::query()
-            ->where('request_id', $record->getKey())
-            ->whereKeyNot($candidateRecord->getKey())
-            ->where('status', '!=', 'rejected');
+            $candidateRecord->fill([
+                'status' => 'rejected',
+                'rejection_reason' => $payload['reason'],
+            ]);
+            $candidateRecord->save();
 
-        $hasRemainingCandidates = $otherCandidatesQuery->exists();
-        $remainingBestCandidate = (clone $otherCandidatesQuery)
-            ->orderByDesc('final_score')
-            ->orderBy('id')
-            ->first();
-        $selectedCandidateId = $record->getAttribute('selected_candidate_id');
-        $bestCandidateId = $record->getAttribute('best_candidate_id');
-        $rejectedCandidateId = $candidateRecord->getKey();
-        $candidateWasSelected = $selectedCandidateId !== null && (string) $selectedCandidateId === (string) $rejectedCandidateId;
-        $candidateWasBest = $bestCandidateId !== null && (string) $bestCandidateId === (string) $rejectedCandidateId;
-        $currentStatus = $record->getAttribute('status');
-        $currentStatusValue = $currentStatus instanceof ProductImageDiscoveryRequestStatus
-            ? $currentStatus->value
-            : $currentStatus;
-        $shouldKeepPublishReadyStatus = $hasRemainingCandidates
-            && ! $candidateWasSelected
-            && $selectedCandidateId !== null
-            && in_array($currentStatusValue, [
-                ProductImageDiscoveryRequestStatus::ReadyToPublish->value,
-                ProductImageDiscoveryRequestStatus::Published->value,
-            ], true);
+            $otherCandidatesQuery = ProductImageDiscoveryCandidate::query()
+                ->where('request_id', $record->getKey())
+                ->whereKeyNot($candidateRecord->getKey())
+                ->where('status', '!=', 'rejected')
+                ->lockForUpdate();
 
-        $record->fill([
-            'status' => $shouldKeepPublishReadyStatus
-                ? $currentStatusValue
-                : ($hasRemainingCandidates ? 'manual_review' : 'rejected'),
-            'rejection_reason' => $hasRemainingCandidates ? null : $payload['reason'],
-            'selected_candidate_id' => $candidateWasSelected ? null : $selectedCandidateId,
-            'best_candidate_id' => $candidateWasBest ? $remainingBestCandidate?->getKey() : $bestCandidateId,
-            'final_score' => $candidateWasBest ? $remainingBestCandidate?->getAttribute('final_score') : $record->getAttribute('final_score'),
-        ]);
-        $record->save();
+            $hasRemainingCandidates = $otherCandidatesQuery->exists();
+            $remainingBestCandidate = (clone $otherCandidatesQuery)
+                ->orderByDesc('final_score')
+                ->orderBy('id')
+                ->first();
+            $selectedCandidateId = $record->getAttribute('selected_candidate_id');
+            $bestCandidateId = $record->getAttribute('best_candidate_id');
+            $rejectedCandidateId = $candidateRecord->getKey();
+            $candidateWasSelected = $selectedCandidateId !== null && (string) $selectedCandidateId === (string) $rejectedCandidateId;
+            $candidateWasBest = $bestCandidateId !== null && (string) $bestCandidateId === (string) $rejectedCandidateId;
+            $currentStatus = $record->getAttribute('status');
+            $currentStatusValue = $currentStatus instanceof ProductImageDiscoveryRequestStatus
+                ? $currentStatus->value
+                : $currentStatus;
+            $shouldKeepPublishReadyStatus = $hasRemainingCandidates
+                && ! $candidateWasSelected
+                && $selectedCandidateId !== null
+                && in_array($currentStatusValue, [
+                    ProductImageDiscoveryRequestStatus::ReadyToPublish->value,
+                    ProductImageDiscoveryRequestStatus::Published->value,
+                ], true);
 
-        $this->recordAuditEvent($record, 'candidate_rejected', [
-            'rejected_by' => $httpRequest->user()?->getAuthIdentifier(),
-            'reason' => $payload['reason'],
-            'notes' => $payload['notes'] ?? null,
-        ], $candidateRecord);
+            $record->fill([
+                'status' => $shouldKeepPublishReadyStatus
+                    ? $currentStatusValue
+                    : ($hasRemainingCandidates ? 'manual_review' : 'rejected'),
+                'rejection_reason' => $hasRemainingCandidates ? null : $payload['reason'],
+                'selected_candidate_id' => $candidateWasSelected ? null : $selectedCandidateId,
+                'best_candidate_id' => $candidateWasBest ? $remainingBestCandidate?->getKey() : $bestCandidateId,
+                'final_score' => $candidateWasBest ? $remainingBestCandidate?->getAttribute('final_score') : $record->getAttribute('final_score'),
+            ]);
+            $record->save();
 
-        $this->loadAvailableRelations($record, ['bestCandidate', 'selectedCandidate']);
+            $this->recordAuditEvent($record, 'candidate_rejected', [
+                'rejected_by' => $httpRequest->user()?->getAuthIdentifier(),
+                'reason' => $payload['reason'],
+                'notes' => $payload['notes'] ?? null,
+            ], $candidateRecord);
+
+            $this->loadAvailableRelations($record, ['bestCandidate', 'selectedCandidate']);
+
+            return [$record, $candidateRecord];
+        });
 
         return response()->json([
             'ok' => true,

@@ -62,6 +62,18 @@
   - `npm run test` => 4 files, 18 tests
   - `npm run build`
   - `npm run e2e -- --reporter=line` blocked after the Vite build because `node scripts/prepare-e2e.mjs` could not execute Herd PHP in this session; direct `php`, `php.bat`, and `php84` access returned denied/not found outside the working `npm run phpunit` wrapper.
+- Corrected the review workflow docs to require GitHub Copilot Code Review instead of `@codex review`.
+- Attempted to request Copilot review on PR #2:
+  - `gh pr edit 2 --add-reviewer '@copilot'` was blocked by GitHub CLI GraphQL 401
+  - REST reviewer reads returned no pending reviewers
+  - GitHub connector reviewer request returned without error, but the normalized PR snapshot still did not expose a pending Copilot reviewer
+- The earlier `@codex review` trigger produced a new Codex review on commit `731330f`; it is not treated as a Copilot substitute, but its two actionable race-condition findings were addressed:
+  - candidate rejection now runs inside a DB transaction with locked request/candidate rows
+  - retry now locks the request row while validating status, incrementing attempts, and recording the audit event
+- Verification passed after the reject/retry concurrency fixes:
+  - `npm run phpunit` => 27 tests, 174 assertions
+  - `npm run test` => 4 files, 18 tests
+  - `npm run build`
 
 ## 2026-04-30
 
@@ -91,8 +103,9 @@
 
 ## Open Items
 
-- Poll PR #2 review threads and status checks again after the follow-up fix is published.
-- If GitHub CLI GraphQL remains 401, use the GitHub connector for comments and record that thread-level resolution/status checks could not be verified through `gh`.
+- Request/verify GitHub Copilot Code Review manually from the PR Reviewers menu if the API-visible reviewer state remains empty.
+- Poll PR #2 review threads and status checks again after the reject/retry concurrency fix is published.
+- If GitHub CLI GraphQL remains 401, use REST/connector reads for comments and record that thread-level resolution/status checks could not be verified through `gh`.
 - If no remote CI workflow runs are present, record that GitHub Actions/status checks are unavailable for PR #2 before merging.
 
 ## 2026-04-30 - Macro 2 Slice
