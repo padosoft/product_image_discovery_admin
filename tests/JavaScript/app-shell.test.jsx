@@ -42,6 +42,7 @@ describe('admin product image discovery shell', () => {
   });
 
   it('renders the shell, exposes accessible navigation labels, and toggles theme', async () => {
+    const setTimeoutSpy = vi.spyOn(window, 'setTimeout');
     const fetchMock = vi
       .fn()
       .mockResolvedValueOnce(
@@ -90,10 +91,8 @@ describe('admin product image discovery shell', () => {
     await waitFor(() => expect(document.documentElement).toHaveAttribute('data-theme', 'dark'));
     expect(screen.getByRole('heading', { name: 'Overview' })).toBeVisible();
     expect(screen.getByText('Provider Health')).toBeVisible();
-    await new Promise((resolve) => {
-      window.setTimeout(resolve, 350);
-    });
     expect(fetchMock).toHaveBeenCalledTimes(2);
+    expect(setTimeoutSpy).not.toHaveBeenCalledWith(expect.any(Function), 280);
   });
 
   it('keeps the shell mounted when API calls fail', async () => {
@@ -262,7 +261,7 @@ describe('admin product image discovery shell', () => {
         )
         .mockResolvedValueOnce(
           mockJsonResponse({
-            data: [{ id: 1, event_type: 'pipeline.started', message: 'Pipeline started.', created_at: '2026-04-30T09:30:00Z' }],
+            data: [{ id: 1, event_type: 'pipeline.started', message: null, level: 'info', created_at: '2026-04-30T09:30:00Z' }],
           }),
         )
         .mockResolvedValueOnce(
@@ -289,6 +288,8 @@ describe('admin product image discovery shell', () => {
     expect(screen.getByText('Summary')).toBeVisible();
     expect(screen.getByRole('heading', { name: 'Compare mode' })).toBeVisible();
     expect(screen.getByRole('button', { name: 'Open source' })).toBeVisible();
+    expect(screen.getByText('info')).toBeVisible();
+    expect(screen.queryByText('null')).not.toBeInTheDocument();
     expect((await screen.findAllByAltText('Candidate 301 preview'))[0]).toHaveAttribute(
       'src',
       '/custom-admin/product-image-discovery/candidates/301/image',

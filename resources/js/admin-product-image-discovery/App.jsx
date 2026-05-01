@@ -648,11 +648,17 @@ function RequestDetailDrawer({
     ?? candidates[0]
     ?? null;
   const requestCanRetry = detail && ['failed', 'no_candidates_found'].includes(detail.status);
-  const eventTimeline = events.map((event) => ({
-    id: event.id,
-    title: event.event_type,
-    detail: `${event.message}${event.level ? ` • ${event.level}` : ''}`,
-  }));
+  const eventTimeline = events.map((event) => {
+    const detail = [event.message, event.level]
+      .filter((part) => part !== null && part !== undefined && String(part).trim() !== '')
+      .join(' • ');
+
+    return {
+      id: event.id,
+      title: event.event_type,
+      detail: detail || '-',
+    };
+  });
 
   return (
     <Drawer open={open} title={detail ? `Request ${detail.id}` : 'Request detail'} onClose={onClose}>

@@ -23,6 +23,8 @@
 - On this repo, `gh pr edit 2 --add-reviewer '@copilot'` can fail before requesting Copilot because GitHub CLI queries PR project items and the token lacks `read:project`; bypass it with GraphQL `requestReviewsByLogin`, passing the PR node ID and `botLogins[]='copilot-pull-request-reviewer[bot]'` with `union=true`, then verify via `GET /repos/{owner}/{repo}/pulls/{number}/requested_reviewers`. The REST fallback `reviewers[]=copilot` is not equivalent: it can return 200 while leaving no visible Copilot reviewer.
 - Overview data already fetches a compact request snapshot, so the broader request-list refresh effect should be gated to Requests/Manual Review pages to avoid duplicate `/requests/search` calls and background refetches on unrelated pages.
 - Candidate approval should keep request-level `best_candidate_id`, `selected_candidate_id`, and `final_score` aligned; candidate pagination should include a deterministic secondary sort key after `final_score` so tied scores do not create unstable pages.
+- Timeline display code should compose optional event message/level fields from filtered parts; direct template literals can render database nulls as visible `null` or `undefined`.
+- Frontend tests for debounced behavior should use observable calls or fake timers, not real sleeps, or the suite becomes slower and timing-dependent.
 
 ## 2026-04-30
 

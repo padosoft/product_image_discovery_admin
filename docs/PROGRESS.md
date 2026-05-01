@@ -103,6 +103,16 @@
   - `npm run test` => 4 files, 18 tests
   - `npm run build`
   - `npm run e2e` => 4 Playwright tests
+- Pushed the first Copilot PR #2 fixes as `f8e2a21`, requested a fresh Copilot Code Review with GraphQL, and resolved the addressed review threads.
+- Copilot reviewed `f8e2a21` and generated 2 follow-up comments.
+- Addressed the follow-up Copilot comments:
+  - timeline event details now omit null/empty message parts instead of rendering `null` or `undefined`
+  - the overview fetch regression test now observes fetch calls/timer scheduling without a real 350 ms sleep
+- Verification passed after the follow-up Copilot PR #2 fixes:
+  - `npm run phpunit` => 27 tests, 176 assertions
+  - `npm run test` => 4 files, 18 tests
+  - `npm run build`
+  - `npm run e2e` => 4 Playwright tests
 
 ## 2026-04-30
 
@@ -132,7 +142,7 @@
 
 ## Open Items
 
-- Push the latest Copilot PR #2 fixes, request a fresh Copilot Code Review, and continue polling until new comments/checks are resolved.
+- Push the latest follow-up Copilot PR #2 fixes, request a fresh Copilot Code Review, and continue polling until new comments/checks are resolved.
 - GitHub Actions/status checks remain unavailable for PR #2; do not treat CI as green, only as unconfigured.
 
 ## 2026-04-30 - Macro 2 Slice
