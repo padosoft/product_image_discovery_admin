@@ -75,7 +75,7 @@
   - `npm run test` => 4 files, 18 tests
   - `npm run build`
 - Resumed the PR #2 loop after `gh auth login` was refreshed by the user:
-  - local branch and `origin/task/request-review-workflows` are aligned at `e456ebc`
+  - the last code-fix head before status documentation was `e456ebc`; subsequent pushes are documentation-only PR-loop status updates
   - `gh auth status` succeeds for `lopadova`
   - thread-aware review polling found 8 review threads, with 0 unresolved non-outdated threads; the 4 unresolved threads are all outdated against the current head
   - GitHub Actions/status checks are still unavailable for the branch (`gh pr checks 2` reports no checks, and the Actions runs API returns 0 workflow runs)
