@@ -339,6 +339,16 @@
   - `npm run test` => 8 files, 38 tests
   - `npm run build`
   - `npm run e2e` => 12 Playwright tests
+- Copilot reviewed `d86e3b4` and generated 2 comments.
+- Addressed the Copilot PR #6 comments:
+  - Health now reports `package_api_prefix` from `pid-admin.package_api_prefix`, matching the config exposed by `AdminShellController`
+  - the Health page RTL test now injects secret-like fields into the mocked payload and asserts the UI does not render them
+- Verification passed after the Copilot PR #6 fixes:
+  - `composer validate --strict`
+  - `npm run phpunit` => 38 tests, 302 assertions
+  - `npm run test` => 8 files, 38 tests
+  - `npm run build`
+  - `npm run e2e` => 12 Playwright tests
 
 ## 2026-04-30
 

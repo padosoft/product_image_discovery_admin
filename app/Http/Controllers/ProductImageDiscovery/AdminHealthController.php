@@ -26,7 +26,7 @@ final class AdminHealthController extends Controller
                     'environment' => app()->environment(),
                     'debug' => (bool) config('app.debug'),
                     'admin_prefix' => trim((string) config('pid-admin.route_prefix', 'admin/product-image-discovery'), '/'),
-                    'package_api_prefix' => trim((string) config('product-image-discovery.route_prefix', 'api/product-image-discovery'), '/'),
+                    'package_api_prefix' => trim((string) config('pid-admin.package_api_prefix', 'api/product-image-discovery'), '/'),
                 ],
                 'env_status' => $this->environmentStatus(),
                 'ai' => [

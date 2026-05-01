@@ -77,6 +77,7 @@ final class AdminWrapperEndpointsTest extends TestCase
             'product-image-discovery.ai.providers.anthropic.api_key' => 'anthropic-secret',
             'product-image-discovery.ai.providers.openrouter.api_key' => 'openrouter-secret',
             'product-image-discovery.storage.disk' => 'local',
+            'pid-admin.package_api_prefix' => 'custom-package-api',
         ]);
 
         ProductImageSearchProvider::query()->create([
@@ -101,6 +102,7 @@ final class AdminWrapperEndpointsTest extends TestCase
         $response = $this->getJson('/admin/product-image-discovery/health')
             ->assertOk()
             ->assertJsonPath('data.app.admin_prefix', 'admin/product-image-discovery')
+            ->assertJsonPath('data.app.package_api_prefix', 'custom-package-api')
             ->assertJsonPath('data.ai.enabled', true)
             ->assertJsonPath('data.ai.provider', 'anthropic')
             ->assertJsonPath('data.ai.provider_key_configured', true)

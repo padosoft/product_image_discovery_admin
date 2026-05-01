@@ -669,6 +669,7 @@ describe('admin product image discovery shell', () => {
           debug: false,
           admin_prefix: 'admin/product-image-discovery',
           package_api_prefix: 'api/product-image-discovery',
+          secret_probe: 'app-secret',
         },
         env_status: [
           { key: 'BRAVE_SEARCH_API_KEY', scope: 'search', configured: false },
@@ -684,7 +685,7 @@ describe('admin product image discovery shell', () => {
           description_model_configured: false,
           provider_key_configured: true,
           providers: [
-            { provider: 'anthropic', api_key_configured: true, base_url_configured: true },
+            { provider: 'anthropic', api_key_configured: true, base_url_configured: true, api_key: 'anthropic-secret' },
             { provider: 'openrouter', api_key_configured: false, base_url_configured: true },
           ],
         },
@@ -708,6 +709,7 @@ describe('admin product image discovery shell', () => {
             rate_limit_per_minute: null,
             last_test_status: null,
             last_test_at: null,
+            raw_secret: 'provider-secret',
           },
         ],
       },
@@ -742,6 +744,7 @@ describe('admin product image discovery shell', () => {
     expect(screen.getByText('ANTHROPIC_API_KEY')).toBeVisible();
     expect(screen.getByRole('table', { name: 'Search provider health status' })).toHaveTextContent('fake');
     expect(screen.getByRole('table', { name: 'Product image discovery queue status' })).toHaveTextContent('image-discovery-ai');
+    expect(document.body).not.toHaveTextContent('app-secret');
     expect(document.body).not.toHaveTextContent('anthropic-secret');
     expect(document.body).not.toHaveTextContent('provider-secret');
   });
