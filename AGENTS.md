@@ -61,6 +61,22 @@ For each subtask, the intended process is:
 
 Copilot review means GitHub Copilot Code Review through the PR Reviewers menu or `gh pr edit <PR> --add-reviewer @copilot`. Do not use `@codex review` as a substitute unless the user explicitly asks for Codex review.
 
+If `gh pr edit <PR> --add-reviewer @copilot` fails before requesting the review because GitHub CLI queries PR project items and requires `read:project`, bypass `gh pr edit` with GitHub's GraphQL reviewer mutation. Resolve the PR node ID with `gh pr view <PR> --json id`, then request the Copilot review bot with:
+
+```powershell
+$query = @'
+mutation RequestReviewsByLogin($pullRequestId: ID!, $botLogins: [String!], $union: Boolean!) {
+  requestReviewsByLogin(input: {pullRequestId: $pullRequestId, botLogins: $botLogins, union: $union}) {
+    clientMutationId
+  }
+}
+'@
+gh api graphql -f query="$query" -F pullRequestId='<PR_NODE_ID>' -F botLogins[]='copilot-pull-request-reviewer[bot]' -F union=true
+gh api repos/padosoft/product_image_discovery_admin/pulls/<PR>/requested_reviewers
+```
+
+The REST requested-reviewer endpoint with `reviewers[]=copilot` is not equivalent; it can return 200 without creating a visible Copilot Code Review request.
+
 Do not stop after a push or review request. Keep polling PR status, CI, and review comments until the loop is resolved or GitHub access is unavailable.
 
 If GitHub/Copilot access is unavailable in the current session, do not fake the loop. Record the local status and next required remote step in `docs/PROGRESS.md`.

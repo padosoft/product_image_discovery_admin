@@ -88,6 +88,11 @@
   - `gh pr edit 2 --add-reviewer '@copilot'` is blocked by a missing `read:project` token scope
   - `gh auth refresh -h github.com -s read:project` timed out waiting for interactive auth
   - REST fallback `POST /repos/padosoft/product_image_discovery_admin/pulls/2/requested_reviewers` with `reviewers[]=copilot` returned 200, but subsequent API reads still expose no pending reviewer, so Copilot review could not be verified from CLI/API
+- Investigated the Copilot reviewer request path and found the correct CLI bypass:
+  - GitHub CLI translates `@copilot` to the review bot login `copilot-pull-request-reviewer`
+  - the correct mutation is GraphQL `requestReviewsByLogin` with `botLogins[]='copilot-pull-request-reviewer[bot]'` and `union=true`
+  - the direct mutation succeeded for PR #2 at node ID `PR_kwDOSRBF8M7XaL-e`
+  - `GET /repos/padosoft/product_image_discovery_admin/pulls/2/requested_reviewers` now shows pending reviewer `Copilot`
 
 ## 2026-04-30
 
@@ -117,8 +122,7 @@
 
 ## Open Items
 
-- Request/verify GitHub Copilot Code Review manually from the PR Reviewers menu if the API-visible reviewer state remains empty, or refresh `gh` with `gh auth refresh -h github.com -s read:project` in an interactive shell and retry `gh pr edit 2 --add-reviewer '@copilot'`.
-- Continue polling PR #2 for a Copilot review result; current API-visible review threads have no unresolved non-outdated comments.
+- Continue polling PR #2 until the pending `Copilot` reviewer leaves a review or the request becomes unavailable; current API-visible review threads have no unresolved non-outdated comments.
 - GitHub Actions/status checks remain unavailable for PR #2; do not treat CI as green, only as unconfigured.
 
 ## 2026-04-30 - Macro 2 Slice

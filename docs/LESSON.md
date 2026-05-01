@@ -20,7 +20,7 @@
 - If `npm run e2e` exits immediately after the Vite build with no Playwright output, run `node scripts/prepare-e2e.mjs` to confirm the setup phase; in this Codex session Herd PHP access checks returned denied/false outside the working `npm run phpunit` wrapper, so e2e was blocked before the browser runner.
 - The PR loop requires GitHub Copilot Code Review, requested through the PR Reviewers menu or `gh pr edit <PR> --add-reviewer @copilot`; `@codex review` is not a valid substitute unless the user explicitly asks for it.
 - Reject and retry admin mutations need the same transaction/row-lock treatment as approve: both derive request state from current row values and can otherwise lose updates under concurrent operators.
-- On this repo, `gh pr edit 2 --add-reviewer '@copilot'` can require the extra `read:project` token scope; `gh auth refresh -h github.com -s read:project` may need an interactive shell. A REST reviewer fallback can return 200 for `reviewers[]=copilot` while still exposing no pending reviewer, so the Copilot request may remain unverifiable through CLI/API and must be checked in the PR Reviewers menu.
+- On this repo, `gh pr edit 2 --add-reviewer '@copilot'` can fail before requesting Copilot because GitHub CLI queries PR project items and the token lacks `read:project`; bypass it with GraphQL `requestReviewsByLogin`, passing the PR node ID and `botLogins[]='copilot-pull-request-reviewer[bot]'` with `union=true`, then verify via `GET /repos/{owner}/{repo}/pulls/{number}/requested_reviewers`. The REST fallback `reviewers[]=copilot` is not equivalent: it can return 200 while leaving no visible Copilot reviewer.
 
 ## 2026-04-30
 
