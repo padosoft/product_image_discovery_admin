@@ -31,12 +31,15 @@ Route::prefix($adminPrefix)
     ->group(function (): void {
         Route::get('dashboard-summary', AdminDashboardSummaryController::class)->name('dashboard-summary');
         Route::get('health', AdminHealthController::class)->name('health');
-        Route::get('debug-runs', [AdminDebugRunController::class, 'index'])->name('debug-runs.index');
-        Route::post('debug-runs', [AdminDebugRunController::class, 'store'])
-            ->middleware('throttle:6,1')
-            ->name('debug-runs.store');
-        Route::get('debug-runs/{debugRun}', [AdminDebugRunController::class, 'show'])->name('debug-runs.show');
-        Route::get('debug-runs/{debugRun}/report', [AdminDebugRunController::class, 'report'])->name('debug-runs.report');
+        Route::middleware(config('pid-admin.debug_run_middleware', ['auth']))
+            ->group(function (): void {
+                Route::get('debug-runs', [AdminDebugRunController::class, 'index'])->name('debug-runs.index');
+                Route::post('debug-runs', [AdminDebugRunController::class, 'store'])
+                    ->middleware('throttle:6,1')
+                    ->name('debug-runs.store');
+                Route::get('debug-runs/{debugRun}', [AdminDebugRunController::class, 'show'])->name('debug-runs.show');
+                Route::get('debug-runs/{debugRun}/report', [AdminDebugRunController::class, 'report'])->name('debug-runs.report');
+            });
         Route::get('requests/search', AdminRequestSearchController::class)->name('requests.search');
         Route::get('requests/{request}', AdminRequestShowController::class)->name('requests.show');
         Route::get('requests/{request}/events', AdminRequestEventsController::class)->name('requests.events');

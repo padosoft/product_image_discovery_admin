@@ -439,6 +439,16 @@
   - `npm run test` => 8 files, 40 tests
   - `npm run build`
   - `npm run e2e` => 14 Playwright tests
+- Copilot reviewed `2c08228` and generated 1 follow-up comment.
+- Addressed the latest Copilot PR #7 comment:
+  - debug-run routes now use dedicated `pid-admin.debug_run_middleware`, defaulting to `auth`, in addition to the broader admin wrapper middleware
+  - local PHPUnit and Playwright gates override the debug middleware to keep deterministic unauthenticated smoke coverage
+- Verification passed after the debug-run middleware follow-up:
+  - `composer validate --strict`
+  - `npm run phpunit` => 41 tests, 325 assertions
+  - `npm run test` => 8 files, 40 tests
+  - `npm run build`
+  - `npm run e2e` => 14 Playwright tests
 
 ## 2026-04-30
 
