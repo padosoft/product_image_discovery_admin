@@ -284,6 +284,17 @@
   - `npm run test` => 8 files, 37 tests
   - `npm run build`
   - `npm run e2e` => 10 Playwright tests
+- Copilot reviewed `e6199ed` and generated 3 comments.
+- Addressed the Copilot PR #5 comments:
+  - the provider test route now has a dedicated `throttle:6,1` middleware to reduce accidental or malicious quota burn
+  - provider test credential booleans now use `filled($model->getRawOriginal(...))` instead of decrypting values or treating empty strings as configured
+  - the factory-registry concern was already addressed in `d13fb8f` by deriving the isolated manager factories from the app-bound package manager registry
+- Verification passed after the Copilot PR #5 fixes:
+  - `composer validate --strict`
+  - `npm run phpunit` => 36 tests, 272 assertions
+  - `npm run test` => 8 files, 37 tests
+  - `npm run build`
+  - `npm run e2e` => 10 Playwright tests
 
 ## 2026-04-30
 

@@ -45,6 +45,7 @@
 - Shared admin form validation should live in a common helper once multiple configuration forms depend on the same rules; duplicate numeric parsers drift quickly in both behavior and error copy.
 - Provider health tests should execute a single selected provider through an isolated manager/repository and return attempt summaries only; never include raw search results, headers, provider definitions with secrets, or exception text before redacting stored credential values.
 - When an admin wrapper needs one-provider execution, keep the provider factory source tied to the app-bound package manager registry. Duplicating only the currently known fake/brave factories makes future or host-registered drivers report false health failures.
+- Admin-triggered live/provider tests should have route-level throttling because a simple POST can burn external quota even when the endpoint returns only sanitized health data.
 
 ## 2026-04-30
 

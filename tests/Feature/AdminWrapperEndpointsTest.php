@@ -6,6 +6,7 @@ namespace Tests\Feature;
 
 use Carbon\CarbonImmutable;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\Route;
 use Illuminate\Support\Facades\Storage;
 use Padosoft\ProductImageDiscovery\Models\ProductImageDiscoveryCandidate;
 use Padosoft\ProductImageDiscovery\Models\ProductImageDiscoveryEvent;
@@ -336,6 +337,14 @@ final class AdminWrapperEndpointsTest extends TestCase
             ->assertJsonMissingPath('data.provider.api_key');
 
         $this->assertStringNotContainsString('provider-test-secret', $response->getContent());
+    }
+
+    public function test_admin_search_provider_test_route_is_throttled(): void
+    {
+        $route = Route::getRoutes()->getByName('pid-admin.search-providers.test');
+
+        $this->assertNotNull($route);
+        $this->assertContains('throttle:6,1', $route->gatherMiddleware());
     }
 
     public function test_admin_search_provider_test_reuses_registered_provider_factories(): void
