@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { pidFetch, normalizeLaravelPagination, buildRequestSearchPath, buildAdminApiPath } from './api';
 import { DataTable } from './components/DataTable';
 import { ConfirmModal } from './components/ConfirmModal';
@@ -462,7 +462,14 @@ function RequestFilters({ filters, onChange, onReset, activeChips, loading }) {
       <div className="pid-filters">
         <label>
           <span>Client</span>
-          <input value={filters.client_id} onChange={(event) => update('client_id', event.target.value)} placeholder="1" />
+          <input
+            type="number"
+            min="1"
+            inputMode="numeric"
+            value={filters.client_id}
+            onChange={(event) => update('client_id', event.target.value)}
+            placeholder="1"
+          />
         </label>
         <label>
           <span>Brand</span>
@@ -498,7 +505,7 @@ function RequestFilters({ filters, onChange, onReset, activeChips, loading }) {
         </label>
         <label>
           <span>Rejection reason</span>
-          <input value={filters.rejection_reason} onChange={(event) => update('rejection_reason', event.target.value)} placeholder="wrong_color" />
+          <input value={filters.rejection_reason} onChange={(event) => update('rejection_reason', event.target.value)} placeholder="WRONG_COLOR" />
         </label>
         <label>
           <span>Min score</span>
@@ -984,6 +991,7 @@ export default function App() {
   const [toast, setToast] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
+  const detailLoadId = useRef(0);
 
   useEffect(() => {
     document.documentElement.dataset.theme = theme;
@@ -1105,6 +1113,9 @@ export default function App() {
   }, [page, effectiveRequestFilters]);
 
   async function openRequest(request) {
+    const loadId = detailLoadId.current + 1;
+    detailLoadId.current = loadId;
+
     setDetailOpen(true);
     setDetailLoading(true);
     setDetailError('');
@@ -1122,6 +1133,10 @@ export default function App() {
     try {
       const result = await fetchRequestDetail(request.id);
 
+      if (detailLoadId.current !== loadId) {
+        return;
+      }
+
       setDetailRequest(result.detail);
       setDetailCandidates(result.candidates);
       setDetailEvents(result.events);
@@ -1133,9 +1148,13 @@ export default function App() {
         return result.candidates[0]?.id ?? null;
       });
     } catch (err) {
-      setDetailError(err.message || 'Unable to load request detail.');
+      if (detailLoadId.current === loadId) {
+        setDetailError(err.message || 'Unable to load request detail.');
+      }
     } finally {
-      setDetailLoading(false);
+      if (detailLoadId.current === loadId) {
+        setDetailLoading(false);
+      }
     }
   }
 
@@ -1277,6 +1296,7 @@ export default function App() {
   }
 
   function closeDetailDrawer() {
+    detailLoadId.current += 1;
     setDetailOpen(false);
     setDetailRequest(null);
     setDetailCandidates([]);

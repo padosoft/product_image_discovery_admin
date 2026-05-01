@@ -16,6 +16,15 @@ function mockJsonResponse(payload) {
   };
 }
 
+function deferredJsonResponse(payload) {
+  let resolve;
+  const promise = new Promise((done) => {
+    resolve = () => done(mockJsonResponse(payload));
+  });
+
+  return { promise, resolve };
+}
+
 describe('admin product image discovery shell', () => {
   beforeEach(() => {
     const store = new Map();
@@ -159,7 +168,9 @@ describe('admin product image discovery shell', () => {
 
     expect(await screen.findByRole('heading', { name: 'Search Filters' })).toBeVisible();
     expect(screen.getByLabelText('Brand')).toHaveValue('Herno');
-    expect(screen.getByLabelText('Client')).toBeVisible();
+    expect(screen.getByLabelText('Client')).toHaveAttribute('type', 'number');
+    expect(screen.getByLabelText('Client')).toHaveAttribute('min', '1');
+    expect(screen.getByLabelText('Rejection reason')).toHaveAttribute('placeholder', 'WRONG_COLOR');
     expect(screen.getByLabelText('Created from')).toBeVisible();
     expect(screen.getByRole('button', { name: 'Clear' })).toBeVisible();
   });
@@ -294,6 +305,114 @@ describe('admin product image discovery shell', () => {
       'src',
       '/custom-admin/product-image-discovery/candidates/301/image',
     );
+  });
+
+  it('keeps stale request detail responses from overwriting the latest drawer selection', async () => {
+    window.history.replaceState({}, '', '/admin/product-image-discovery/requests');
+    const slowDetail = deferredJsonResponse({
+      data: {
+        id: 44,
+        status: 'manual_review',
+        final_score: 61,
+        brand: 'Herno',
+        supplier: 'Herno',
+        erp_model_color_id: 'HERO-001-BLK',
+        best_candidate: null,
+        selected_candidate: null,
+        candidates: [],
+      },
+    });
+    const slowEvents = deferredJsonResponse({ data: [] });
+    const slowCandidates = deferredJsonResponse({ data: [] });
+    const requestRows = {
+      data: [
+        {
+          id: 44,
+          status: 'manual_review',
+          final_score: 61,
+          brand: 'Herno',
+          supplier: 'Herno',
+          erp_model_color_id: 'HERO-001-BLK',
+          updated_at: '2026-04-30T09:30:00Z',
+        },
+        {
+          id: 45,
+          status: 'manual_review',
+          final_score: 74,
+          brand: 'Nike',
+          supplier: 'Nike',
+          erp_model_color_id: 'NIKE-001-WHT',
+          updated_at: '2026-04-30T10:00:00Z',
+        },
+      ],
+    };
+
+    vi.stubGlobal('fetch', vi.fn((url) => {
+      const requestUrl = new URL(String(url));
+      const path = `${requestUrl.pathname}${requestUrl.search}`;
+
+      if (path.includes('/dashboard-summary')) {
+        return Promise.resolve(mockJsonResponse({
+          counts: { total: 2, manual_review: 2, ready_to_publish: 0, failed: 0, no_candidates_found: 0 },
+          provider_status: [],
+        }));
+      }
+
+      if (path.includes('/requests/search')) {
+        return Promise.resolve(mockJsonResponse(requestRows));
+      }
+
+      if (path.endsWith('/requests/44')) {
+        return slowDetail.promise;
+      }
+
+      if (path.endsWith('/requests/44/events')) {
+        return slowEvents.promise;
+      }
+
+      if (path.endsWith('/requests/44/candidates')) {
+        return slowCandidates.promise;
+      }
+
+      if (path.endsWith('/requests/45')) {
+        return Promise.resolve(mockJsonResponse({
+          data: {
+            id: 45,
+            status: 'manual_review',
+            final_score: 74,
+            brand: 'Nike',
+            supplier: 'Nike',
+            erp_model_color_id: 'NIKE-001-WHT',
+            best_candidate: null,
+            selected_candidate: null,
+            candidates: [],
+          },
+        }));
+      }
+
+      if (path.endsWith('/requests/45/events') || path.endsWith('/requests/45/candidates')) {
+        return Promise.resolve(mockJsonResponse({ data: [] }));
+      }
+
+      return Promise.reject(new Error(`Unexpected request: ${path}`));
+    }));
+
+    render(<App />);
+
+    await waitFor(() => expect(screen.getAllByRole('button', { name: 'Open' })).toHaveLength(2));
+    const [openFirst, openSecond] = screen.getAllByRole('button', { name: 'Open' });
+
+    fireEvent.click(openFirst);
+    fireEvent.click(openSecond);
+
+    expect(await screen.findByRole('dialog', { name: 'Request 45' })).toBeVisible();
+
+    slowDetail.resolve();
+    slowEvents.resolve();
+    slowCandidates.resolve();
+
+    await waitFor(() => expect(screen.getByRole('dialog', { name: 'Request 45' })).toBeVisible());
+    expect(screen.queryByRole('dialog', { name: 'Request 44' })).not.toBeInTheDocument();
   });
 
   it('renders the json viewer and copies content', async () => {

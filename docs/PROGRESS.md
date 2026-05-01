@@ -113,6 +113,17 @@
   - `npm run test` => 4 files, 18 tests
   - `npm run build`
   - `npm run e2e` => 4 Playwright tests
+- Pushed the follow-up Copilot PR #2 fixes as `1546b00`, requested a fresh Copilot Code Review with GraphQL, and resolved the addressed review threads.
+- Copilot reviewed `1546b00` and generated 3 more frontend comments.
+- Addressed the latest Copilot comments:
+  - the client filter input now uses numeric input constraints matching backend integer validation
+  - the rejection reason placeholder now matches the backend enum-style value casing
+  - request detail loading now ignores stale async responses so a slower earlier request cannot overwrite a newer drawer selection
+- Verification passed after the latest Copilot PR #2 fixes:
+  - `npm run phpunit` => 27 tests, 176 assertions
+  - `npm run test` => 4 files, 19 tests
+  - `npm run build`
+  - `npm run e2e` => 4 Playwright tests
 
 ## 2026-04-30
 
@@ -142,7 +153,7 @@
 
 ## Open Items
 
-- Push the latest follow-up Copilot PR #2 fixes, request a fresh Copilot Code Review, and continue polling until new comments/checks are resolved.
+- Push the latest frontend Copilot PR #2 fixes, request a fresh Copilot Code Review, and continue polling until new comments/checks are resolved.
 - GitHub Actions/status checks remain unavailable for PR #2; do not treat CI as green, only as unconfigured.
 
 ## 2026-04-30 - Macro 2 Slice

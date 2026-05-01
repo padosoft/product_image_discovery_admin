@@ -25,6 +25,7 @@
 - Candidate approval should keep request-level `best_candidate_id`, `selected_candidate_id`, and `final_score` aligned; candidate pagination should include a deterministic secondary sort key after `final_score` so tied scores do not create unstable pages.
 - Timeline display code should compose optional event message/level fields from filtered parts; direct template literals can render database nulls as visible `null` or `undefined`.
 - Frontend tests for debounced behavior should use observable calls or fake timers, not real sleeps, or the suite becomes slower and timing-dependent.
+- Drawer/detail fetch handlers need stale-response guards when operators can open records in quick succession; otherwise a slower earlier response can overwrite the newer selection.
 
 ## 2026-04-30
 
