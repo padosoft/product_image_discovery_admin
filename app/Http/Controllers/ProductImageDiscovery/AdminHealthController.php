@@ -60,11 +60,19 @@ final class AdminHealthController extends Controller
     private function environmentStatus(): array
     {
         return [
-            ['key' => 'BRAVE_SEARCH_API_KEY', 'configured' => filled(env('BRAVE_SEARCH_API_KEY')), 'scope' => 'search'],
+            ['key' => 'BRAVE_SEARCH_API_KEY', 'configured' => $this->braveSearchKeyConfigured(), 'scope' => 'search'],
             ['key' => 'ANTHROPIC_API_KEY', 'configured' => filled(config('product-image-discovery.ai.providers.anthropic.api_key')), 'scope' => 'ai'],
             ['key' => 'OPENAI_API_KEY', 'configured' => filled(config('product-image-discovery.ai.providers.openai.api_key')), 'scope' => 'ai'],
             ['key' => 'OPENROUTER_API_KEY', 'configured' => filled(config('product-image-discovery.ai.providers.openrouter.api_key')), 'scope' => 'ai'],
         ];
+    }
+
+    private function braveSearchKeyConfigured(): bool
+    {
+        return ProductImageSearchProvider::query()
+            ->where('driver', 'brave')
+            ->get(['id', 'api_key_encrypted'])
+            ->contains(static fn (ProductImageSearchProvider $provider): bool => filled($provider->getRawOriginal('api_key_encrypted')));
     }
 
     /**

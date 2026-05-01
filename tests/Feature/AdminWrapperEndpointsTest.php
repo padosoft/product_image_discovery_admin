@@ -88,6 +88,15 @@ final class AdminWrapperEndpointsTest extends TestCase
             'timeout_seconds' => 15,
             'is_active' => true,
         ]);
+        ProductImageSearchProvider::query()->create([
+            'code' => 'brave-health',
+            'name' => 'Brave Health',
+            'driver' => 'brave',
+            'api_key_encrypted' => 'brave-secret',
+            'priority' => 10,
+            'timeout_seconds' => 15,
+            'is_active' => true,
+        ]);
 
         $response = $this->getJson('/admin/product-image-discovery/health')
             ->assertOk()
@@ -101,12 +110,15 @@ final class AdminWrapperEndpointsTest extends TestCase
             ->assertJsonPath('data.queue.connection', 'sync')
             ->assertJsonPath('data.providers.0.code', 'fake-health')
             ->assertJsonPath('data.providers.0.has_api_key', true)
+            ->assertJsonPath('data.env_status.0.key', 'BRAVE_SEARCH_API_KEY')
+            ->assertJsonPath('data.env_status.0.configured', true)
             ->assertJsonPath('data.env_status.1.key', 'ANTHROPIC_API_KEY')
             ->assertJsonPath('data.env_status.1.configured', true);
 
         $content = $response->getContent();
 
         $this->assertStringNotContainsString('provider-secret', $content);
+        $this->assertStringNotContainsString('brave-secret', $content);
         $this->assertStringNotContainsString('anthropic-secret', $content);
         $this->assertStringNotContainsString('openrouter-secret', $content);
     }

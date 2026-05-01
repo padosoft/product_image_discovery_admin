@@ -330,6 +330,15 @@
   - `npm run test` => 8 files, 38 tests
   - `npm run build`
   - `npm run e2e` => 12 Playwright tests
+- An automatic Codex review on PR #6 generated 1 actionable Health endpoint comment; this is not treated as a Copilot substitute, but was addressed:
+  - `BRAVE_SEARCH_API_KEY` health status now reads configured Brave provider records instead of calling `env()` from controller code, avoiding false missing statuses when config is cached
+  - coverage now proves the Brave provider secret only contributes to a boolean and is not exposed in the response
+- Verification passed after the Brave health status follow-up:
+  - `composer validate --strict`
+  - `npm run phpunit` => 38 tests, 301 assertions
+  - `npm run test` => 8 files, 38 tests
+  - `npm run build`
+  - `npm run e2e` => 12 Playwright tests
 
 ## 2026-04-30
 
