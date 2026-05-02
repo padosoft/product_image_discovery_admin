@@ -86,7 +86,7 @@ export function normalizeApiError(response, payload) {
   return new ApiError(message, response.status, payload);
 }
 
-export async function pidFetch(path, options = {}) {
+async function executeAdminFetch(path, options = {}) {
   const controller = options.signal ? null : new AbortController();
   const signal = options.signal ?? controller?.signal;
   const rawUrl = /^https?:\/\//i.test(path)
@@ -113,8 +113,24 @@ export async function pidFetch(path, options = {}) {
 
   const payload = await readResponsePayload(response);
 
-  if (!response.ok) {
-    throw normalizeApiError(response, payload);
+  return { response, payload };
+}
+
+export async function pidFetchWithMeta(path, options = {}) {
+  const { response, payload } = await executeAdminFetch(path, options);
+
+  return {
+    ok: response.ok,
+    status: response.status,
+    payload,
+  };
+}
+
+export async function pidFetch(path, options = {}) {
+  const { ok, status, payload } = await pidFetchWithMeta(path, options);
+
+  if (!ok) {
+    throw normalizeApiError({ status }, payload);
   }
 
   return payload;

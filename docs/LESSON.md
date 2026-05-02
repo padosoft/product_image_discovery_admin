@@ -86,6 +86,9 @@
 - Copyable cURL snippets for session/CSRF-protected admin mutations should use placeholders for CSRF and session cookies; do not copy live token or cookie values into the UI.
 - Async workbench actions need mounted guards and abort cleanup just like page loaders, because operators can navigate away while provider tests or request creation are still in flight.
 - Job-dispatching Workbench endpoints should be throttled in addition to being behind stricter middleware; request creation can enqueue ingest work just like debug runs.
+- Workbench call history should use a monotonic local id instead of timestamps so repeated fast calls cannot collide in React row keys.
+- If a workbench action reads health data for display, update the page-level health snapshot from the full response before narrowing the captured result for focused JSON display.
+- Admin fetch helpers that need status metadata should still share the same parser, same-origin guard, and CSRF behavior as `pidFetch()` to avoid drift.
 
 ## 2026-04-30
 

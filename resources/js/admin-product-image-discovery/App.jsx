@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
-import { pidFetch, normalizeLaravelPagination, buildRequestSearchPath, buildAdminApiPath, normalizeAdminApiBase } from './api';
+import { pidFetch, pidFetchWithMeta, normalizeLaravelPagination, buildRequestSearchPath, buildAdminApiPath, normalizeAdminApiBase } from './api';
 import { DataTable } from './components/DataTable';
 import { ConfirmModal } from './components/ConfirmModal';
 import { Drawer } from './components/Drawer';
@@ -459,55 +459,22 @@ async function fetchHealth(signal) {
   return result?.data ?? result;
 }
 
-async function readWorkbenchPayload(response) {
-  if (response.status === 204) {
-    return null;
-  }
-
-  const contentType = typeof response.headers?.get === 'function'
-    ? response.headers.get('content-type') ?? ''
-    : '';
-
-  if (contentType.includes('application/json')) {
-    return typeof response.json === 'function' ? response.json().catch(() => null) : null;
-  }
-
-  const text = typeof response.text === 'function'
-    ? await response.text().catch(() => '')
-    : '';
-
-  return text ? { message: text } : null;
-}
-
 async function runWorkbenchHttpRequest({ method = 'GET', path, body }, signal) {
   const started = performance.now();
-  const url = new URL(buildAdminApiPath(path), window.location.origin);
-
-  if (url.origin !== window.location.origin) {
-    throw new TypeError('Cross-origin admin requests are not allowed.');
-  }
-
-  const token = document.querySelector('meta[name="csrf-token"]')?.content ?? '';
-  const response = await fetch(url.toString(), {
+  const result = await pidFetchWithMeta(path, {
     method,
     signal,
-    headers: {
-      Accept: 'application/json',
-      'Content-Type': 'application/json',
-      ...(token ? { 'X-CSRF-TOKEN': token } : {}),
-    },
     body: body === undefined ? undefined : JSON.stringify(body),
   });
-  const payload = await readWorkbenchPayload(response);
 
   return {
     method,
     path,
-    status: response.status,
-    ok: response.ok,
+    status: result.status,
+    ok: result.ok,
     duration_ms: Math.max(0, Math.round(performance.now() - started)),
     request_body: body === undefined ? null : redactDebugPreview(body),
-    response: redactDebugPreview(payload),
+    response: redactDebugPreview(result.payload),
   };
 }
 
@@ -3740,6 +3707,7 @@ function ApiWorkbenchPage({ onNotify }) {
   const [selectedResultId, setSelectedResultId] = useState('');
   const mountedRef = useRef(false);
   const actionControllerRef = useRef(null);
+  const resultCounterRef = useRef(0);
 
   useEffect(() => {
     mountedRef.current = true;
@@ -3887,6 +3855,14 @@ function ApiWorkbenchPage({ onNotify }) {
         return;
       }
 
+      if (['runtime_health', 'ai_status', 'storage_status', 'queue_status'].includes(action)) {
+        const latestHealth = dataPayload(result.response);
+
+        if (latestHealth && typeof latestHealth === 'object') {
+          setHealth(latestHealth);
+        }
+      }
+
       if (action === 'ai_status') {
         result = { ...result, response: focusedHealthPayload(result.response, 'ai') };
       } else if (action === 'storage_status') {
@@ -3895,9 +3871,10 @@ function ApiWorkbenchPage({ onNotify }) {
         result = { ...result, response: focusedHealthPayload(result.response, 'queue') };
       }
 
+      resultCounterRef.current += 1;
       const resultWithId = {
         ...result,
-        id: `${Date.now()}-${action}`,
+        id: `${resultCounterRef.current}-${action}`,
         action,
       };
 
