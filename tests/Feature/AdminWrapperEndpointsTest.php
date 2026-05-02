@@ -8,9 +8,11 @@ use App\Models\ProductImageDiscoveryDebugRun;
 use App\Support\ProductImageDiscovery\DebugPayloadRedactor;
 use Carbon\CarbonImmutable;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\Bus;
 use Illuminate\Support\Facades\File;
 use Illuminate\Support\Facades\Route;
 use Illuminate\Support\Facades\Storage;
+use Padosoft\ProductImageDiscovery\Jobs\IngestProductImageDiscoveryJob;
 use Padosoft\ProductImageDiscovery\Models\ProductImageDiscoveryCandidate;
 use Padosoft\ProductImageDiscovery\Models\ProductImageDiscoveryEvent;
 use Padosoft\ProductImageDiscovery\Models\ProductImageDiscoveryRequest;
@@ -137,6 +139,46 @@ final class AdminWrapperEndpointsTest extends TestCase
         $this->getJson('/admin/product-image-discovery/health')
             ->assertOk()
             ->assertJsonStructure(['data' => ['app', 'env_status', 'ai', 'storage', 'queue', 'providers']]);
+    }
+
+    public function test_admin_request_store_wrapper_creates_sample_request(): void
+    {
+        Bus::fake();
+
+        $response = $this->postJson('/admin/product-image-discovery/requests', [
+            'client_id' => 77,
+            'erp_model_id' => 'WORKBENCH-HERNO',
+            'erp_model_color_id' => 'WORKBENCH-HERNO-CAMMELLO',
+            'brand' => 'Herno',
+            'supplier' => 'Herno',
+            'supplier_sku' => 'PI002223D',
+            'model_code' => 'PI002223D',
+            'color_code' => 'CAMMELLO',
+            'color_name' => 'Cammello',
+            'metadata' => ['admin_workbench' => true],
+        ])
+            ->assertCreated()
+            ->assertJsonPath('ok', true)
+            ->assertJsonPath('erp_model_color_id', 'WORKBENCH-HERNO-CAMMELLO')
+            ->assertJsonPath('status', 'queued');
+
+        $requestId = $response->json('request_id');
+
+        $this->assertDatabaseHas('product_image_discovery_requests', [
+            'id' => $requestId,
+            'client_id' => 77,
+            'erp_model_color_id' => 'WORKBENCH-HERNO-CAMMELLO',
+            'status' => 'queued',
+        ]);
+        Bus::assertDispatched(IngestProductImageDiscoveryJob::class);
+    }
+
+    public function test_admin_request_store_route_is_throttled(): void
+    {
+        $route = Route::getRoutes()->getByName('pid-admin.requests.store');
+
+        $this->assertNotNull($route);
+        $this->assertContains('throttle:6,1', $route->gatherMiddleware());
     }
 
     public function test_admin_debug_run_executes_fake_flow_and_redacts_payload(): void

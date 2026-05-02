@@ -5,6 +5,7 @@ import {
   normalizeApiError,
   normalizeLaravelPagination,
   pidFetch,
+  pidFetchWithMeta,
 } from '../../resources/js/admin-product-image-discovery/api';
 
 describe('api client helpers', () => {
@@ -51,5 +52,21 @@ describe('api client helpers', () => {
     window.PID_ADMIN = { apiBase: '/admin/product-image-discovery' };
 
     await expect(pidFetch('/health')).resolves.toBeNull();
+  });
+
+  it('returns fetch metadata without throwing for failed responses', async () => {
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue({
+      ok: false,
+      status: 429,
+      headers: { get: () => 'application/json' },
+      json: vi.fn().mockResolvedValue({ message: 'Slow down' }),
+    }));
+    window.PID_ADMIN = { apiBase: '/admin/product-image-discovery' };
+
+    await expect(pidFetchWithMeta('/requests')).resolves.toEqual({
+      ok: false,
+      status: 429,
+      payload: { message: 'Slow down' },
+    });
   });
 });

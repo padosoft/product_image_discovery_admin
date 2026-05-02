@@ -6,10 +6,10 @@ import App from '../../resources/js/admin-product-image-discovery/App';
 import { ImageTile } from '../../resources/js/admin-product-image-discovery/components/ImageTile';
 import { JsonViewer } from '../../resources/js/admin-product-image-discovery/components/JsonViewer';
 
-function mockJsonResponse(payload) {
+function mockJsonResponse(payload, status = 200) {
   return {
-    ok: true,
-    status: 200,
+    ok: status >= 200 && status < 300,
+    status,
     headers: { get: () => 'application/json' },
     json: vi.fn().mockResolvedValue(payload),
     text: vi.fn().mockResolvedValue(JSON.stringify(payload)),
@@ -753,6 +753,99 @@ describe('admin product image discovery shell', () => {
     expect(document.body).not.toHaveTextContent('app-secret');
     expect(document.body).not.toHaveTextContent('anthropic-secret');
     expect(document.body).not.toHaveTextContent('provider-secret');
+  });
+
+  it('runs the API workbench sample request and redacts captured responses', async () => {
+    window.history.replaceState({}, '', '/admin/product-image-discovery/apitest');
+    let createdPayload = null;
+    const writeText = vi.fn().mockResolvedValue(undefined);
+
+    Object.defineProperty(navigator, 'clipboard', {
+      configurable: true,
+      value: { writeText },
+    });
+
+    vi.stubGlobal('fetch', vi.fn((url, options = {}) => {
+      const requestUrl = new URL(String(url));
+      const path = requestUrl.pathname;
+      const method = options.method ?? 'GET';
+
+      if (path.endsWith('/dashboard-summary')) {
+        return Promise.resolve(mockJsonResponse({
+          counts: { total: 0, manual_review: 0, ready_to_publish: 0, failed: 0, no_candidates_found: 0 },
+          provider_status: [],
+        }));
+      }
+
+      if (path.includes('/requests/search')) {
+        return Promise.resolve(mockJsonResponse({
+          data: [
+            {
+              id: 44,
+              status: 'manual_review',
+              erp_model_color_id: 'ERP-44',
+            },
+          ],
+        }));
+      }
+
+      if (path.endsWith('/health')) {
+        return Promise.resolve(mockJsonResponse({
+          data: {
+            app: { environment: 'testing' },
+            ai: { provider: 'anthropic', provider_key_configured: true },
+            storage: { disk: 'local', configured: true },
+            queue: { connection: 'sync', queues: [{ phase: 'ingest', queue: 'image-discovery-ingest', status: 'configured' }] },
+            providers: [],
+          },
+        }));
+      }
+
+      if (path.includes('/search-providers') && method === 'GET') {
+        return Promise.resolve(mockJsonResponse({
+          data: [
+            { id: 7, code: 'fake', driver: 'fake', is_active: true },
+          ],
+          meta: { last_page: 1 },
+        }));
+      }
+
+      if (path.endsWith('/requests') && method === 'POST') {
+        createdPayload = JSON.parse(options.body);
+
+        return Promise.resolve(mockJsonResponse({
+          ok: true,
+          request_id: 55,
+          erp_model_color_id: createdPayload.erp_model_color_id,
+          status: 'queued',
+          token: 'server-token',
+        }, 201));
+      }
+
+      return Promise.reject(new Error(`Unexpected request: ${method} ${path}`));
+    }));
+
+    render(<App />);
+
+    expect(await screen.findByRole('heading', { name: 'API Test Workbench' })).toBeVisible();
+    fireEvent.change(screen.getByLabelText('Sample ERP color'), { target: { value: 'WORKBENCH-TEST-CAMMELLO' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Create sample request' }));
+
+    await waitFor(() => expect(createdPayload).toMatchObject({
+      erp_model_id: 'WORKBENCH-HERNO',
+      erp_model_color_id: 'WORKBENCH-TEST-CAMMELLO',
+      metadata: { admin_workbench: true },
+    }));
+
+    expect(await screen.findByRole('table', { name: 'API workbench calls' })).toHaveTextContent('/requests');
+    expect(screen.getByLabelText('Request ID')).toHaveValue('55');
+    expect(screen.getByLabelText('API workbench response')).toHaveTextContent('"status": 201');
+    expect(screen.getByLabelText('API workbench response')).toHaveTextContent('"token": "[redacted]"');
+    expect(document.body).not.toHaveTextContent('server-token');
+
+    fireEvent.click(within(screen.getByRole('table', { name: 'API workbench calls' })).getByRole('button', { name: 'cURL' }));
+    await waitFor(() => expect(writeText).toHaveBeenCalledWith(expect.stringContaining('X-CSRF-TOKEN: <csrf-token>')));
+    expect(writeText).toHaveBeenCalledWith(expect.stringContaining('Cookie: <authenticated-session-cookie>'));
   });
 
   it('runs debug flow from JSON and redacts previewed secrets', async () => {

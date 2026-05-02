@@ -536,6 +536,58 @@
   - `npm run test` => 8 files, 43 tests
   - `npm run build`
   - `npm run e2e` => 14 Playwright tests
+- PR #8 received a fresh Copilot review on `74453c9` with no new comments, then merged into `main` at `01c2df7`; local `main`, `origin/main`, and `task/diagnostics-debug-health` were fast-forwarded to the merge commit.
+- Continued Macro Task 5 with the API Test Workbench slice:
+  - added the admin `POST /admin/product-image-discovery/requests` wrapper to create sample requests through the package controller under the admin prefix
+  - added the React API Test Workbench page with request/provider targets, sample request creation, request/candidate/retry/provider/health/debug actions, runtime AI/storage/queue snapshots, disabled approve/reject safety controls, and captured method/path/status/duration/response history with copyable cURL/JSON
+  - added PHP coverage for the request-store admin wrapper, Vitest coverage for Workbench sample creation/redaction, and Playwright coverage for creating a sample request from the Workbench
+- Targeted verification passed for the API Test Workbench slice:
+  - `npm run phpunit -- --filter AdminWrapperEndpointsTest` => 26 tests, 221 assertions
+  - `npm run test -- --run tests/JavaScript/app-shell.test.jsx` => 1 file, 20 tests
+  - `npm run build`
+  - `npx playwright test -g "api workbench"` => 2 Playwright tests
+- Full local gate passed after the API Test Workbench slice:
+  - `composer validate --strict`
+  - `npm run phpunit` => 43 tests, 342 assertions
+  - `npm run test` => 8 files, 44 tests
+  - `npm run build`
+  - `npm run e2e` => 16 Playwright tests
+- Copilot reviewed PR #9 on `15268b6` and generated 1 comment; addressed it by applying the same configurable `pid-admin.debug_run_middleware` guard to `POST /admin/product-image-discovery/requests`, because that workbench/admin wrapper creates package requests and dispatches jobs.
+- Full local gate passed after the PR #9 middleware follow-up:
+  - `composer validate --strict`
+  - `npm run phpunit` => 43 tests, 342 assertions
+  - `npm run test` => 8 files, 44 tests
+  - `npm run build`
+  - `npm run e2e` => 16 Playwright tests
+- Copilot reviewed `f32f24e` and generated 4 follow-up comments. Addressed them by:
+  - adding a same-origin guard to the Workbench fetch helper before CSRF headers are attached
+  - adding CSRF/session placeholders to copied cURL snippets for mutating admin calls
+  - adding mounted/abort guards around Workbench action and refresh state updates
+  - making the Vitest `mockJsonResponse` helper derive `ok` from the supplied status
+- Full local gate passed after the latest PR #9 Workbench follow-up:
+  - `composer validate --strict`
+  - `npm run phpunit` => 43 tests, 342 assertions
+  - `npm run test` => 8 files, 44 tests
+  - `npm run build`
+  - `npm run e2e` => 16 Playwright tests
+- Copilot reviewed `6b8c3b1` and generated 2 follow-up comments. Addressed them by normalizing Workbench `disabled` props to booleans and adding `throttle:6,1` to the Workbench/admin request creation route, with PHP coverage for the route middleware.
+- Full local gate passed after the latest PR #9 throttle/boolean follow-up:
+  - `composer validate --strict`
+  - `npm run phpunit` => 44 tests, 344 assertions
+  - `npm run test` => 8 files, 44 tests
+  - `npm run build`
+  - `npm run e2e` => 16 Playwright tests
+- Copilot reviewed `522ca4a` and generated 4 follow-up comments. Addressed them by:
+  - updating Workbench health actions to refresh the page-level health snapshot from the full response before focusing captured JSON
+  - extracting `pidFetchWithMeta()` in the shared API client so Workbench calls reuse the same parser, same-origin guard, and CSRF behavior as `pidFetch()`
+  - replacing timestamp-based Workbench result ids with a monotonic ref counter
+  - updating the PR description to match the current verification counts
+- Full local gate passed after the latest PR #9 shared-fetch/result-id follow-up:
+  - `composer validate --strict`
+  - `npm run phpunit` => 44 tests, 344 assertions
+  - `npm run test` => 8 files, 45 tests
+  - `npm run build`
+  - `npm run e2e` => 16 Playwright tests
 
 ## 2026-04-30
 
