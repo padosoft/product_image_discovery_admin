@@ -64,7 +64,7 @@ GitHub Actions runs the same release gate on pushes and pull requests:
 - `npm run phpunit`
 - `npm run test`
 - `npm run build`
-- `npm run e2e`
+- `npm run e2e:ci`
 - upload Playwright traces/screenshots on failure
 
 ## Process Docs

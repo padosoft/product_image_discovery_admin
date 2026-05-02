@@ -67,4 +67,23 @@ describe('request filters', () => {
     expect(clearSavedRequestFilters(localStorage)).toBe(true);
     expect(loadRequestFilters(localStorage)).toBeNull();
   });
+
+  it('reports missing browser storage as unavailable without throwing', () => {
+    const throwingStorage = {
+      getItem: () => {
+        throw new Error('blocked');
+      },
+      setItem: () => {
+        throw new Error('blocked');
+      },
+      removeItem: () => {
+        throw new Error('blocked');
+      },
+    };
+
+    expect(saveRequestFilters(createDefaultRequestFilters(), {})).toBe(false);
+    expect(saveRequestFilters(createDefaultRequestFilters(), throwingStorage)).toBe(false);
+    expect(loadRequestFilters(throwingStorage)).toBeNull();
+    expect(clearSavedRequestFilters(throwingStorage)).toBe(false);
+  });
 });

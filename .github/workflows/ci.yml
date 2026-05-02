@@ -68,7 +68,7 @@ jobs:
         run: npm run build
 
       - name: Run Playwright
-        run: npm run e2e
+        run: npm run e2e:ci
 
       - name: Upload Playwright artifacts
         if: failure()

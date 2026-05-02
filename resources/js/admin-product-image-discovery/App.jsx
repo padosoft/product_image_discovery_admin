@@ -961,7 +961,7 @@ function RequestFilters({
       <div className="pid-filter-actions">
         <FilterBar label="Active filters" filters={activeChips} onClear={onReset} />
         <div className="pid-filter-actions__buttons">
-          <a className="pid-chip-button" href={exportHref} download>
+          <a className="pid-chip-button" href={exportHref}>
             Export CSV
           </a>
           <button type="button" className="pid-chip-button" onClick={onSaveFilters}>
@@ -3082,7 +3082,7 @@ function DebugReportsPage({ onNotify }) {
     document.body.append(link);
     link.click();
     link.remove();
-    URL.revokeObjectURL?.(url);
+    window.setTimeout(() => URL.revokeObjectURL?.(url), 0);
     onNotify('Debug report JSON downloaded.', 'success');
   }
 

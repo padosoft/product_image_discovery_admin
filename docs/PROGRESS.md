@@ -29,6 +29,19 @@
   - `npm run e2e` => 18 Playwright tests
 - Opened PR #10 for `task/dashboard-polish-ci` and requested Copilot Code Review with the GraphQL fallback.
 - Initial GitHub Actions runs failed at `npm ci` because npm 10 required missing optional peer package entries in `package-lock.json`; regenerated the lockfile with npm 10 and verified `npx npm@10 ci --dry-run` passes.
+- Addressed the first PR #10 review comments:
+  - CSV export now neutralizes spreadsheet formula prefixes in text cells before streaming rows
+  - CI uses `npm run e2e:ci` after the standalone build step to avoid rebuilding twice
+  - saved-filter helpers resolve localStorage inside guarded code and report unavailable storage as a failed save/clear
+  - CSV export links let the backend `Content-Disposition` filename win
+  - debug report JSON download delays Blob URL revocation until after the click has been dispatched
+- Verification passed after the PR #10 review fixes:
+  - `composer validate --strict`
+  - `npm run phpunit` => 45 tests, 361 assertions
+  - `npm run test` => 8 files, 48 tests
+  - `npx npm@10 ci --dry-run`
+  - `npm run build`
+  - `npm run e2e:ci` => 18 Playwright tests
 
 ## 2026-05-01
 

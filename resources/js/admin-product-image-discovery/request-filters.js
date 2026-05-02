@@ -25,6 +25,20 @@ const DEFAULT_FILTERS = {
 const BOOLEAN_FIELDS = new Set(['manual_review_required', 'has_candidates', 'has_selected_image']);
 export const SAVED_REQUEST_FILTERS_KEY = 'pid-request-saved-filters';
 
+function resolveStorage(storage) {
+  if (storage) {
+    return storage;
+  }
+
+  try {
+    return globalThis.localStorage ?? null;
+  } catch (err) {
+    void err;
+
+    return null;
+  }
+}
+
 export function createDefaultRequestFilters() {
   return { ...DEFAULT_FILTERS };
 }
@@ -73,9 +87,15 @@ export function buildRequestExportPath(filters) {
   return query ? `/requests/export.csv?${query}` : '/requests/export.csv';
 }
 
-export function saveRequestFilters(filters, storage = globalThis.localStorage) {
+export function saveRequestFilters(filters, storage) {
   try {
-    storage?.setItem(SAVED_REQUEST_FILTERS_KEY, JSON.stringify({
+    const target = resolveStorage(storage);
+
+    if (typeof target?.setItem !== 'function') {
+      return false;
+    }
+
+    target.setItem(SAVED_REQUEST_FILTERS_KEY, JSON.stringify({
       ...createDefaultRequestFilters(),
       ...filters,
     }));
@@ -88,9 +108,15 @@ export function saveRequestFilters(filters, storage = globalThis.localStorage) {
   }
 }
 
-export function loadRequestFilters(storage = globalThis.localStorage) {
+export function loadRequestFilters(storage) {
   try {
-    const raw = storage?.getItem(SAVED_REQUEST_FILTERS_KEY);
+    const target = resolveStorage(storage);
+
+    if (typeof target?.getItem !== 'function') {
+      return null;
+    }
+
+    const raw = target.getItem(SAVED_REQUEST_FILTERS_KEY);
 
     if (!raw) {
       return null;
@@ -118,9 +144,15 @@ export function loadRequestFilters(storage = globalThis.localStorage) {
   }
 }
 
-export function clearSavedRequestFilters(storage = globalThis.localStorage) {
+export function clearSavedRequestFilters(storage) {
   try {
-    storage?.removeItem(SAVED_REQUEST_FILTERS_KEY);
+    const target = resolveStorage(storage);
+
+    if (typeof target?.removeItem !== 'function') {
+      return false;
+    }
+
+    target.removeItem(SAVED_REQUEST_FILTERS_KEY);
 
     return true;
   } catch (err) {

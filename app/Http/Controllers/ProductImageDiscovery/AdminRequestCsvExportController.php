@@ -65,10 +65,10 @@ final class AdminRequestCsvExportController extends Controller
             $request->getKey(),
             $request->getAttribute('client_id'),
             $this->csvValue($request->getAttribute('status')),
-            $request->getAttribute('brand'),
-            $request->getAttribute('supplier'),
-            $request->getAttribute('erp_model_id'),
-            $request->getAttribute('erp_model_color_id'),
+            $this->csvValue($request->getAttribute('brand')),
+            $this->csvValue($request->getAttribute('supplier')),
+            $this->csvValue($request->getAttribute('erp_model_id')),
+            $this->csvValue($request->getAttribute('erp_model_color_id')),
             $request->getAttribute('final_score'),
             $this->csvValue($request->getAttribute('rejection_reason')),
             $request->getAttribute('selected_candidate_id'),
@@ -88,10 +88,29 @@ final class AdminRequestCsvExportController extends Controller
             return $value->format(DateTimeInterface::ATOM);
         }
 
+        if (is_string($value)) {
+            return $this->neutralizeSpreadsheetFormula($value);
+        }
+
         if (is_scalar($value) || $value === null) {
             return $value;
         }
 
         return (string) json_encode($value, JSON_UNESCAPED_SLASHES);
+    }
+
+    private function neutralizeSpreadsheetFormula(string $value): string
+    {
+        $trimmed = ltrim($value);
+
+        if ($value !== '' && preg_match('/^[\t\r\n]/', $value) === 1) {
+            return "'".$value;
+        }
+
+        if ($trimmed !== '' && str_contains('=+-@', $trimmed[0])) {
+            return "'".$value;
+        }
+
+        return $value;
     }
 }

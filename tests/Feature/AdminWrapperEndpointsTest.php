@@ -380,7 +380,7 @@ final class AdminWrapperEndpointsTest extends TestCase
         $included = $this->createDiscoveryRequest([
             'client_id' => 10,
             'status' => 'manual_review',
-            'brand' => 'Export',
+            'brand' => '=1+1',
             'supplier' => 'Acme',
             'erp_model_color_id' => 'EXPORT-1',
             'final_score' => 72,
@@ -394,13 +394,14 @@ final class AdminWrapperEndpointsTest extends TestCase
             'final_score' => 92,
         ]);
 
-        $response = $this->get('/admin/product-image-discovery/requests/export.csv?brand=Export')
+        $response = $this->get('/admin/product-image-discovery/requests/export.csv?erp_model_color_id=EXPORT-1')
             ->assertOk()
             ->assertHeader('Content-Type', 'text/csv; charset=UTF-8');
         $content = $response->streamedContent();
 
         $this->assertStringContainsString('id,client_id,status,brand,supplier', $content);
-        $this->assertStringContainsString($included->getKey().',10,manual_review,Export,Acme', $content);
+        $this->assertStringContainsString($included->getKey().',10,manual_review,\'=1+1,Acme', $content);
+        $this->assertStringNotContainsString($included->getKey().',10,manual_review,=1+1,Acme', $content);
         $this->assertStringContainsString('EXPORT-1', $content);
         $this->assertStringNotContainsString('EXPORT-2', $content);
         $this->assertStringNotContainsString('Other', $content);
