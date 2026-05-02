@@ -481,8 +481,14 @@ async function readWorkbenchPayload(response) {
 
 async function runWorkbenchHttpRequest({ method = 'GET', path, body }, signal) {
   const started = performance.now();
+  const url = new URL(buildAdminApiPath(path), window.location.origin);
+
+  if (url.origin !== window.location.origin) {
+    throw new TypeError('Cross-origin admin requests are not allowed.');
+  }
+
   const token = document.querySelector('meta[name="csrf-token"]')?.content ?? '';
-  const response = await fetch(new URL(buildAdminApiPath(path), window.location.origin).toString(), {
+  const response = await fetch(url.toString(), {
     method,
     signal,
     headers: {
@@ -522,6 +528,12 @@ function workbenchCurl(result) {
     '-H "Accept: application/json"',
     '-H "Content-Type: application/json"',
   ];
+  const mutatesState = !['GET', 'HEAD'].includes(result.method);
+
+  if (mutatesState) {
+    lines.push('-H "X-CSRF-TOKEN: <csrf-token>"');
+    lines.push('-H "Cookie: <authenticated-session-cookie>"');
+  }
 
   if (result.request_body !== null && result.request_body !== undefined) {
     lines.push(`--data '${JSON.stringify(result.request_body).replace(/'/g, "'\"'\"'")}'`);
@@ -3726,6 +3738,17 @@ function ApiWorkbenchPage({ onNotify }) {
   const [error, setError] = useState('');
   const [results, setResults] = useState([]);
   const [selectedResultId, setSelectedResultId] = useState('');
+  const mountedRef = useRef(false);
+  const actionControllerRef = useRef(null);
+
+  useEffect(() => {
+    mountedRef.current = true;
+
+    return () => {
+      mountedRef.current = false;
+      actionControllerRef.current?.abort();
+    };
+  }, []);
 
   useEffect(() => {
     const controller = new AbortController();
@@ -3816,12 +3839,16 @@ function ApiWorkbenchPage({ onNotify }) {
     },
   ];
 
-  async function refreshLists() {
+  async function refreshLists(signal) {
     const [requestResult, providerResult, healthResult] = await Promise.allSettled([
-      pidFetch('/requests/search?per_page=8'),
-      fetchSearchProviders(),
-      fetchHealth(),
+      pidFetch('/requests/search?per_page=8', { signal }),
+      fetchSearchProviders(signal),
+      fetchHealth(signal),
     ]);
+
+    if (!mountedRef.current || signal?.aborted) {
+      return;
+    }
 
     if (requestResult.status === 'fulfilled') {
       setRequests(normalizeLaravelPagination(requestResult.value).data);
@@ -3849,9 +3876,16 @@ function ApiWorkbenchPage({ onNotify }) {
 
     setRunningAction(action);
     setError('');
+    actionControllerRef.current?.abort();
+    const controller = new AbortController();
+    actionControllerRef.current = controller;
 
     try {
-      let result = await runWorkbenchHttpRequest(operation);
+      let result = await runWorkbenchHttpRequest(operation, controller.signal);
+
+      if (!mountedRef.current || controller.signal.aborted) {
+        return;
+      }
 
       if (action === 'ai_status') {
         result = { ...result, response: focusedHealthPayload(result.response, 'ai') };
@@ -3884,15 +3918,18 @@ function ApiWorkbenchPage({ onNotify }) {
       }
 
       if (['create_sample', 'retry_request', 'debug_sample'].includes(action)) {
-        await refreshLists();
+        await refreshLists(controller.signal);
       }
     } catch (err) {
-      if (err.name !== 'AbortError') {
+      if (mountedRef.current && err.name !== 'AbortError') {
         setError(err.message || 'Workbench call failed.');
         onNotify(err.message || 'Workbench call failed.', 'danger');
       }
     } finally {
-      setRunningAction('');
+      if (mountedRef.current && actionControllerRef.current === controller) {
+        setRunningAction('');
+        actionControllerRef.current = null;
+      }
     }
   }
 

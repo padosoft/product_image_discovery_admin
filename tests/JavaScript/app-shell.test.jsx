@@ -8,7 +8,7 @@ import { JsonViewer } from '../../resources/js/admin-product-image-discovery/com
 
 function mockJsonResponse(payload, status = 200) {
   return {
-    ok: true,
+    ok: status >= 200 && status < 300,
     status,
     headers: { get: () => 'application/json' },
     json: vi.fn().mockResolvedValue(payload),
@@ -758,6 +758,12 @@ describe('admin product image discovery shell', () => {
   it('runs the API workbench sample request and redacts captured responses', async () => {
     window.history.replaceState({}, '', '/admin/product-image-discovery/apitest');
     let createdPayload = null;
+    const writeText = vi.fn().mockResolvedValue(undefined);
+
+    Object.defineProperty(navigator, 'clipboard', {
+      configurable: true,
+      value: { writeText },
+    });
 
     vi.stubGlobal('fetch', vi.fn((url, options = {}) => {
       const requestUrl = new URL(String(url));
@@ -836,6 +842,10 @@ describe('admin product image discovery shell', () => {
     expect(screen.getByLabelText('API workbench response')).toHaveTextContent('"status": 201');
     expect(screen.getByLabelText('API workbench response')).toHaveTextContent('"token": "[redacted]"');
     expect(document.body).not.toHaveTextContent('server-token');
+
+    fireEvent.click(within(screen.getByRole('table', { name: 'API workbench calls' })).getByRole('button', { name: 'cURL' }));
+    await waitFor(() => expect(writeText).toHaveBeenCalledWith(expect.stringContaining('X-CSRF-TOKEN: <csrf-token>')));
+    expect(writeText).toHaveBeenCalledWith(expect.stringContaining('Cookie: <authenticated-session-cookie>'));
   });
 
   it('runs debug flow from JSON and redacts previewed secrets', async () => {

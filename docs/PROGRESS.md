@@ -559,6 +559,17 @@
   - `npm run test` => 8 files, 44 tests
   - `npm run build`
   - `npm run e2e` => 16 Playwright tests
+- Copilot reviewed `f32f24e` and generated 4 follow-up comments. Addressed them by:
+  - adding a same-origin guard to the Workbench fetch helper before CSRF headers are attached
+  - adding CSRF/session placeholders to copied cURL snippets for mutating admin calls
+  - adding mounted/abort guards around Workbench action and refresh state updates
+  - making the Vitest `mockJsonResponse` helper derive `ok` from the supplied status
+- Full local gate passed after the latest PR #9 Workbench follow-up:
+  - `composer validate --strict`
+  - `npm run phpunit` => 43 tests, 342 assertions
+  - `npm run test` => 8 files, 44 tests
+  - `npm run build`
+  - `npm run e2e` => 16 Playwright tests
 
 ## 2026-04-30
 

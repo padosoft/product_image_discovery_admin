@@ -82,6 +82,9 @@
 - Candidate status badge maps should include report-only statuses such as `verified_match` and `quality_failed`, not only request workflow statuses.
 - Workbench actions that create a request can return an id before the refreshed recent-list page includes that row; keep a synthetic selected option so the target selector does not lose its value.
 - Workbench/admin endpoints that create package requests also dispatch jobs, so they need the same stricter configurable middleware treatment as debug-run creation endpoints instead of relying only on the broad shell middleware.
+- Custom admin fetch helpers must keep the same same-origin guard as `pidFetch()` before attaching CSRF headers.
+- Copyable cURL snippets for session/CSRF-protected admin mutations should use placeholders for CSRF and session cookies; do not copy live token or cookie values into the UI.
+- Async workbench actions need mounted guards and abort cleanup just like page loaders, because operators can navigate away while provider tests or request creation are still in flight.
 
 ## 2026-04-30
 
