@@ -43,6 +43,11 @@
   - `npm run build`
   - `npm run e2e:ci` => 18 Playwright tests
 - Follow-up CI run reached Vitest and failed because Laravel Vite blocks HMR when `CI=true`; updated the workflow to set `LARAVEL_BYPASS_ENV_CHECK=1` on the Vitest step only.
+- Pushed the Vitest CI fix as `ff02137`; GitHub Actions completed successfully on the final PR #10 head, with the `PHP, Node, and browser gates` check green.
+- Requested a fresh Copilot Code Review on PR #10 after the final CI fix; Copilot reviewed the final head and generated no new comments.
+- Confirmed all PR #10 review threads were resolved, then merged PR #10 into `main` at merge commit `12c8249`.
+- Fast-forwarded local `main`, `task/dashboard-polish-ci`, `origin/main`, and `origin/task/dashboard-polish-ci` to the merge commit; `gh pr list --state open` returned no open PRs.
+- Started the final handoff documentation cleanup on `task/final-admin-docs` because `AGENTS.md` and this progress file still referenced stale earlier macro priorities.
 
 ## 2026-05-01
 
@@ -661,7 +666,8 @@
 
 ## Open Items
 
-- Continue Macro Task 5 after the Debug Flow runner slice: Debug Reports and API Test Workbench.
+- No planned implementation macro tasks remain open after PR #10; the admin demo app is merged into `main` with CI configured.
+- For future maintenance or feature work, start a fresh branch and repeat the branch/PR/Copilot/CI loop before merging.
 - Keep using the GraphQL `requestReviewsByLogin` fallback for Copilot Code Review when `gh pr edit --add-reviewer @copilot` is blocked by the missing `read:project` scope.
 
 ## 2026-04-30 - Macro 2 Slice

@@ -93,12 +93,19 @@ The user approved model-specific background workers to save cost without reducin
 
 ## Current Priority
 
-Macro Task 1 foundation has a first vertical slice implemented locally:
+All six planned macro tasks have been implemented, reviewed, and merged into `main`.
 
-1. Laravel 13 app scaffold.
-2. Composer path repository dependency for `padosoft/product-image-discovery`.
-3. SQLite defaults, app config, package provider registration, migrations and seeding.
-4. Admin shell and initial JSON wrapper routes.
-5. Focused PHPUnit, Vitest, Vite, and Playwright smoke tests.
+- Macro Task 1: Laravel app foundation.
+- Macro Task 2: React admin shell and shared UI primitives.
+- Macro Task 3: request review workflows.
+- Macro Task 4: settings, providers, and trusted sources.
+- Macro Task 5: diagnostics, debug reports, health, and API workbench.
+- Macro Task 6: dashboard polish, CSV/report exports, saved filters, and GitHub Actions CI.
 
-Next priority is either opening the Macro 1 PR loop, or continuing into Macro Task 2 if remote PR/Copilot work is deferred.
+Current merged release state:
+
+- `main`, `origin/main`, `task/dashboard-polish-ci`, and `origin/task/dashboard-polish-ci` are aligned at merge commit `12c8249`.
+- PR #10 completed the final Macro Task 6 loop with GitHub Actions green, Copilot Code Review complete, and all review threads resolved.
+- No implementation PRs are open as of the final handoff.
+
+Next priority is maintenance or a new feature slice. For any follow-up, create a fresh branch, run the relevant local gates, open a PR, request Copilot Code Review, wait for CI/review feedback, and merge only after the loop is resolved.
