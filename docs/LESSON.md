@@ -4,6 +4,7 @@
 
 - CI for this admin repo must checkout `padosoft/product_image_discovery` as a sibling directory named `product_image_discovery`; otherwise the Composer path repository `../product_image_discovery` cannot resolve in GitHub Actions.
 - GitHub Actions `actions/setup-node@v4` with Node 22 currently runs npm 10, which can reject a lockfile that npm 11 accepts if optional peer package entries are incomplete. Validate CI lockfiles with `npx npm@10 ci --dry-run` when adding workflows.
+- Vitest creates a Vite server even in test mode; in GitHub Actions the Laravel Vite plugin sees `CI=true` and blocks HMR unless the Vitest step sets `LARAVEL_BYPASS_ENV_CHECK=1`.
 - Request filter logic should stay shared between JSON search and CSV export. Duplicating validation/date-boundary/source-domain filters makes it easy for exported rows to drift from the table the operator is viewing.
 - Admin CSV exports need spreadsheet-formula neutralization on every untrusted text cell, not just CSV escaping. Values beginning with `=`, `+`, `-`, `@`, or control whitespace can become executable formulas when opened in spreadsheet tools.
 - Playwright label lookups can match nearby control text fuzzily; use exact labels for fields such as `Brand` when other controls contain values like `brand`.

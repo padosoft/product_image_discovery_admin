@@ -42,6 +42,7 @@
   - `npx npm@10 ci --dry-run`
   - `npm run build`
   - `npm run e2e:ci` => 18 Playwright tests
+- Follow-up CI run reached Vitest and failed because Laravel Vite blocks HMR when `CI=true`; updated the workflow to set `LARAVEL_BYPASS_ENV_CHECK=1` on the Vitest step only.
 
 ## 2026-05-01
 
