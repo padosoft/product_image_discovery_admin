@@ -3,6 +3,7 @@
 ## 2026-05-02
 
 - CI for this admin repo must checkout `padosoft/product_image_discovery` as a sibling directory named `product_image_discovery`; otherwise the Composer path repository `../product_image_discovery` cannot resolve in GitHub Actions.
+- GitHub Actions `actions/setup-node@v4` with Node 22 currently runs npm 10, which can reject a lockfile that npm 11 accepts if optional peer package entries are incomplete. Validate CI lockfiles with `npx npm@10 ci --dry-run` when adding workflows.
 - Request filter logic should stay shared between JSON search and CSV export. Duplicating validation/date-boundary/source-domain filters makes it easy for exported rows to drift from the table the operator is viewing.
 - Playwright label lookups can match nearby control text fuzzily; use exact labels for fields such as `Brand` when other controls contain values like `brand`.
 

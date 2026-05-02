@@ -27,6 +27,8 @@
   - `npm run test` => 8 files, 47 tests
   - `npm run build`
   - `npm run e2e` => 18 Playwright tests
+- Opened PR #10 for `task/dashboard-polish-ci` and requested Copilot Code Review with the GraphQL fallback.
+- Initial GitHub Actions runs failed at `npm ci` because npm 10 required missing optional peer package entries in `package-lock.json`; regenerated the lockfile with npm 10 and verified `npx npm@10 ci --dry-run` passes.
 
 ## 2026-05-01
 
