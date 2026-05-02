@@ -1,5 +1,33 @@
 # Progress
 
+## 2026-05-02
+
+- Started Macro Task 6 on `task/dashboard-polish-ci` from `main` after PR #9 was merged and no PRs remained open.
+- Added release-readiness CI in `.github/workflows/ci.yml`:
+  - checks out this admin app and the sibling `padosoft/product_image_discovery` package so the Composer path repository resolves in GitHub Actions
+  - runs Composer validation/install, `npm ci`, PHPUnit through `npm run phpunit`, Vitest, Vite build, Playwright, and Playwright artifact upload on failure
+- Enriched the dashboard summary endpoint and Overview page:
+  - score distribution, provider readiness, queue phase rows, latest manual-review item, latest failed/no-candidates item, and shortcut actions
+  - preserved secret redaction by exposing only provider configured/missing booleans
+- Added request CSV export and request filter persistence:
+  - shared request filter validation/query logic between search and CSV export
+  - added `GET /admin/product-image-discovery/requests/export.csv`
+  - added localStorage save/load/clear controls for demo request filters
+- Added debug report JSON download from the redacted report viewer state.
+- Updated README setup/test/CI instructions.
+- Targeted verification passed after the first Macro 6 implementation:
+  - `npm run phpunit -- --filter AdminWrapperEndpointsTest` => 28 tests, 239 assertions
+  - `npm run test -- --run tests/JavaScript/request-filters.test.js` => 4 tests
+  - `npm run test -- --run tests/JavaScript/app-shell.test.jsx` => 20 tests
+  - `npm run build`
+  - `npx playwright test -g "requests page saves filters"` => 2 Playwright tests
+- Full local gate passed for the Macro 6 slice before opening the PR:
+  - `composer validate --strict`
+  - `npm run phpunit` => 45 tests, 360 assertions
+  - `npm run test` => 8 files, 47 tests
+  - `npm run build`
+  - `npm run e2e` => 18 Playwright tests
+
 ## 2026-05-01
 
 - Continued `task/request-review-workflows` with candidate review wrappers.

@@ -1,5 +1,11 @@
 # Lessons
 
+## 2026-05-02
+
+- CI for this admin repo must checkout `padosoft/product_image_discovery` as a sibling directory named `product_image_discovery`; otherwise the Composer path repository `../product_image_discovery` cannot resolve in GitHub Actions.
+- Request filter logic should stay shared between JSON search and CSV export. Duplicating validation/date-boundary/source-domain filters makes it easy for exported rows to drift from the table the operator is viewing.
+- Playwright label lookups can match nearby control text fuzzily; use exact labels for fields such as `Brand` when other controls contain values like `brand`.
+
 ## 2026-05-01
 
 - Admin candidate review wrappers should mirror the package endpoints exactly: `GET /requests/{request}/candidates`, `POST /requests/{request}/candidates/{candidate}/approve`, `POST /requests/{request}/candidates/{candidate}/reject`, and `POST /requests/{request}/retry`.

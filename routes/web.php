@@ -6,6 +6,7 @@ use App\Http\Controllers\ProductImageDiscovery\AdminCandidateImageController;
 use App\Http\Controllers\ProductImageDiscovery\AdminDashboardSummaryController;
 use App\Http\Controllers\ProductImageDiscovery\AdminDebugRunController;
 use App\Http\Controllers\ProductImageDiscovery\AdminHealthController;
+use App\Http\Controllers\ProductImageDiscovery\AdminRequestCsvExportController;
 use App\Http\Controllers\ProductImageDiscovery\AdminRequestCandidateController;
 use App\Http\Controllers\ProductImageDiscovery\AdminRequestEventsController;
 use App\Http\Controllers\ProductImageDiscovery\AdminRequestRetryController;
@@ -46,6 +47,7 @@ Route::prefix($adminPrefix)
             ->middleware(config('pid-admin.debug_run_middleware', ['auth']))
             ->middleware('throttle:6,1')
             ->name('requests.store');
+        Route::get('requests/export.csv', AdminRequestCsvExportController::class)->name('requests.export');
         Route::get('requests/{request}', AdminRequestShowController::class)->name('requests.show');
         Route::get('requests/{request}/events', AdminRequestEventsController::class)->name('requests.events');
         Route::post('requests/{request}/retry', AdminRequestRetryController::class)->name('requests.retry');

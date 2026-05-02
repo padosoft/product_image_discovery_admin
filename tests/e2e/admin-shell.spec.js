@@ -47,6 +47,24 @@ test('admin shell keeps sidebar and main content separated on tablet', async ({ 
   expect(contentBox.y).toBeGreaterThanOrEqual(headerBox.y + headerBox.height - 1);
 });
 
+test('requests page saves filters and exposes a CSV export link', async ({ page }) => {
+  await page.goto('/admin/product-image-discovery/requests');
+
+  await expect(page.getByRole('heading', { name: 'Search Filters' })).toBeVisible();
+  await page.getByLabel('Brand', { exact: true }).fill('Herno');
+  await expect(page.getByRole('link', { name: 'Export CSV' })).toHaveAttribute('href', /brand=Herno/);
+
+  await page.getByRole('button', { name: 'Save filters' }).click();
+  await expect(page.getByText('Request filters saved.')).toBeVisible();
+
+  await page.getByRole('button', { name: 'Clear', exact: true }).click();
+  await expect(page.getByLabel('Brand', { exact: true })).toHaveValue('');
+
+  await page.getByRole('button', { name: 'Load saved' }).click();
+  await expect(page.getByText('Saved request filters loaded.')).toBeVisible();
+  await expect(page.getByLabel('Brand', { exact: true })).toHaveValue('Herno');
+});
+
 test('settings page creates and deletes a typed override', async ({ page }, testInfo) => {
   const settingKey = `e2e.${testInfo.project.name}.manual_review_threshold`;
 

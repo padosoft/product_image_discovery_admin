@@ -1,0 +1,81 @@
+name: CI
+
+on:
+  pull_request:
+  push:
+    branches:
+      - main
+      - 'task/**'
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    name: PHP, Node, and browser gates
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+
+    defaults:
+      run:
+        working-directory: product_image_discovery_admin
+
+    steps:
+      - name: Checkout admin app
+        uses: actions/checkout@v4
+        with:
+          path: product_image_discovery_admin
+
+      - name: Checkout headless package
+        uses: actions/checkout@v4
+        with:
+          repository: padosoft/product_image_discovery
+          path: product_image_discovery
+
+      - name: Setup PHP
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.4'
+          extensions: mbstring, dom, fileinfo, pdo_sqlite, sqlite3, curl
+          coverage: none
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+          cache-dependency-path: product_image_discovery_admin/package-lock.json
+
+      - name: Validate Composer manifest
+        run: composer validate --strict
+
+      - name: Install PHP dependencies
+        run: composer install --no-interaction --prefer-dist --no-progress
+
+      - name: Install Node dependencies
+        run: npm ci
+
+      - name: Install Playwright browser
+        run: npx playwright install --with-deps chromium
+
+      - name: Run PHPUnit
+        run: npm run phpunit
+
+      - name: Run Vitest
+        run: npm run test
+
+      - name: Build frontend
+        run: npm run build
+
+      - name: Run Playwright
+        run: npm run e2e
+
+      - name: Upload Playwright artifacts
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: playwright-artifacts
+          path: |
+            product_image_discovery_admin/playwright-report
+            product_image_discovery_admin/test-results
+          if-no-files-found: ignore
