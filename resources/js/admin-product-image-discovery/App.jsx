@@ -4021,7 +4021,7 @@ function ApiWorkbenchPage({ onNotify }) {
           <div className="pid-workbench-controls">
             <label>
               <span>Request ID</span>
-              <select value={requestId} onChange={(event) => setRequestId(event.target.value)} disabled={loading || runningAction}>
+              <select value={requestId} onChange={(event) => setRequestId(event.target.value)} disabled={loading || Boolean(runningAction)}>
                 <option value="">Select request</option>
                 {requestId && !requests.some((request) => String(request.id) === String(requestId)) ? (
                   <option value={requestId}>#{requestId} - selected</option>
@@ -4035,7 +4035,7 @@ function ApiWorkbenchPage({ onNotify }) {
             </label>
             <label>
               <span>Provider</span>
-              <select value={providerId} onChange={(event) => setProviderId(event.target.value)} disabled={loading || runningAction}>
+              <select value={providerId} onChange={(event) => setProviderId(event.target.value)} disabled={loading || Boolean(runningAction)}>
                 <option value="">Select provider</option>
                 {providers.map((provider) => (
                   <option key={provider.id} value={provider.id}>
@@ -4046,7 +4046,7 @@ function ApiWorkbenchPage({ onNotify }) {
             </label>
             <label className="pid-workbench-controls__full">
               <span>Sample ERP color</span>
-              <input value={sampleColor} onChange={(event) => setSampleColor(event.target.value)} disabled={loading || runningAction} />
+              <input value={sampleColor} onChange={(event) => setSampleColor(event.target.value)} disabled={loading || Boolean(runningAction)} />
             </label>
           </div>
           <div className="pid-workbench-actions">

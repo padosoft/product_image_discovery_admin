@@ -570,6 +570,13 @@
   - `npm run test` => 8 files, 44 tests
   - `npm run build`
   - `npm run e2e` => 16 Playwright tests
+- Copilot reviewed `6b8c3b1` and generated 2 follow-up comments. Addressed them by normalizing Workbench `disabled` props to booleans and adding `throttle:6,1` to the Workbench/admin request creation route, with PHP coverage for the route middleware.
+- Full local gate passed after the latest PR #9 throttle/boolean follow-up:
+  - `composer validate --strict`
+  - `npm run phpunit` => 44 tests, 344 assertions
+  - `npm run test` => 8 files, 44 tests
+  - `npm run build`
+  - `npm run e2e` => 16 Playwright tests
 
 ## 2026-04-30
 

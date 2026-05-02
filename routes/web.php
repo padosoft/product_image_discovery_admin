@@ -44,6 +44,7 @@ Route::prefix($adminPrefix)
         Route::get('requests/search', AdminRequestSearchController::class)->name('requests.search');
         Route::post('requests', [PackageRequestController::class, 'store'])
             ->middleware(config('pid-admin.debug_run_middleware', ['auth']))
+            ->middleware('throttle:6,1')
             ->name('requests.store');
         Route::get('requests/{request}', AdminRequestShowController::class)->name('requests.show');
         Route::get('requests/{request}/events', AdminRequestEventsController::class)->name('requests.events');

@@ -173,6 +173,14 @@ final class AdminWrapperEndpointsTest extends TestCase
         Bus::assertDispatched(IngestProductImageDiscoveryJob::class);
     }
 
+    public function test_admin_request_store_route_is_throttled(): void
+    {
+        $route = Route::getRoutes()->getByName('pid-admin.requests.store');
+
+        $this->assertNotNull($route);
+        $this->assertContains('throttle:6,1', $route->gatherMiddleware());
+    }
+
     public function test_admin_debug_run_executes_fake_flow_and_redacts_payload(): void
     {
         config(['product-image-discovery.ai.enabled' => false]);

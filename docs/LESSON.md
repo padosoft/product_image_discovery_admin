@@ -85,6 +85,7 @@
 - Custom admin fetch helpers must keep the same same-origin guard as `pidFetch()` before attaching CSRF headers.
 - Copyable cURL snippets for session/CSRF-protected admin mutations should use placeholders for CSRF and session cookies; do not copy live token or cookie values into the UI.
 - Async workbench actions need mounted guards and abort cleanup just like page loaders, because operators can navigate away while provider tests or request creation are still in flight.
+- Job-dispatching Workbench endpoints should be throttled in addition to being behind stricter middleware; request creation can enqueue ingest work just like debug runs.
 
 ## 2026-04-30
 
