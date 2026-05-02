@@ -14,9 +14,13 @@ import { Toast } from './components/Toast';
 import { Timeline } from './components/Timeline';
 import {
   createDefaultRequestFilters,
+  buildRequestExportPath,
+  clearSavedRequestFilters,
+  loadRequestFilters,
   requestFiltersFromSearchParams,
   requestFiltersToActiveChips,
   requestFiltersToSearchParams,
+  saveRequestFilters,
 } from './request-filters';
 import {
   DEFAULT_SETTING_FORM,
@@ -41,7 +45,14 @@ import {
 
 const DEFAULT_SUMMARY = {
   counts: {},
+  score_buckets: {},
   provider_status: [],
+  provider_health: {},
+  queue_status: {},
+  queue_rows: [],
+  latest_manual_review: null,
+  latest_attention: null,
+  shortcut_actions: [],
 };
 
 const DEBUG_DRAFT_KEY = 'pid-debug-flow-draft';
@@ -294,6 +305,30 @@ function summarizeRequests(requests) {
     },
     { total: 0, manualReview: 0, ready: 0, failed: 0, latestUpdatedAt: null },
   );
+}
+
+function scoreBucketRows(summary) {
+  const buckets = summary?.score_buckets ?? {};
+  const rows = [
+    { key: '80_100', label: '80-100', value: Number(buckets['80_100'] ?? 0), tone: 'ok' },
+    { key: '60_79', label: '60-79', value: Number(buckets['60_79'] ?? 0), tone: 'warn' },
+    { key: '0_59', label: '0-59', value: Number(buckets['0_59'] ?? 0), tone: 'danger' },
+    { key: 'unknown', label: 'No score', value: Number(buckets.unknown ?? 0), tone: 'neutral' },
+  ];
+  const total = rows.reduce((sum, row) => sum + row.value, 0);
+
+  return rows.map((row) => ({
+    ...row,
+    percent: total > 0 ? Math.round((row.value / total) * 100) : 0,
+  }));
+}
+
+function requestIdentity(request) {
+  if (!request) {
+    return '-';
+  }
+
+  return request.erp_model_color_id ?? request.erp_model_id ?? `Request #${request.id}`;
 }
 
 function buildDetailSummary(detail) {
@@ -627,10 +662,18 @@ function Topbar({ page, theme, onTheme, loading, requests }) {
   );
 }
 
-function Overview({ summary, requests, loading, error }) {
+function Overview({ summary, requests, loading, error, onNavigate }) {
   const counts = summary?.counts ?? {};
   const providers = summary?.provider_status ?? [];
+  const providerHealth = summary?.provider_health ?? {};
+  const queueRows = Array.isArray(summary?.queue_rows) ? summary.queue_rows : [];
+  const shortcuts = Array.isArray(summary?.shortcut_actions) ? summary.shortcut_actions : [];
+  const scoreRows = scoreBucketRows(summary);
   const requestSummary = summarizeRequests(requests);
+  const latestRows = [
+    { label: 'Latest manual review', request: summary?.latest_manual_review, fallback: 'No manual review items' },
+    { label: 'Latest failed/no-candidates', request: summary?.latest_attention, fallback: 'No failed items' },
+  ];
 
   return (
     <div className="pid-stack">
@@ -645,6 +688,7 @@ function Overview({ summary, requests, loading, error }) {
           ['Total', counts.total],
           ['Manual review', counts.manual_review],
           ['Ready', counts.ready_to_publish],
+          ['Published', counts.published],
           ['Failed', counts.failed],
           ['No candidates', counts.no_candidates_found],
         ].map(([label, value]) => (
@@ -659,7 +703,7 @@ function Overview({ summary, requests, loading, error }) {
         <section className="pid-panel">
           <div className="pid-panel__header">
             <h2>Provider Health</h2>
-            <span>{providers.length} configured</span>
+            <span>{providerHealth.active ?? providers.filter((provider) => provider.active).length} active / {providerHealth.configured ?? providers.length} configured</span>
           </div>
           <div className="pid-provider-list">
             {providers.length === 0 ? (
@@ -668,7 +712,7 @@ function Overview({ summary, requests, loading, error }) {
               <div className="pid-provider" key={provider.code}>
                 <div>
                   <strong>{provider.code}</strong>
-                  <span>{provider.driver}</span>
+                  <span>{provider.driver} · {provider.rate_limit_per_minute ?? '-'} rpm</span>
                 </div>
                 <StatusBadge status={provider.active ? 'ready_to_publish' : 'pending'} />
                 <span className="pid-muted">{provider.has_api_key ? 'key configured' : 'key missing'}</span>
@@ -680,9 +724,9 @@ function Overview({ summary, requests, loading, error }) {
         <section className="pid-panel">
           <div className="pid-panel__header">
             <h2>Queue Snapshot</h2>
-            <span>{loading ? 'Loading' : `${requestSummary.total} tracked`}</span>
+            <span>{loading ? 'Loading' : `${queueRows.length} phases`}</span>
           </div>
-          <div className="pid-metric-grid">
+          <div className="pid-metric-grid pid-metric-grid--queue">
             <div className="pid-metric">
               <span>Ready to publish</span>
               <strong>{loading ? '-' : requestSummary.ready}</strong>
@@ -700,13 +744,90 @@ function Overview({ summary, requests, loading, error }) {
               <strong className="pid-metric__text">{loading ? '-' : formatUpdatedAt(requestSummary.latestUpdatedAt)}</strong>
             </div>
           </div>
+          <div className="pid-queue-list" aria-label="Queue phases">
+            {queueRows.length === 0 ? (
+              <p className="pid-empty">No package queues configured.</p>
+            ) : queueRows.map((queue) => (
+              <div className="pid-queue-row" key={`${queue.phase}-${queue.queue}`}>
+                <span>{queue.phase}</span>
+                <code>{queue.queue}</code>
+                <StatusBadge status={queue.status === 'configured' ? 'ready_to_publish' : 'pending'} />
+              </div>
+            ))}
+          </div>
+        </section>
+
+        <section className="pid-panel">
+          <div className="pid-panel__header">
+            <h2>Score Distribution</h2>
+            <span>{counts.total ?? 0} requests</span>
+          </div>
+          <div className="pid-score-distribution" aria-label="Score distribution">
+            {scoreRows.map((row) => (
+              <div className="pid-score-row" key={row.key}>
+                <span>{row.label}</span>
+                <div className="pid-score-row__bar" aria-hidden="true">
+                  <span className={`pid-score-row__fill pid-score-row__fill--${row.tone}`} style={{ width: `${row.percent}%` }} />
+                </div>
+                <strong>{loading ? '-' : row.value}</strong>
+              </div>
+            ))}
+          </div>
+        </section>
+
+        <section className="pid-panel">
+          <div className="pid-panel__header">
+            <h2>Latest Attention</h2>
+            <span>{shortcuts.length} shortcuts</span>
+          </div>
+          <div className="pid-attention-list">
+            {latestRows.map((item) => (
+              <div className="pid-attention-row" key={item.label}>
+                <span>{item.label}</span>
+                {item.request ? (
+                  <>
+                    <strong>{requestIdentity(item.request)}</strong>
+                    <small>{item.request.status} · score {item.request.final_score ?? '-'} · {item.request.candidate_count ?? 0} candidates</small>
+                  </>
+                ) : (
+                  <>
+                    <strong>{item.fallback}</strong>
+                    <small>-</small>
+                  </>
+                )}
+              </div>
+            ))}
+          </div>
+          <div className="pid-shortcut-actions" aria-label="Dashboard shortcuts">
+            {shortcuts.map((action) => (
+              <button
+                type="button"
+                key={action.id}
+                className="pid-chip-button"
+                onClick={() => onNavigate?.(action.page, action.filters ?? {})}
+              >
+                {action.label}
+              </button>
+            ))}
+          </div>
         </section>
       </section>
     </div>
   );
 }
 
-function RequestFilters({ filters, onChange, onReset, activeChips, loading, manualReviewLocked = false }) {
+function RequestFilters({
+  filters,
+  onChange,
+  onReset,
+  activeChips,
+  loading,
+  manualReviewLocked = false,
+  exportHref,
+  onSaveFilters,
+  onLoadFilters,
+  onClearSavedFilters,
+}) {
   const update = (name, value) => {
     onChange({ ...filters, [name]: value });
   };
@@ -839,6 +960,20 @@ function RequestFilters({ filters, onChange, onReset, activeChips, loading, manu
       </div>
       <div className="pid-filter-actions">
         <FilterBar label="Active filters" filters={activeChips} onClear={onReset} />
+        <div className="pid-filter-actions__buttons">
+          <a className="pid-chip-button" href={exportHref}>
+            Export CSV
+          </a>
+          <button type="button" className="pid-chip-button" onClick={onSaveFilters}>
+            Save filters
+          </button>
+          <button type="button" className="pid-chip-button" onClick={onLoadFilters}>
+            Load saved
+          </button>
+          <button type="button" className="pid-chip-button" onClick={onClearSavedFilters}>
+            Clear saved
+          </button>
+        </div>
       </div>
     </section>
   );
@@ -1128,6 +1263,10 @@ function Requests({
   detailState,
   error,
   manualReviewOnly = false,
+  exportHref,
+  onSaveFilters,
+  onLoadFilters,
+  onClearSavedFilters,
 }) {
   const requestSummary = summarizeRequests(requests);
   const columns = [
@@ -1168,6 +1307,10 @@ function Requests({
         activeChips={activeChips}
         loading={loading}
         manualReviewLocked={manualReviewOnly}
+        exportHref={exportHref}
+        onSaveFilters={onSaveFilters}
+        onLoadFilters={onLoadFilters}
+        onClearSavedFilters={onClearSavedFilters}
       />
       <section className="pid-request-summary" aria-label="Request summary">
         {[
@@ -2921,6 +3064,28 @@ function DebugReportsPage({ onNotify }) {
     }
   }
 
+  function downloadReportJson() {
+    if (!report || !globalThis.URL?.createObjectURL) {
+      return;
+    }
+
+    const fileLabel = String(reportSource || 'debug-report')
+      .toLowerCase()
+      .replace(/[^a-z0-9]+/g, '-')
+      .replace(/^-+|-+$/g, '') || 'debug-report';
+    const blob = new Blob([JSON.stringify(report, null, 2)], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+
+    link.href = url;
+    link.download = `${fileLabel}.json`;
+    document.body.append(link);
+    link.click();
+    link.remove();
+    window.setTimeout(() => URL.revokeObjectURL?.(url), 0);
+    onNotify('Debug report JSON downloaded.', 'success');
+  }
+
   function toggleFilter(name) {
     setFilters((current) => ({ ...current, [name]: !current[name] }));
   }
@@ -3019,7 +3184,12 @@ function DebugReportsPage({ onNotify }) {
           <section className="pid-panel" aria-label="Debug report summary">
             <div className="pid-panel__header">
               <h2>{reportSource || 'Debug report'}</h2>
-              <span>{report.summary?.completed_at ?? report.summary?.started_at ?? 'loaded'}</span>
+              <div className="pid-row-actions">
+                <span>{report.summary?.completed_at ?? report.summary?.started_at ?? 'loaded'}</span>
+                <button type="button" className="pid-chip-button" onClick={downloadReportJson}>
+                  Download JSON
+                </button>
+              </div>
             </div>
             <div className="pid-kpis">
               <div className="pid-kpi pid-kpi--compact">
@@ -4141,7 +4311,15 @@ export default function App() {
   const [summary, setSummary] = useState(DEFAULT_SUMMARY);
   const [overviewRequests, setOverviewRequests] = useState([]);
   const [requestRows, setRequestRows] = useState([]);
-  const [requestFilters, setRequestFilters] = useState(() => requestFiltersFromSearchParams(new URLSearchParams(window.location.search)));
+  const [requestFilters, setRequestFilters] = useState(() => {
+    const params = new URLSearchParams(window.location.search);
+
+    if (Array.from(params.keys()).length > 0) {
+      return requestFiltersFromSearchParams(params);
+    }
+
+    return loadRequestFilters() ?? requestFiltersFromSearchParams(params);
+  });
   const [requestLoading, setRequestLoading] = useState(true);
   const [requestError, setRequestError] = useState('');
   const [detailOpen, setDetailOpen] = useState(false);
@@ -4191,6 +4369,10 @@ export default function App() {
 
     return requestFilters;
   }, [page, requestFilters]);
+  const requestExportHref = useMemo(
+    () => buildAdminApiPath(buildRequestExportPath(effectiveRequestFilters)),
+    [effectiveRequestFilters],
+  );
 
   useEffect(() => {
     if (!toast) {
@@ -4491,12 +4673,47 @@ export default function App() {
     setRequestFilters(createDefaultRequestFilters());
   }
 
+  function saveCurrentRequestFilters() {
+    if (saveRequestFilters(effectiveRequestFilters)) {
+      notify('Request filters saved.', 'success');
+      return;
+    }
+
+    notify('Unable to save request filters.', 'danger');
+  }
+
+  function loadSavedRequestFilters() {
+    const savedFilters = loadRequestFilters();
+
+    if (!savedFilters) {
+      notify('No saved request filters.', 'neutral');
+      return;
+    }
+
+    setRequestFilters(savedFilters);
+    notify('Saved request filters loaded.', 'success');
+  }
+
+  function removeSavedRequestFilters() {
+    if (clearSavedRequestFilters()) {
+      notify('Saved request filters cleared.', 'success');
+      return;
+    }
+
+    notify('Unable to clear saved request filters.', 'danger');
+  }
+
+  function navigateFromOverview(nextPage, filters = {}) {
+    setRequestFilters({ ...createDefaultRequestFilters(), ...filters });
+    setPage(nextPage || 'requests');
+  }
+
   const currentPage = pageIndex[page] ?? pageIndex.overview;
 
   let body;
 
   if (page === 'overview') {
-    body = <Overview summary={summary} requests={overviewRequests} loading={loading} error={error} />;
+    body = <Overview summary={summary} requests={overviewRequests} loading={loading} error={error} onNavigate={navigateFromOverview} />;
   } else if (page === 'requests') {
     body = (
       <Requests
@@ -4509,6 +4726,10 @@ export default function App() {
         onClearFilters={clearFilters}
         onOpenRequest={openRequest}
         error={requestError}
+        exportHref={requestExportHref}
+        onSaveFilters={saveCurrentRequestFilters}
+        onLoadFilters={loadSavedRequestFilters}
+        onClearSavedFilters={removeSavedRequestFilters}
         detailState={{
           open: detailOpen,
           detail: detailRequest,
@@ -4542,6 +4763,10 @@ export default function App() {
         onClearFilters={clearFilters}
         onOpenRequest={openRequest}
         error={requestError}
+        exportHref={requestExportHref}
+        onSaveFilters={saveCurrentRequestFilters}
+        onLoadFilters={loadSavedRequestFilters}
+        onClearSavedFilters={removeSavedRequestFilters}
         detailState={{
           open: detailOpen,
           detail: detailRequest,

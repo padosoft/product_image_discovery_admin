@@ -35,10 +35,11 @@ final class AdminWrapperEndpointsTest extends TestCase
 
     public function test_dashboard_summary_uses_package_statuses_and_never_exposes_provider_secrets(): void
     {
-        $this->createDiscoveryRequest([
+        $manualReview = $this->createDiscoveryRequest([
             'status' => 'manual_review',
             'final_score' => 58,
         ]);
+        $this->createCandidate($manualReview);
         $this->createDiscoveryRequest([
             'status' => 'ready_to_publish',
             'final_score' => 82,
@@ -46,6 +47,11 @@ final class AdminWrapperEndpointsTest extends TestCase
         $this->createDiscoveryRequest([
             'status' => 'published',
             'final_score' => 91,
+        ]);
+        $this->createDiscoveryRequest([
+            'status' => 'no_candidates_found',
+            'final_score' => null,
+            'erp_model_color_id' => 'NO-CANDIDATES-1',
         ]);
 
         ProductImageSearchProvider::query()->create([
@@ -60,15 +66,23 @@ final class AdminWrapperEndpointsTest extends TestCase
 
         $this->getJson('/admin/product-image-discovery/dashboard-summary')
             ->assertOk()
-            ->assertJsonPath('counts.total', 3)
+            ->assertJsonPath('counts.total', 4)
             ->assertJsonPath('counts.manual_review', 1)
             ->assertJsonPath('counts.ready_to_publish', 1)
             ->assertJsonPath('counts.published', 1)
+            ->assertJsonPath('counts.no_candidates_found', 1)
+            ->assertJsonPath('score_buckets.unknown', 1)
             ->assertJsonPath('score_buckets.0_59', 1)
             ->assertJsonPath('score_buckets.80_100', 2)
             ->assertJsonPath('provider_status.0.code', 'brave')
             ->assertJsonPath('provider_status.0.has_api_key', true)
             ->assertJsonPath('provider_status.0.has_api_secret', false)
+            ->assertJsonPath('provider_health.configured', 1)
+            ->assertJsonPath('provider_health.active', 1)
+            ->assertJsonPath('latest_manual_review.id', $manualReview->getKey())
+            ->assertJsonPath('latest_manual_review.candidate_count', 1)
+            ->assertJsonPath('latest_attention.erp_model_color_id', 'NO-CANDIDATES-1')
+            ->assertJsonPath('shortcut_actions.0.page', 'review')
             ->assertJsonMissing(['test-api-key']);
     }
 
@@ -359,6 +373,38 @@ final class AdminWrapperEndpointsTest extends TestCase
             ->assertJsonCount(1, 'data')
             ->assertJsonPath('data.0.id', $zeroScore->getKey())
             ->assertJsonPath('data.0.final_score', 0);
+    }
+
+    public function test_request_csv_export_applies_current_filters(): void
+    {
+        $included = $this->createDiscoveryRequest([
+            'client_id' => 10,
+            'status' => 'manual_review',
+            'brand' => '=1+1',
+            'supplier' => 'Acme',
+            'erp_model_color_id' => 'EXPORT-1',
+            'final_score' => 72,
+        ]);
+        $this->createDiscoveryRequest([
+            'client_id' => 11,
+            'status' => 'ready_to_publish',
+            'brand' => 'Other',
+            'supplier' => 'Acme',
+            'erp_model_color_id' => 'EXPORT-2',
+            'final_score' => 92,
+        ]);
+
+        $response = $this->get('/admin/product-image-discovery/requests/export.csv?erp_model_color_id=EXPORT-1')
+            ->assertOk()
+            ->assertHeader('Content-Type', 'text/csv; charset=UTF-8');
+        $content = $response->streamedContent();
+
+        $this->assertStringContainsString('id,client_id,status,brand,supplier', $content);
+        $this->assertStringContainsString($included->getKey().',10,manual_review,\'=1+1,Acme', $content);
+        $this->assertStringNotContainsString($included->getKey().',10,manual_review,=1+1,Acme', $content);
+        $this->assertStringContainsString('EXPORT-1', $content);
+        $this->assertStringNotContainsString('EXPORT-2', $content);
+        $this->assertStringNotContainsString('Other', $content);
     }
 
     public function test_admin_settings_wrapper_supports_crud_and_type_validation(): void

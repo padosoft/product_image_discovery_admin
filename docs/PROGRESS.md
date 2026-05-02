@@ -1,5 +1,49 @@
 # Progress
 
+## 2026-05-02
+
+- Started Macro Task 6 on `task/dashboard-polish-ci` from `main` after PR #9 was merged and no PRs remained open.
+- Added release-readiness CI in `.github/workflows/ci.yml`:
+  - checks out this admin app and the sibling `padosoft/product_image_discovery` package so the Composer path repository resolves in GitHub Actions
+  - runs Composer validation/install, `npm ci`, PHPUnit through `npm run phpunit`, Vitest, Vite build, Playwright, and Playwright artifact upload on failure
+- Enriched the dashboard summary endpoint and Overview page:
+  - score distribution, provider readiness, queue phase rows, latest manual-review item, latest failed/no-candidates item, and shortcut actions
+  - preserved secret redaction by exposing only provider configured/missing booleans
+- Added request CSV export and request filter persistence:
+  - shared request filter validation/query logic between search and CSV export
+  - added `GET /admin/product-image-discovery/requests/export.csv`
+  - added localStorage save/load/clear controls for demo request filters
+- Added debug report JSON download from the redacted report viewer state.
+- Updated README setup/test/CI instructions.
+- Targeted verification passed after the first Macro 6 implementation:
+  - `npm run phpunit -- --filter AdminWrapperEndpointsTest` => 28 tests, 239 assertions
+  - `npm run test -- --run tests/JavaScript/request-filters.test.js` => 4 tests
+  - `npm run test -- --run tests/JavaScript/app-shell.test.jsx` => 20 tests
+  - `npm run build`
+  - `npx playwright test -g "requests page saves filters"` => 2 Playwright tests
+- Full local gate passed for the Macro 6 slice before opening the PR:
+  - `composer validate --strict`
+  - `npm run phpunit` => 45 tests, 360 assertions
+  - `npm run test` => 8 files, 47 tests
+  - `npm run build`
+  - `npm run e2e` => 18 Playwright tests
+- Opened PR #10 for `task/dashboard-polish-ci` and requested Copilot Code Review with the GraphQL fallback.
+- Initial GitHub Actions runs failed at `npm ci` because npm 10 required missing optional peer package entries in `package-lock.json`; regenerated the lockfile with npm 10 and verified `npx npm@10 ci --dry-run` passes.
+- Addressed the first PR #10 review comments:
+  - CSV export now neutralizes spreadsheet formula prefixes in text cells before streaming rows
+  - CI uses `npm run e2e:ci` after the standalone build step to avoid rebuilding twice
+  - saved-filter helpers resolve localStorage inside guarded code and report unavailable storage as a failed save/clear
+  - CSV export links let the backend `Content-Disposition` filename win
+  - debug report JSON download delays Blob URL revocation until after the click has been dispatched
+- Verification passed after the PR #10 review fixes:
+  - `composer validate --strict`
+  - `npm run phpunit` => 45 tests, 361 assertions
+  - `npm run test` => 8 files, 48 tests
+  - `npx npm@10 ci --dry-run`
+  - `npm run build`
+  - `npm run e2e:ci` => 18 Playwright tests
+- Follow-up CI run reached Vitest and failed because Laravel Vite blocks HMR when `CI=true`; updated the workflow to set `LARAVEL_BYPASS_ENV_CHECK=1` on the Vitest step only.
+
 ## 2026-05-01
 
 - Continued `task/request-review-workflows` with candidate review wrappers.
