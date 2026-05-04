@@ -37,20 +37,26 @@ Artisan::command('pid-admin:create-user {email} {--name=Admin} {--password= : Pl
     $name = (string) ($this->option('name') ?: 'Admin');
     $providedPassword = $this->option('password');
     $hasProvidedPassword = is_string($providedPassword) && $providedPassword !== '';
-    $password = $hasProvidedPassword ? $providedPassword : Str::random(16);
 
-    $user = User::query()->updateOrCreate(
-        ['email' => $email],
-        [
-            'name' => $name,
-            'password' => $password,
-        ],
-    );
+    $user = User::query()->firstOrNew(['email' => $email]);
+    $isNewUser = ! $user->exists;
+    $generatedPassword = null;
+
+    $user->name = $name;
+
+    if ($hasProvidedPassword) {
+        $user->password = $providedPassword;
+    } elseif ($isNewUser) {
+        $generatedPassword = Str::random(16);
+        $user->password = $generatedPassword;
+    }
+
+    $user->save();
 
     $this->info(sprintf('User %s saved (id=%d).', $user->getAttribute('email'), $user->getKey()));
 
-    if (! $hasProvidedPassword) {
-        $this->warn('Generated password (shown once): '.$password);
+    if ($generatedPassword !== null) {
+        $this->warn('Generated password (shown once): '.$generatedPassword);
     }
 
     return Command::SUCCESS;
