@@ -2815,7 +2815,15 @@ function debugReportCandidateRows(report, filters = {}) {
         return scoreB - scoreA;
       }
 
-      return String(a._row_id).localeCompare(String(b._row_id));
+      const rowA = a._row_id;
+      const rowB = b._row_id;
+
+      if (typeof rowA === 'number' && typeof rowB === 'number'
+        && Number.isFinite(rowA) && Number.isFinite(rowB)) {
+        return rowA - rowB;
+      }
+
+      return String(rowA).localeCompare(String(rowB));
     })
     .filter((candidate) => !filters.mismatches || candidate._has_mismatch)
     .filter((candidate) => !filters.aiFailures || candidate._ai_failure)

@@ -38,6 +38,8 @@
   - Extended the `loads stored debug reports` vitest case with a `request_payload` on the mocked `/debug-runs/9/report` response, then click `Request` tab and assert the inspector contains `package_request_summary`, `original_request_payload`, the description string, the ean, and the metadata marker.
   - Extended `AdminWrapperEndpointsTest` with `data.request_payload.*` assertions on both the populated-report path and the no-report path, so the contract is locked from the backend side too.
   - README Quickstart step 8 documents the two sections.
+- Copilot Code Review third pass returned one inline comment on the candidate-rows tie-breaker. Addressed in a follow-up commit on the same branch:
+  - `resources/js/admin-product-image-discovery/App.jsx` — `debugReportCandidateRows()` no longer collapses every `_row_id` to `String(...).localeCompare(...)`. Numeric ids (DB primary keys, set when `candidate.id` is a number) are now compared numerically (`a - b`), so equal-score candidates sort intuitively (`2` before `10`) instead of lexicographically (`10` before `2`). The string fallback only kicks in for non-numeric ids — the `candidate-<index>` strings produced when `candidate.id` is missing — keeping the secondary sort deterministic in both branches.
 
 ## 2026-05-02
 
