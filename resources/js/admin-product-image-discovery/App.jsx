@@ -638,9 +638,15 @@ function Topbar({ page, theme, onTheme, loading, requests }) {
   const title = page.label;
   const toggleTarget = theme === 'dark' ? 'light' : 'dark';
   const requestSummary = summarizeRequests(requests);
-  const csrfToken = typeof document !== 'undefined'
-    ? (document.querySelector('meta[name="csrf-token"]')?.content ?? '')
-    : '';
+  const adminGlobals = (typeof window !== 'undefined' && window.PID_ADMIN) ? window.PID_ADMIN : {};
+  const logoutUrl = (typeof adminGlobals.logoutUrl === 'string' && adminGlobals.logoutUrl !== '')
+    ? adminGlobals.logoutUrl
+    : '/logout';
+  const csrfToken = (typeof adminGlobals.csrfToken === 'string' && adminGlobals.csrfToken !== '')
+    ? adminGlobals.csrfToken
+    : (typeof document !== 'undefined'
+      ? (document.querySelector('meta[name="csrf-token"]')?.content ?? '')
+      : '');
 
   return (
     <header className="pid-topbar" data-testid="pid-shell-header">
@@ -665,7 +671,7 @@ function Topbar({ page, theme, onTheme, loading, requests }) {
         >
           <ShellIcon name={theme === 'dark' ? 'sun' : 'moon'} />
         </button>
-        <form method="POST" action="/logout" className="pid-topbar__logout" data-testid="pid-shell-logout">
+        <form method="POST" action={logoutUrl} className="pid-topbar__logout" data-testid="pid-shell-logout">
           <input type="hidden" name="_token" value={csrfToken} />
           <button type="submit" title="Sign out of the admin console">
             Logout

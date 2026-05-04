@@ -42,7 +42,11 @@ describe('admin product image discovery shell', () => {
     });
     document.documentElement.dataset.theme = 'light';
     document.head.innerHTML = '<meta name="csrf-token" content="test-token">';
-    window.PID_ADMIN = { apiBase: '/admin/product-image-discovery' };
+    window.PID_ADMIN = {
+      apiBase: '/admin/product-image-discovery',
+      logoutUrl: '/logout',
+      csrfToken: 'test-token',
+    };
     window.history.replaceState({}, '', '/admin/product-image-discovery/');
   });
 

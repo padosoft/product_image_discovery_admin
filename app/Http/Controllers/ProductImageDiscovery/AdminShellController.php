@@ -6,6 +6,7 @@ namespace App\Http\Controllers\ProductImageDiscovery;
 
 use Illuminate\Contracts\View\View;
 use Illuminate\Routing\Controller;
+use Illuminate\Support\Facades\Route;
 
 final class AdminShellController extends Controller
 {
@@ -15,6 +16,8 @@ final class AdminShellController extends Controller
             'apiBase' => '/'.trim((string) config('pid-admin.route_prefix', 'admin/product-image-discovery'), '/'),
             'packageApiBase' => '/'.trim((string) config('pid-admin.package_api_prefix', 'api/product-image-discovery'), '/'),
             'appName' => config('app.name', 'Product Image Discovery Admin'),
+            'logoutUrl' => Route::has('logout') ? route('logout') : '/logout',
+            'csrfToken' => csrf_token(),
         ]);
     }
 }

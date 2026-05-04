@@ -47,6 +47,10 @@
   - `docs/PROGRESS.md` — corrected the stale `pid-admin:create-user` bullet to reflect what the command actually does (`firstOrNew` + the `password=>hashed` cast + `filter_var` email validation, no explicit `Hash::make`, password only set on new users when `--password` is omitted).
 - Copilot Code Review fifth pass returned one inline comment on `pid-admin:create-user`. Addressed in a follow-up commit on the same branch:
   - `routes/console.php` — `--name` no longer defaults to `Admin` at the option level (it defaults to empty). The command now only writes `name` when the option is explicitly provided, and falls back to `'Admin'` only when creating a new user. Re-running the command for an existing user without `--name` (e.g. just to rotate the password with `--password`) now leaves the existing display name untouched, instead of silently resetting it to "Admin".
+- Copilot Code Review sixth pass returned one inline comment on the SPA logout form coupling. Addressed in a follow-up commit on the same branch:
+  - `app/Http/Controllers/ProductImageDiscovery/AdminShellController.php` and `resources/views/product-image-discovery/admin.blade.php` — the Blade shell now injects `logoutUrl` (resolved via `route('logout')` when the route is registered) and `csrfToken` into `window.PID_ADMIN`, alongside the pre-existing `apiBase` / `packageApiBase` / `appName`.
+  - `resources/js/admin-product-image-discovery/App.jsx` — `Topbar()` reads both values from `window.PID_ADMIN` and falls back to `'/logout'` and the `meta[name="csrf-token"]` element only when the global is missing (e.g. legacy Blade shells). The `<form action="/logout">` hard-coding is gone, and the SPA no longer queries the DOM on every render to fish out the CSRF token.
+  - `tests/JavaScript/app-shell.test.jsx` — the shared `beforeEach` now seeds `window.PID_ADMIN` with `logoutUrl: '/logout'` and `csrfToken: 'test-token'`, so existing logout assertions keep matching against the same hidden-field/action pair.
 
 ## 2026-05-02
 
