@@ -25,7 +25,7 @@ Artisan::command('pid-admin:seed-demo {--fresh : Delete existing PID admin demo 
     return Command::SUCCESS;
 })->purpose('Seed deterministic Product Image Discovery admin demo requests');
 
-Artisan::command('pid-admin:create-user {email} {--name=Admin} {--password= : Plain password; if omitted a random one is generated and displayed once}', function (): int {
+Artisan::command('pid-admin:create-user {email} {--name= : Display name (defaults to "Admin" on create, kept as-is on update unless provided)} {--password= : Plain password; if omitted a random one is generated and displayed once}', function (): int {
     $email = trim((string) $this->argument('email'));
 
     if ($email === '' || filter_var($email, FILTER_VALIDATE_EMAIL) === false) {
@@ -34,7 +34,8 @@ Artisan::command('pid-admin:create-user {email} {--name=Admin} {--password= : Pl
         return Command::INVALID;
     }
 
-    $name = (string) ($this->option('name') ?: 'Admin');
+    $providedName = $this->option('name');
+    $hasProvidedName = is_string($providedName) && $providedName !== '';
     $providedPassword = $this->option('password');
     $hasProvidedPassword = is_string($providedPassword) && $providedPassword !== '';
 
@@ -42,7 +43,11 @@ Artisan::command('pid-admin:create-user {email} {--name=Admin} {--password= : Pl
     $isNewUser = ! $user->exists;
     $generatedPassword = null;
 
-    $user->name = $name;
+    if ($hasProvidedName) {
+        $user->name = $providedName;
+    } elseif ($isNewUser) {
+        $user->name = 'Admin';
+    }
 
     if ($hasProvidedPassword) {
         $user->password = $providedPassword;

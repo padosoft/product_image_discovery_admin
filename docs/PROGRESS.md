@@ -45,6 +45,8 @@
   - `resources/css/admin-product-image-discovery.css` — removed `pointer-events: none` from `.pid-chip-button--disabled`. The disabled state is already enforced by omitting `href` (and now also by setting `tabIndex=-1` on the anchor when there is no URL), so dropping `pointer-events: none` lets the `title` tooltip surface on hover and keeps text selection / context menu working without making the chip clickable.
   - `resources/js/admin-product-image-discovery/App.jsx` — added `tabIndex={-1}` to the disabled `View URL` / `View Image` chips so they stay out of the keyboard tab order alongside the existing `aria-disabled="true"` attribute.
   - `docs/PROGRESS.md` — corrected the stale `pid-admin:create-user` bullet to reflect what the command actually does (`firstOrNew` + the `password=>hashed` cast + `filter_var` email validation, no explicit `Hash::make`, password only set on new users when `--password` is omitted).
+- Copilot Code Review fifth pass returned one inline comment on `pid-admin:create-user`. Addressed in a follow-up commit on the same branch:
+  - `routes/console.php` — `--name` no longer defaults to `Admin` at the option level (it defaults to empty). The command now only writes `name` when the option is explicitly provided, and falls back to `'Admin'` only when creating a new user. Re-running the command for an existing user without `--name` (e.g. just to rotate the password with `--password`) now leaves the existing display name untouched, instead of silently resetting it to "Admin".
 
 ## 2026-05-02
 
