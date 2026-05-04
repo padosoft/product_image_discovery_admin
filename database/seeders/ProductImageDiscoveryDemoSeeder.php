@@ -8,7 +8,6 @@ use App\Models\User;
 use Illuminate\Database\Seeder;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Facades\Hash;
 use Padosoft\ProductImageDiscovery\Database\Seeders\ProductImageDiscoveryDefaultsSeeder;
 use Padosoft\ProductImageDiscovery\Models\ProductImageDiscoveryCandidate;
 use Padosoft\ProductImageDiscovery\Models\ProductImageDiscoveryRequest;
@@ -103,7 +102,7 @@ final class ProductImageDiscoveryDemoSeeder extends Seeder
             ['email' => 'admin@demo.test'],
             [
                 'name' => 'PID Admin Demo',
-                'password' => Hash::make('password'),
+                'password' => 'password',
             ],
         );
     }

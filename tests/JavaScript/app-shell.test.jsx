@@ -1148,24 +1148,28 @@ describe('admin product image discovery shell', () => {
       },
       candidates: [
         {
+          id: 2,
+          status: 'rejected',
+          title: 'Clean candidate',
+          source_domain: 'example.test',
+          image_url: '',
+          source_page_url: 'javascript:alert(1)',
+          scores: { final_score: 20, quality_score: 0 },
+          evidence: { mismatches: [], matches: [] },
+          ai_verification: { match: true },
+        },
+        {
           id: 1,
           status: 'verified_match',
           title: 'Mismatch candidate',
           source_domain: 'example.test',
+          image_url: 'https://images.example.test/herno.jpg',
+          source_page_url: 'https://source.example.test/product/herno',
           local_original_path: 'product-image-discovery/1/original.jpg',
           scores: { final_score: 72, quality_score: 80 },
           evidence: { mismatches: ['color_mismatch'], matches: ['brand_match'] },
           ai_verification: { match: false, rejection_reason: 'wrong_color' },
           quality_analysis: { passed: true, quality_score: 80 },
-        },
-        {
-          id: 2,
-          status: 'rejected',
-          title: 'Clean candidate',
-          source_domain: 'example.test',
-          scores: { final_score: 20, quality_score: 0 },
-          evidence: { mismatches: [], matches: [] },
-          ai_verification: { match: true },
         },
       ],
       downloaded_candidate_ids: [1],
@@ -1235,12 +1239,38 @@ describe('admin product image discovery shell', () => {
     expect(screen.getByRole('region', { name: 'Debug report inspector' })).not.toHaveTextContent('server-secret');
 
     fireEvent.click(screen.getByRole('button', { name: 'Candidates' }));
-    expect(screen.getByRole('table', { name: 'Debug report candidates' })).toHaveTextContent('Mismatch candidate');
-    expect(screen.getByRole('table', { name: 'Debug report candidates' })).toHaveTextContent('Clean candidate');
+    const candidatesTable = screen.getByRole('table', { name: 'Debug report candidates' });
+    expect(candidatesTable).toHaveTextContent('Mismatch candidate');
+    expect(candidatesTable).toHaveTextContent('Clean candidate');
+
+    const dataRows = within(candidatesTable).getAllByRole('row').slice(1);
+    expect(dataRows[0]).toHaveTextContent('Mismatch candidate');
+    expect(dataRows[1]).toHaveTextContent('Clean candidate');
+
+    const mismatchUrlAnchor = within(dataRows[0]).getByRole('link', { name: 'View URL' });
+    expect(mismatchUrlAnchor).toHaveAttribute('href', 'https://source.example.test/product/herno');
+    expect(mismatchUrlAnchor).toHaveAttribute('target', '_blank');
+    expect(mismatchUrlAnchor).toHaveAttribute('rel', 'noopener noreferrer');
+
+    const mismatchImageAnchor = within(dataRows[0]).getByRole('link', { name: 'View Image' });
+    expect(mismatchImageAnchor).toHaveAttribute('href', 'https://images.example.test/herno.jpg');
+    expect(mismatchImageAnchor).toHaveAttribute('target', '_blank');
+    expect(mismatchImageAnchor).toHaveAttribute('rel', 'noopener noreferrer');
+
+    const cleanUrlChip = within(dataRows[1]).getByText('View URL');
+    expect(cleanUrlChip).not.toHaveAttribute('href');
+    expect(cleanUrlChip).toHaveAttribute('aria-disabled', 'true');
+    expect(cleanUrlChip.className).toContain('pid-chip-button--disabled');
+
+    const cleanImageChip = within(dataRows[1]).getByText('View Image');
+    expect(cleanImageChip).not.toHaveAttribute('href');
+    expect(cleanImageChip).toHaveAttribute('aria-disabled', 'true');
+    expect(cleanImageChip.className).toContain('pid-chip-button--disabled');
 
     fireEvent.click(screen.getByLabelText('Only mismatches'));
-    expect(screen.getByRole('table', { name: 'Debug report candidates' })).toHaveTextContent('Mismatch candidate');
-    expect(screen.getByRole('table', { name: 'Debug report candidates' })).not.toHaveTextContent('Clean candidate');
+    const filteredTable = screen.getByRole('table', { name: 'Debug report candidates' });
+    expect(filteredTable).toHaveTextContent('Mismatch candidate');
+    expect(filteredTable).not.toHaveTextContent('Clean candidate');
     expect(summary).toHaveTextContent('Candidates2');
     expect(summary).toHaveTextContent('Verified1');
 
