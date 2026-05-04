@@ -675,7 +675,7 @@ describe('admin product image discovery shell', () => {
           secret_probe: 'app-secret',
         },
         env_status: [
-          { key: 'BRAVE_SEARCH_API_KEY', scope: 'search', configured: false },
+          { key: 'BRAVE_SEARCH_PROVIDER', scope: 'search', configured: false },
           { key: 'ANTHROPIC_API_KEY', scope: 'ai', configured: true },
         ],
         ai: {

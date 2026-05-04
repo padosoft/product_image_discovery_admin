@@ -2,6 +2,7 @@
 
 declare(strict_types=1);
 
+use App\Http\Controllers\Auth\LoginController;
 use App\Http\Controllers\ProductImageDiscovery\AdminCandidateImageController;
 use App\Http\Controllers\ProductImageDiscovery\AdminDashboardSummaryController;
 use App\Http\Controllers\ProductImageDiscovery\AdminDebugRunController;
@@ -26,6 +27,10 @@ $adminPrefix = trim((string) config('pid-admin.route_prefix', 'admin/product-ima
 Route::get('/', static function (): RedirectResponse {
     return redirect('/'.trim((string) config('pid-admin.route_prefix', 'admin/product-image-discovery'), '/'));
 });
+
+Route::get('login', [LoginController::class, 'showLogin'])->name('login');
+Route::post('login', [LoginController::class, 'login'])->middleware('throttle:5,1');
+Route::post('logout', [LoginController::class, 'logout'])->name('logout');
 
 Route::prefix($adminPrefix)
     ->middleware(config('pid-admin.route_middleware', ['web']))

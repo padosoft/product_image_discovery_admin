@@ -131,7 +131,7 @@ final class AdminWrapperEndpointsTest extends TestCase
             ->assertJsonPath('data.queue.connection', 'sync')
             ->assertJsonPath('data.providers.0.code', 'fake-health')
             ->assertJsonPath('data.providers.0.has_api_key', true)
-            ->assertJsonPath('data.env_status.0.key', 'BRAVE_SEARCH_API_KEY')
+            ->assertJsonPath('data.env_status.0.key', 'BRAVE_SEARCH_PROVIDER')
             ->assertJsonPath('data.env_status.0.configured', true)
             ->assertJsonPath('data.env_status.1.key', 'ANTHROPIC_API_KEY')
             ->assertJsonPath('data.env_status.1.configured', true);

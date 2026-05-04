@@ -633,6 +633,9 @@ function Topbar({ page, theme, onTheme, loading, requests }) {
   const title = page.label;
   const toggleTarget = theme === 'dark' ? 'light' : 'dark';
   const requestSummary = summarizeRequests(requests);
+  const csrfToken = typeof document !== 'undefined'
+    ? (document.querySelector('meta[name="csrf-token"]')?.content ?? '')
+    : '';
 
   return (
     <header className="pid-topbar" data-testid="pid-shell-header">
@@ -657,6 +660,12 @@ function Topbar({ page, theme, onTheme, loading, requests }) {
         >
           <ShellIcon name={theme === 'dark' ? 'sun' : 'moon'} />
         </button>
+        <form method="POST" action="/logout" className="pid-topbar__logout" data-testid="pid-shell-logout">
+          <input type="hidden" name="_token" value={csrfToken} />
+          <button type="submit" title="Sign out of the admin console">
+            Logout
+          </button>
+        </form>
       </div>
     </header>
   );
@@ -2793,6 +2802,16 @@ function debugReportCandidateRows(report, filters = {}) {
       _verified: debugCandidateIsVerified(candidate),
       _has_quality: debugCandidateHasQuality(candidate, report),
     }))
+    .sort((a, b) => {
+      const scoreA = Number.isFinite(a?.scores?.final_score) ? a.scores.final_score : -Infinity;
+      const scoreB = Number.isFinite(b?.scores?.final_score) ? b.scores.final_score : -Infinity;
+
+      if (scoreB !== scoreA) {
+        return scoreB - scoreA;
+      }
+
+      return String(a._row_id).localeCompare(String(b._row_id));
+    })
     .filter((candidate) => !filters.mismatches || candidate._has_mismatch)
     .filter((candidate) => !filters.aiFailures || candidate._ai_failure)
     .filter((candidate) => !filters.downloaded || candidate._downloaded)
@@ -2953,6 +2972,50 @@ function DebugReportsPage({ onNotify }) {
     { key: 'score', label: 'Score', render: (candidate) => candidate.scores?.final_score ?? '-', width: '90px' },
     { key: 'mismatches', label: 'Mismatches', render: (candidate) => candidate.evidence?.mismatches?.length ?? 0, width: '110px' },
     { key: 'downloaded', label: 'Downloaded', render: (candidate) => (candidate._downloaded ? 'yes' : 'no'), width: '110px' },
+    {
+      key: 'view_url',
+      label: 'View URL',
+      className: 'pid-table__actions',
+      render: (candidate) => {
+        const sourceUrl = safeExternalHttpUrl(candidate.source_page_url);
+
+        return (
+          <a
+            className={`pid-chip-button${sourceUrl ? '' : ' pid-chip-button--disabled'}`}
+            href={sourceUrl || undefined}
+            target={sourceUrl ? '_blank' : undefined}
+            rel={sourceUrl ? 'noopener noreferrer' : undefined}
+            aria-disabled={sourceUrl ? undefined : 'true'}
+            title={sourceUrl ? 'Open candidate source page in a new tab' : 'No source page URL available'}
+          >
+            View URL
+          </a>
+        );
+      },
+      width: '110px',
+    },
+    {
+      key: 'view_image',
+      label: 'View Image',
+      className: 'pid-table__actions',
+      render: (candidate) => {
+        const imageUrl = safeExternalHttpUrl(candidate.image_url);
+
+        return (
+          <a
+            className={`pid-chip-button${imageUrl ? '' : ' pid-chip-button--disabled'}`}
+            href={imageUrl || undefined}
+            target={imageUrl ? '_blank' : undefined}
+            rel={imageUrl ? 'noopener noreferrer' : undefined}
+            aria-disabled={imageUrl ? undefined : 'true'}
+            title={imageUrl ? 'Open candidate image in a new tab' : 'No image URL available'}
+          >
+            View Image
+          </a>
+        );
+      },
+      width: '120px',
+    },
   ];
 
   const searchColumns = [

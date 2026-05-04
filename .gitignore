@@ -26,3 +26,4 @@
 /bootstrap/cache/*
 !/bootstrap/cache/.gitkeep
 /.codex/
+.idea/

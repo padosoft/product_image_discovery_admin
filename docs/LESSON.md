@@ -1,5 +1,13 @@
 # Lessons
 
+## 2026-05-04
+
+- The admin shell ships with `pid-admin.debug_run_middleware=auth` by default, but the repo had no login route, no user seeder, and no `route('login')`. A Laravel app behind `auth` will redirect guests to the named `login` route; if you ship the auth middleware default, you must also ship a route named `login`, or guest hits surface as 401/exception instead of a usable redirect.
+- Login does not need to live inside the React SPA. Keeping `/login` as a Blade page server-rendered by Laravel reuses the framework session/CSRF flow end-to-end (form post, `Auth::attempt`, `session()->regenerate()`), avoids a JSON login endpoint, and lets the auth middleware redirect work out-of-the-box. The login view can `@vite` the same admin CSS bundle to inherit `--pid-*` tokens without pulling React.
+- The Logout control belongs in the React topbar because the user is already inside the SPA. A plain `<form method="POST" action="/logout">` with a `_token` hidden input read from the existing `<meta name="csrf-token">` is enough; it avoids inventing a logout fetch helper.
+- `phpunit.xml` already sets `PID_ADMIN_DEBUG_RUN_MIDDLEWARE=""` so feature tests never traverse the `auth` middleware. Adding login/logout routes does not regress the existing suite, but any future test that wants to exercise the auth path must `actingAs($user)` explicitly.
+- Search provider credentials and AI provider credentials use intentionally different storage backends in this stack: AI keys (Anthropic/OpenAI/OpenRouter) come from env via `config('product-image-discovery.ai.providers.*.api_key')` because they are global infra settings, while Brave (and any other search provider) credentials live in the `product_image_search_providers` table because they are scoped per-client/priority and rotatable from the admin UI. Keeping a `BRAVE_SEARCH_API_KEY=` stub in `.env.example` suggests an env channel that does not exist in the package and confuses operators on first install. Health/diagnostics labels for search providers should also avoid env-style names like `*_API_KEY` and use `*_PROVIDER` instead so the data source is unambiguous.
+
 ## 2026-05-02
 
 - CI for this admin repo must checkout `padosoft/product_image_discovery` as a sibling directory named `product_image_discovery`; otherwise the Composer path repository `../product_image_discovery` cannot resolve in GitHub Actions.

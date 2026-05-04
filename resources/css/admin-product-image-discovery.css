@@ -315,6 +315,31 @@ textarea {
   outline: none;
 }
 
+.pid-topbar__logout {
+  margin: 0;
+  display: inline-flex;
+}
+
+.pid-topbar__logout button {
+  display: inline-flex;
+  min-height: 32px;
+  align-items: center;
+  padding: 5px 12px;
+  border: 1px solid var(--pid-border);
+  border-radius: 6px;
+  background: var(--pid-surface-2);
+  color: var(--pid-text);
+  font: inherit;
+  font-size: 12px;
+  cursor: pointer;
+}
+
+.pid-topbar__logout button:hover,
+.pid-topbar__logout button:focus-visible {
+  border-color: var(--pid-accent);
+  outline: none;
+}
+
 .pid-content {
   min-width: 0;
   padding: 18px;
@@ -400,6 +425,16 @@ textarea {
 .pid-chip-button:focus-visible {
   border-color: var(--pid-accent);
   outline: none;
+}
+
+.pid-chip-button--disabled,
+.pid-chip-button--disabled:hover,
+.pid-chip-button--disabled:focus-visible {
+  border-color: var(--pid-border);
+  background: var(--pid-surface);
+  color: var(--pid-muted);
+  cursor: not-allowed;
+  pointer-events: none;
 }
 
 .pid-panel__header {

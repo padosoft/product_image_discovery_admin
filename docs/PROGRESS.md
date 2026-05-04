@@ -1,5 +1,21 @@
 # Progress
 
+## 2026-05-04
+
+- Started `task/admin-auth-login` from `main`. Goal: unblock `pid-admin.debug_run_middleware=auth` endpoints (`/admin/product-image-discovery/debug-runs`, `POST /admin/product-image-discovery/requests`) that returned 401 because the app shipped no login flow, no user seeder, and no `route('login')`.
+- Added `App\Http\Controllers\Auth\LoginController` (showLogin/login/logout) and a Blade view `resources/views/auth/login.blade.php` reusing the admin CSS tokens for visual coherence.
+- Registered `GET /login` (named `login` so Laravel's `auth` middleware redirects guests correctly), `POST /login` with `throttle:5,1`, and `POST /logout`.
+- Added an artisan command `pid-admin:create-user {email} {--name=Admin} {--password=}` that `updateOrCreate`s a `users` row, hashes via `Hash::make`, and prints a generated password once when `--password` is omitted.
+- Seeded a demo operator (`admin@demo.test` / `password`) inside `ProductImageDiscoveryDemoSeeder::seedSupportRecords()` so `pid-admin:seed-demo` makes the auth flow usable offline without manual setup.
+- Added a CSRF-protected Logout `<form>` to the React shell `Topbar` and minimal scoped `.pid-topbar__logout` styles in `admin-product-image-discovery.css`; existing topbar status pills and theme toggle untouched.
+- Updated `README.md` with a new Login section listing endpoints, demo credentials, and the artisan helper.
+- Removed the unused `BRAVE_SEARCH_API_KEY` from `.env.example` (and the local `.env`). The package config never reads it: search provider credentials live in the `product_image_search_providers` DB table, write-only via the admin UI, while AI provider keys remain env-driven through `config/product-image-discovery.php`. Keeping the env stub made the asymmetry confusing during onboarding.
+- Renamed the health-screen slot label from `BRAVE_SEARCH_API_KEY` to `BRAVE_SEARCH_PROVIDER` in `AdminHealthController::environmentStatus()` and updated the matching expectations in `tests/JavaScript/app-shell.test.jsx` and `tests/Feature/AdminWrapperEndpointsTest.php`. Same UPPER_SNAKE shape as the AI slots, but the suffix `_PROVIDER` makes it explicit that the configuration source is a DB record, not an env var.
+- Debug Reports candidate table now sorts by `final_score` desc with a deterministic secondary sort key on `_row_id`, so the "best" candidate sits at the top instead of relying on the (unspecified) order returned by the package. Aligned with the existing LESSON entry on candidate pagination.
+- Added a `Quickstart` section to `README.md` covering the full path from a fresh clone to a working Brave-backed debug run on macOS/Linux: install, env, migrate/seed, build/serve, sign in (`admin@demo.test` / `password`), configure Brave through the admin UI (with the explicit note that `BRAVE_SEARCH_API_KEY` is **not** read from env and that the seeded `fake-demo` provider must be disabled or de-prioritized), trigger a debug run, and inspect the report. Closes the documentation gap that made first-run setup hard to reproduce. Existing `Local Setup` (PowerShell) and `Login` sections kept as references.
+- Added two dedicated columns to the Debug Reports candidate table — `View URL` (opens `source_page_url`) and `View Image` (opens `image_url`) — so operators running with `no_download: true` can still inspect both the source page and the remote image without leaving the report. Each cell renders a single anchor styled as `pid-chip-button`, gated through `safeExternalHttpUrl()` so only `http:`/`https:` targets become clickable; missing/invalid URLs render as a disabled chip via the new `pid-chip-button--disabled` class. Anchors use `rel="noopener noreferrer"` and `target="_blank"`.
+- Verification still pending: run `composer validate --strict`, `vendor/bin/phpunit`, `npm run build`, `npm run test` before opening the PR; existing tests already keep `PID_ADMIN_DEBUG_RUN_MIDDLEWARE` empty in `phpunit.xml`, so no regressions expected from the route change.
+
 ## 2026-05-02
 
 - Started Macro Task 6 on `task/dashboard-polish-ci` from `main` after PR #9 was merged and no PRs remained open.

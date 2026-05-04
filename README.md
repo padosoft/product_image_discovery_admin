@@ -18,7 +18,9 @@ Professional Laravel admin console for [`padosoft/product-image-discovery`](http
 - [What You Get](#what-you-get)
 - [Screenshots](#screenshots)
 - [Architecture](#architecture)
+- [Quickstart](#quickstart)
 - [Local Setup](#local-setup)
+- [Login](#login)
 - [Demo Data](#demo-data)
 - [Testing](#testing)
 - [CI](#ci)
@@ -101,6 +103,130 @@ The stack is intentionally boring and inspectable:
 - Package API left available under its own prefix.
 - Playwright browser smoke coverage for desktop and tablet layouts.
 
+## Quickstart
+
+End-to-end walkthrough from a fresh clone to a working Brave-backed debug run on macOS/Linux. Windows/Herd users have an equivalent block below in [Local Setup](#local-setup).
+
+Prerequisites: PHP 8.3+, Composer, Node 20+ (npm 10+), and a checkout of the sibling package next to this repo:
+
+```text
+parent/
+├─ product_image_discovery/         # headless package
+└─ product_image_discovery_admin/   # this repo
+```
+
+### 1. Install dependencies
+
+```bash
+composer install
+npm ci
+```
+
+### 2. Configure the environment
+
+```bash
+cp .env.example .env
+php artisan key:generate
+touch database/database.sqlite
+```
+
+Open `.env` and confirm at minimum:
+
+```dotenv
+APP_URL=http://127.0.0.1:8000
+DB_CONNECTION=sqlite
+DB_DATABASE=/absolute/path/to/database/database.sqlite   # or leave default
+SESSION_DRIVER=file
+PID_ADMIN_ROUTE_MIDDLEWARE=web
+PID_ADMIN_DEBUG_RUN_MIDDLEWARE=auth
+```
+
+`BRAVE_SEARCH_API_KEY` is intentionally **not** read from `.env`. Search-provider credentials live in the database (write-only via the admin UI). See step 6.
+
+### 3. Migrate and seed demo data
+
+```bash
+php artisan migrate
+php artisan pid-admin:seed-demo
+```
+
+This creates:
+
+- the deterministic Herno / Nike / New Balance demo requests,
+- a demo `fake-demo` search provider (seeded `is_active=true`, `priority=1`),
+- a demo admin user — **email `admin@demo.test`, password `password`**.
+
+> The artisan command is namespaced. Use `pid-admin:seed-demo`, not `seed-demo`.
+
+If you want a real user instead of the demo one:
+
+```bash
+php artisan pid-admin:create-user you@example.com --name="You" --password=secret
+# omit --password to receive a generated one (printed once)
+```
+
+### 4. Build the frontend and start the server
+
+```bash
+npm run build
+php artisan serve
+```
+
+Leave `php artisan serve` running. For frontend hot reload during development run `npm run dev` in a second terminal instead of `npm run build`.
+
+### 5. Sign in
+
+Open `http://127.0.0.1:8000/login`, log in with `admin@demo.test` / `password`, and you'll land on `http://127.0.0.1:8000/admin/product-image-discovery`.
+
+The admin shell (Blade + React) uses the configured `web` middleware, but `/debug-runs` and `POST /requests` sit behind `auth` by default, which is why the login step is required before they respond. The Logout button lives in the topbar.
+
+### 6. Configure a real search provider (Brave)
+
+The demo `fake-demo` provider is intentionally first in priority so out-of-the-box runs work offline. To exercise a real Brave search you need to either disable the fake provider or give Brave a higher priority (lower number).
+
+1. Sign in, then open `http://127.0.0.1:8000/admin/product-image-discovery/providers`.
+2. Edit `fake-demo` and set `is_active = false`, **or** keep it active and bump its `priority` to a high number (e.g. `100`).
+3. Create or update a Brave provider:
+   - `code`: `brave`
+   - `driver`: `brave`
+   - `name`: `Brave`
+   - `base_url`: `https://api.search.brave.com`
+   - `api_key`: your Brave API key (write-only — saved encrypted, never echoed back)
+   - `is_active`: `true`
+   - `priority`: `1` (or any value lower than the rest)
+
+> Provider selection: `SearchProviderManager` orders active providers by `priority` ASC and uses the first that returns non-empty results. The rest are treated as fallbacks.
+
+### 7. Run a debug flow against Brave
+
+1. Open `http://127.0.0.1:8000/admin/product-image-discovery/debug`.
+2. Leave the default Herno payload (or paste your own product JSON).
+3. Recommended options for a first real test:
+   - `no_env_brave: true` (default) — keep it; we are using the DB provider, not auto-creating one from env.
+   - `no_download: true` (default) — skip downloading the candidate images. You will still see them via the **View Image** column in the report.
+   - `max_candidates: 2` (default) or higher.
+4. Click **Run debug**. The right panel polls until status becomes `succeeded` or `failed`.
+
+### 8. Inspect the report
+
+Open `http://127.0.0.1:8000/admin/product-image-discovery/reports`, click **Open** on the latest run.
+
+In the **Candidates** tab the table is sorted by `final_score` desc — the top row is the best match. Each row exposes:
+
+- `View URL` — opens `source_page_url` in a new tab (the page Brave found)
+- `View Image` — opens `image_url` in a new tab (works even with `no_download: true`)
+
+Empty/invalid URLs render as a disabled chip.
+
+### Common pitfalls
+
+- **`401 Unauthorized` on `/debug-runs`** — you are not signed in. Visit `/login` (step 5).
+- **`Command "seed-demo" is not defined`** — use the prefix: `php artisan pid-admin:seed-demo`.
+- **`BRAVE_SEARCH_API_KEY missing` on the Health screen** — the slot label is now `BRAVE_SEARCH_PROVIDER`. It checks the DB, not env. Configure a Brave provider (step 6).
+- **Brave never gets called** — the `fake-demo` provider has `priority: 1` and short-circuits the chain. Disable it or raise its priority (step 6).
+- **All candidates land in `manual_review` even with high score** — that's expected without trusted sources. Add the candidate's host on `/admin/product-image-discovery/trusted` if you want `verified_match`/`ready_to_publish`.
+- **You changed React/CSS and don't see the change** — `npm run build` writes to `public/build/`; the browser may cache the old bundle. Hard refresh (`Cmd+Shift+R` on macOS, `Ctrl+F5` on Linux). For iterative work prefer `npm run dev`.
+
 ## Local Setup
 
 Keep the headless package checked out beside this app:
@@ -135,6 +261,35 @@ If `php` is not on PATH, this Windows/Herd workstation uses:
 ```text
 %USERPROFILE%\.config\herd\bin\php84\php.exe
 ```
+
+## Login
+
+Debug-run endpoints (`POST /admin/product-image-discovery/debug-runs`, `POST /admin/product-image-discovery/requests`) sit behind the `auth` middleware controlled by `pid-admin.debug_run_middleware`. The admin shell itself runs under `web` only, but operators must sign in before the debug and request-creation surfaces respond.
+
+The app ships with three minimal endpoints, registered outside the admin prefix:
+
+```text
+GET  /login
+POST /login
+POST /logout
+```
+
+The `pid-admin:seed-demo` command seeds a demo operator suitable for local/offline testing:
+
+- email: `admin@demo.test`
+- password: `password`
+
+Create or update a real user with the artisan helper:
+
+```bash
+php artisan pid-admin:create-user me@example.com --name="Op"
+# omit --password to receive a generated one (printed once)
+php artisan pid-admin:create-user me@example.com --password=secret
+```
+
+The admin topbar exposes a Logout button that submits a CSRF-protected `POST /logout`.
+
+To bypass auth in CI or short-lived local smoke tests, leave `PID_ADMIN_DEBUG_RUN_MIDDLEWARE` empty. The PHPUnit suite already does this in `phpunit.xml`.
 
 ## Demo Data
 
