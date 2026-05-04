@@ -154,7 +154,7 @@ This creates:
 
 - the deterministic Herno / Nike / New Balance demo requests,
 - a demo `fake-demo` search provider (seeded `is_active=true`, `priority=1`),
-- a demo admin user — **email `admin@demo.test`, password `password`**.
+- a demo admin user — **email `admin@demo.test`, password `password`**, **only when `APP_ENV` is `local` or `testing`**. In any other environment the seeder skips the user step so a known-credentials operator never lands in a non-dev DB. Use `pid-admin:create-user` for staging/production.
 
 > The artisan command is namespaced. Use `pid-admin:seed-demo`, not `seed-demo`.
 
@@ -274,10 +274,12 @@ POST /login
 POST /logout
 ```
 
-The `pid-admin:seed-demo` command seeds a demo operator suitable for local/offline testing:
+The `pid-admin:seed-demo` command seeds a demo operator suitable for local/offline testing **only when `APP_ENV` is `local` or `testing`**:
 
 - email: `admin@demo.test`
 - password: `password`
+
+Outside those environments the seeder skips the demo user, so a well-known credential never lands in a staging or production database. Use `pid-admin:create-user` instead.
 
 Create or update a real user with the artisan helper:
 

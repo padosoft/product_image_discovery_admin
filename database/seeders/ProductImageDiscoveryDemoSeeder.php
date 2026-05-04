@@ -95,6 +95,10 @@ final class ProductImageDiscoveryDemoSeeder extends Seeder
 
     private function seedDemoUser(): void
     {
+        if (! app()->environment(['local', 'testing'])) {
+            return;
+        }
+
         User::query()->updateOrCreate(
             ['email' => 'admin@demo.test'],
             [
