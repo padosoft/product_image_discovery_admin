@@ -67,6 +67,11 @@ const DEFAULT_DEBUG_REQUEST = {
   color_code: 'CAMMELLO',
   color_name: 'Cammello',
   category: 'Donna > Maglie e camicie',
+  description: '',
+  ean: '',
+  season: '',
+  material: '',
+  metadata: {},
 };
 
 const DEFAULT_DEBUG_OPTIONS = {
@@ -3576,10 +3581,15 @@ function DebugFlowPage({ onNotify }) {
             <span>Command-backed</span>
           </div>
           <form className="pid-config-form" onSubmit={submitDebugRun}>
-            <label className="pid-config-form__full">
-              <span>Request JSON</span>
-              <textarea value={requestJson} onChange={(event) => setRequestJson(event.target.value)} rows={14} disabled={actionLoading} />
-            </label>
+            <div className="pid-config-form__full">
+              <label>
+                <span>Request JSON</span>
+                <textarea value={requestJson} onChange={(event) => setRequestJson(event.target.value)} rows={14} disabled={actionLoading} />
+              </label>
+              <small className="pid-config-form__hint">
+                Required: <code>client_id</code>, <code>erp_model_color_id</code>, <code>brand</code>. The package also reads <code>supplier</code>, <code>supplier_sku</code>, <code>model_code</code>, <code>color_code</code>, <code>color_name</code>, <code>category</code>, <code>description</code>, <code>ean</code>, <code>season</code>, <code>material</code>, and any keys nested under <code>metadata</code>. Description (or <code>name</code>/<code>title</code>) is used as a fallback search term when <code>model_code</code> is missing.
+              </small>
+            </div>
             <label>
               <span>Max candidates</span>
               <input value={options.max_candidates} inputMode="numeric" onChange={(event) => updateOption('max_candidates', event.target.value)} disabled={actionLoading} />

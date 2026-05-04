@@ -848,6 +848,48 @@ describe('admin product image discovery shell', () => {
     expect(writeText).toHaveBeenCalledWith(expect.stringContaining('Cookie: <authenticated-session-cookie>'));
   });
 
+  it('debug page exposes optional package fields in the default payload and the hint', async () => {
+    window.history.replaceState({}, '', '/admin/product-image-discovery/debug');
+    window.localStorage.removeItem('pid-debug-flow-draft');
+
+    vi.stubGlobal('fetch', vi.fn((url) => {
+      const path = new URL(String(url)).pathname;
+
+      if (path.endsWith('/dashboard-summary')) {
+        return Promise.resolve(mockJsonResponse({
+          counts: { total: 0, manual_review: 0, ready_to_publish: 0, failed: 0, no_candidates_found: 0 },
+          provider_status: [],
+        }));
+      }
+
+      if (path.includes('/requests/search') || path.endsWith('/debug-runs')) {
+        return Promise.resolve(mockJsonResponse({ data: [] }));
+      }
+
+      return Promise.reject(new Error(`Unexpected request: ${path}`));
+    }));
+
+    render(<App />);
+
+    const textarea = await screen.findByLabelText('Request JSON');
+    const initialPayload = JSON.parse(textarea.value);
+
+    expect(initialPayload).toMatchObject({
+      description: '',
+      ean: '',
+      season: '',
+      material: '',
+      metadata: {},
+    });
+
+    const hint = screen.getByText(/The package also reads/i);
+    expect(hint).toHaveTextContent('description');
+    expect(hint).toHaveTextContent('ean');
+    expect(hint).toHaveTextContent('season');
+    expect(hint).toHaveTextContent('material');
+    expect(hint).toHaveTextContent('metadata');
+  });
+
   it('runs debug flow from JSON and redacts previewed secrets', async () => {
     window.history.replaceState({}, '', '/admin/product-image-discovery/debug');
     let createdPayload = null;

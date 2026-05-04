@@ -200,7 +200,13 @@ The demo `fake-demo` provider is intentionally first in priority so out-of-the-b
 ### 7. Run a debug flow against Brave
 
 1. Open `http://127.0.0.1:8000/admin/product-image-discovery/debug`.
-2. Leave the default Herno payload (or paste your own product JSON).
+2. Leave the default Herno payload (or paste your own product JSON). The fields the package actually reads are:
+
+   | Required | Optional |
+   | --- | --- |
+   | `client_id`, `erp_model_color_id`, `brand` | `supplier`, `supplier_sku`, `model_code`, `color_code`, `color_name`, `category`, `description`, `ean`, `season`, `material`, `metadata` (any keys) |
+
+   Anything outside this set is preserved on the request but not used by the search/scoring/AI pipeline. `description` (or its fallbacks `name` / `title` / `metadata.description` / `metadata.title`) is used as a search term when `model_code` is empty, so for products that don't have a clean SKU it's important to fill it in.
 3. Recommended options for a first real test:
    - `no_env_brave: true` (default) — keep it; we are using the DB provider, not auto-creating one from env.
    - `no_download: true` (default) — skip downloading the candidate images. You will still see them via the **View Image** column in the report.
