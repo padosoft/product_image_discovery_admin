@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Database\Seeders;
 
+use App\Models\User;
 use Illuminate\Database\Seeder;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
@@ -57,6 +58,8 @@ final class ProductImageDiscoveryDemoSeeder extends Seeder
 
     private function seedSupportRecords(): void
     {
+        $this->seedDemoUser();
+
         ProductImageSearchProvider::query()->updateOrCreate(
             ['code' => 'fake-demo'],
             [
@@ -87,6 +90,21 @@ final class ProductImageDiscoveryDemoSeeder extends Seeder
                 $source,
             );
         }
+    }
+
+    private function seedDemoUser(): void
+    {
+        if (! app()->environment(['local', 'testing'])) {
+            return;
+        }
+
+        User::query()->updateOrCreate(
+            ['email' => 'admin@demo.test'],
+            [
+                'name' => 'PID Admin Demo',
+                'password' => 'password',
+            ],
+        );
     }
 
     /**

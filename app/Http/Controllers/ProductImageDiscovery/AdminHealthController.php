@@ -62,7 +62,7 @@ final class AdminHealthController extends Controller
     private function environmentStatus(array $providers): array
     {
         return [
-            ['key' => 'BRAVE_SEARCH_API_KEY', 'configured' => $this->braveSearchKeyConfigured($providers), 'scope' => 'search'],
+            ['key' => 'BRAVE_SEARCH_PROVIDER', 'configured' => $this->braveSearchKeyConfigured($providers), 'scope' => 'search'],
             ['key' => 'ANTHROPIC_API_KEY', 'configured' => filled(config('product-image-discovery.ai.providers.anthropic.api_key')), 'scope' => 'ai'],
             ['key' => 'OPENAI_API_KEY', 'configured' => filled(config('product-image-discovery.ai.providers.openai.api_key')), 'scope' => 'ai'],
             ['key' => 'OPENROUTER_API_KEY', 'configured' => filled(config('product-image-discovery.ai.providers.openrouter.api_key')), 'scope' => 'ai'],

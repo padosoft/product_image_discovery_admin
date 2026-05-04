@@ -42,7 +42,11 @@ describe('admin product image discovery shell', () => {
     });
     document.documentElement.dataset.theme = 'light';
     document.head.innerHTML = '<meta name="csrf-token" content="test-token">';
-    window.PID_ADMIN = { apiBase: '/admin/product-image-discovery' };
+    window.PID_ADMIN = {
+      apiBase: '/admin/product-image-discovery',
+      logoutUrl: '/logout',
+      csrfToken: 'test-token',
+    };
     window.history.replaceState({}, '', '/admin/product-image-discovery/');
   });
 
@@ -675,7 +679,7 @@ describe('admin product image discovery shell', () => {
           secret_probe: 'app-secret',
         },
         env_status: [
-          { key: 'BRAVE_SEARCH_API_KEY', scope: 'search', configured: false },
+          { key: 'BRAVE_SEARCH_PROVIDER', scope: 'search', configured: false },
           { key: 'ANTHROPIC_API_KEY', scope: 'ai', configured: true },
         ],
         ai: {
@@ -846,6 +850,48 @@ describe('admin product image discovery shell', () => {
     fireEvent.click(within(screen.getByRole('table', { name: 'API workbench calls' })).getByRole('button', { name: 'cURL' }));
     await waitFor(() => expect(writeText).toHaveBeenCalledWith(expect.stringContaining('X-CSRF-TOKEN: <csrf-token>')));
     expect(writeText).toHaveBeenCalledWith(expect.stringContaining('Cookie: <authenticated-session-cookie>'));
+  });
+
+  it('debug page exposes optional package fields in the default payload and the hint', async () => {
+    window.history.replaceState({}, '', '/admin/product-image-discovery/debug');
+    window.localStorage.removeItem('pid-debug-flow-draft');
+
+    vi.stubGlobal('fetch', vi.fn((url) => {
+      const path = new URL(String(url)).pathname;
+
+      if (path.endsWith('/dashboard-summary')) {
+        return Promise.resolve(mockJsonResponse({
+          counts: { total: 0, manual_review: 0, ready_to_publish: 0, failed: 0, no_candidates_found: 0 },
+          provider_status: [],
+        }));
+      }
+
+      if (path.includes('/requests/search') || path.endsWith('/debug-runs')) {
+        return Promise.resolve(mockJsonResponse({ data: [] }));
+      }
+
+      return Promise.reject(new Error(`Unexpected request: ${path}`));
+    }));
+
+    render(<App />);
+
+    const textarea = await screen.findByLabelText('Request JSON');
+    const initialPayload = JSON.parse(textarea.value);
+
+    expect(initialPayload).toMatchObject({
+      description: '',
+      ean: '',
+      season: '',
+      material: '',
+      metadata: {},
+    });
+
+    const hint = screen.getByText(/The package also reads/i);
+    expect(hint).toHaveTextContent('description');
+    expect(hint).toHaveTextContent('ean');
+    expect(hint).toHaveTextContent('season');
+    expect(hint).toHaveTextContent('material');
+    expect(hint).toHaveTextContent('metadata');
   });
 
   it('runs debug flow from JSON and redacts previewed secrets', async () => {
@@ -1148,24 +1194,28 @@ describe('admin product image discovery shell', () => {
       },
       candidates: [
         {
+          id: 2,
+          status: 'rejected',
+          title: 'Clean candidate',
+          source_domain: 'example.test',
+          image_url: '',
+          source_page_url: 'javascript:alert(1)',
+          scores: { final_score: 20, quality_score: 0 },
+          evidence: { mismatches: [], matches: [] },
+          ai_verification: { match: true },
+        },
+        {
           id: 1,
           status: 'verified_match',
           title: 'Mismatch candidate',
           source_domain: 'example.test',
+          image_url: 'https://images.example.test/herno.jpg',
+          source_page_url: 'https://source.example.test/product/herno',
           local_original_path: 'product-image-discovery/1/original.jpg',
           scores: { final_score: 72, quality_score: 80 },
           evidence: { mismatches: ['color_mismatch'], matches: ['brand_match'] },
           ai_verification: { match: false, rejection_reason: 'wrong_color' },
           quality_analysis: { passed: true, quality_score: 80 },
-        },
-        {
-          id: 2,
-          status: 'rejected',
-          title: 'Clean candidate',
-          source_domain: 'example.test',
-          scores: { final_score: 20, quality_score: 0 },
-          evidence: { mismatches: [], matches: [] },
-          ai_verification: { match: true },
         },
       ],
       downloaded_candidate_ids: [1],
@@ -1199,6 +1249,15 @@ describe('admin product image discovery shell', () => {
             status: 'succeeded',
             report: reportPayload,
             report_available: true,
+            request_payload: {
+              client_id: 1,
+              brand: 'THE NORTH FACE',
+              description: 'THE NORTH FACE Summit Jacket',
+              ean: '198266164373',
+              model_code: 'NF0A8DDYG6L1',
+              erp_model_color_id: 'REPORT-COLOR',
+              metadata: { from: 'admin-debug-flow' },
+            },
           },
         }));
       }
@@ -1235,12 +1294,38 @@ describe('admin product image discovery shell', () => {
     expect(screen.getByRole('region', { name: 'Debug report inspector' })).not.toHaveTextContent('server-secret');
 
     fireEvent.click(screen.getByRole('button', { name: 'Candidates' }));
-    expect(screen.getByRole('table', { name: 'Debug report candidates' })).toHaveTextContent('Mismatch candidate');
-    expect(screen.getByRole('table', { name: 'Debug report candidates' })).toHaveTextContent('Clean candidate');
+    const candidatesTable = screen.getByRole('table', { name: 'Debug report candidates' });
+    expect(candidatesTable).toHaveTextContent('Mismatch candidate');
+    expect(candidatesTable).toHaveTextContent('Clean candidate');
+
+    const dataRows = within(candidatesTable).getAllByRole('row').slice(1);
+    expect(dataRows[0]).toHaveTextContent('Mismatch candidate');
+    expect(dataRows[1]).toHaveTextContent('Clean candidate');
+
+    const mismatchUrlAnchor = within(dataRows[0]).getByRole('link', { name: 'View URL' });
+    expect(mismatchUrlAnchor).toHaveAttribute('href', 'https://source.example.test/product/herno');
+    expect(mismatchUrlAnchor).toHaveAttribute('target', '_blank');
+    expect(mismatchUrlAnchor).toHaveAttribute('rel', 'noopener noreferrer');
+
+    const mismatchImageAnchor = within(dataRows[0]).getByRole('link', { name: 'View Image' });
+    expect(mismatchImageAnchor).toHaveAttribute('href', 'https://images.example.test/herno.jpg');
+    expect(mismatchImageAnchor).toHaveAttribute('target', '_blank');
+    expect(mismatchImageAnchor).toHaveAttribute('rel', 'noopener noreferrer');
+
+    const cleanUrlChip = within(dataRows[1]).getByText('View URL');
+    expect(cleanUrlChip).not.toHaveAttribute('href');
+    expect(cleanUrlChip).toHaveAttribute('aria-disabled', 'true');
+    expect(cleanUrlChip.className).toContain('pid-chip-button--disabled');
+
+    const cleanImageChip = within(dataRows[1]).getByText('View Image');
+    expect(cleanImageChip).not.toHaveAttribute('href');
+    expect(cleanImageChip).toHaveAttribute('aria-disabled', 'true');
+    expect(cleanImageChip.className).toContain('pid-chip-button--disabled');
 
     fireEvent.click(screen.getByLabelText('Only mismatches'));
-    expect(screen.getByRole('table', { name: 'Debug report candidates' })).toHaveTextContent('Mismatch candidate');
-    expect(screen.getByRole('table', { name: 'Debug report candidates' })).not.toHaveTextContent('Clean candidate');
+    const filteredTable = screen.getByRole('table', { name: 'Debug report candidates' });
+    expect(filteredTable).toHaveTextContent('Mismatch candidate');
+    expect(filteredTable).not.toHaveTextContent('Clean candidate');
     expect(summary).toHaveTextContent('Candidates2');
     expect(summary).toHaveTextContent('Verified1');
 
@@ -1249,6 +1334,16 @@ describe('admin product image discovery shell', () => {
     fireEvent.click(screen.getAllByRole('button', { name: 'Path' })[0]);
 
     await waitFor(() => expect(writeText).toHaveBeenCalledWith(expect.stringContaining('mismatches')));
+
+    fireEvent.change(screen.getByLabelText('Search JSON'), { target: { value: '' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Request' }));
+
+    const inspector = screen.getByRole('region', { name: 'Debug report inspector' });
+    expect(inspector).toHaveTextContent('package_request_summary');
+    expect(inspector).toHaveTextContent('original_request_payload');
+    expect(inspector).toHaveTextContent('THE NORTH FACE Summit Jacket');
+    expect(inspector).toHaveTextContent('198266164373');
+    expect(inspector).toHaveTextContent('admin-debug-flow');
   });
 
   it('keeps the request detail drawer open while loading selected request data', async () => {

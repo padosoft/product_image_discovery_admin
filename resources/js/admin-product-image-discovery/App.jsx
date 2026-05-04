@@ -67,6 +67,11 @@ const DEFAULT_DEBUG_REQUEST = {
   color_code: 'CAMMELLO',
   color_name: 'Cammello',
   category: 'Donna > Maglie e camicie',
+  description: '',
+  ean: '',
+  season: '',
+  material: '',
+  metadata: {},
 };
 
 const DEFAULT_DEBUG_OPTIONS = {
@@ -633,6 +638,15 @@ function Topbar({ page, theme, onTheme, loading, requests }) {
   const title = page.label;
   const toggleTarget = theme === 'dark' ? 'light' : 'dark';
   const requestSummary = summarizeRequests(requests);
+  const adminGlobals = (typeof window !== 'undefined' && window.PID_ADMIN) ? window.PID_ADMIN : {};
+  const logoutUrl = (typeof adminGlobals.logoutUrl === 'string' && adminGlobals.logoutUrl !== '')
+    ? adminGlobals.logoutUrl
+    : '/logout';
+  const csrfToken = (typeof adminGlobals.csrfToken === 'string' && adminGlobals.csrfToken !== '')
+    ? adminGlobals.csrfToken
+    : (typeof document !== 'undefined'
+      ? (document.querySelector('meta[name="csrf-token"]')?.content ?? '')
+      : '');
 
   return (
     <header className="pid-topbar" data-testid="pid-shell-header">
@@ -657,6 +671,12 @@ function Topbar({ page, theme, onTheme, loading, requests }) {
         >
           <ShellIcon name={theme === 'dark' ? 'sun' : 'moon'} />
         </button>
+        <form method="POST" action={logoutUrl} className="pid-topbar__logout" data-testid="pid-shell-logout">
+          <input type="hidden" name="_token" value={csrfToken} />
+          <button type="submit" title="Sign out of the admin console">
+            Logout
+          </button>
+        </form>
       </div>
     </header>
   );
@@ -2793,13 +2813,31 @@ function debugReportCandidateRows(report, filters = {}) {
       _verified: debugCandidateIsVerified(candidate),
       _has_quality: debugCandidateHasQuality(candidate, report),
     }))
+    .sort((a, b) => {
+      const scoreA = Number.isFinite(a?.scores?.final_score) ? a.scores.final_score : -Infinity;
+      const scoreB = Number.isFinite(b?.scores?.final_score) ? b.scores.final_score : -Infinity;
+
+      if (scoreB !== scoreA) {
+        return scoreB - scoreA;
+      }
+
+      const rowA = a._row_id;
+      const rowB = b._row_id;
+
+      if (typeof rowA === 'number' && typeof rowB === 'number'
+        && Number.isFinite(rowA) && Number.isFinite(rowB)) {
+        return rowA - rowB;
+      }
+
+      return String(rowA).localeCompare(String(rowB));
+    })
     .filter((candidate) => !filters.mismatches || candidate._has_mismatch)
     .filter((candidate) => !filters.aiFailures || candidate._ai_failure)
     .filter((candidate) => !filters.downloaded || candidate._downloaded)
     .filter((candidate) => !filters.verified || candidate._verified);
 }
 
-function reportSectionValue(report, activeTab, candidateRows) {
+function reportSectionValue(report, activeTab, candidateRows, originalRequestPayload = null) {
   if (!report) {
     return null;
   }
@@ -2809,7 +2847,10 @@ function reportSectionValue(report, activeTab, candidateRows) {
   }
 
   if (activeTab === 'request') {
-    return report.request ?? null;
+    return {
+      package_request_summary: report.request ?? null,
+      original_request_payload: originalRequestPayload ?? null,
+    };
   }
 
   if (activeTab === 'search') {
@@ -2862,6 +2903,7 @@ function DebugReportsPage({ onNotify }) {
   const [pasteValue, setPasteValue] = useState('');
   const [report, setReport] = useState(null);
   const [reportSource, setReportSource] = useState('');
+  const [originalRequestPayload, setOriginalRequestPayload] = useState(null);
   const [activeTab, setActiveTab] = useState('summary');
   const [searchQuery, setSearchQuery] = useState('');
   const [filters, setFilters] = useState({
@@ -2913,7 +2955,7 @@ function DebugReportsPage({ onNotify }) {
   const availableRuns = useMemo(() => runs.filter((run) => run.report_available), [runs]);
   const allCandidateRows = useMemo(() => debugReportCandidateRows(report), [report]);
   const candidateRows = useMemo(() => debugReportCandidateRows(report, filters), [report, filters]);
-  const activeValue = useMemo(() => reportSectionValue(report, activeTab, candidateRows), [report, activeTab, candidateRows]);
+  const activeValue = useMemo(() => reportSectionValue(report, activeTab, candidateRows, originalRequestPayload), [report, activeTab, candidateRows, originalRequestPayload]);
   const searchRows = useMemo(
     () => flattenReportValue(activeValue, '$', { query: searchQuery, maxRows: 80, maxDepth: 10, maxNodes: 500 }),
     [activeValue, searchQuery],
@@ -2953,6 +2995,52 @@ function DebugReportsPage({ onNotify }) {
     { key: 'score', label: 'Score', render: (candidate) => candidate.scores?.final_score ?? '-', width: '90px' },
     { key: 'mismatches', label: 'Mismatches', render: (candidate) => candidate.evidence?.mismatches?.length ?? 0, width: '110px' },
     { key: 'downloaded', label: 'Downloaded', render: (candidate) => (candidate._downloaded ? 'yes' : 'no'), width: '110px' },
+    {
+      key: 'view_url',
+      label: 'View URL',
+      className: 'pid-table__actions',
+      render: (candidate) => {
+        const sourceUrl = safeExternalHttpUrl(candidate.source_page_url);
+
+        return (
+          <a
+            className={`pid-chip-button${sourceUrl ? '' : ' pid-chip-button--disabled'}`}
+            href={sourceUrl || undefined}
+            target={sourceUrl ? '_blank' : undefined}
+            rel={sourceUrl ? 'noopener noreferrer' : undefined}
+            aria-disabled={sourceUrl ? undefined : 'true'}
+            tabIndex={sourceUrl ? undefined : -1}
+            title={sourceUrl ? 'Open candidate source page in a new tab' : 'No source page URL available'}
+          >
+            View URL
+          </a>
+        );
+      },
+      width: '110px',
+    },
+    {
+      key: 'view_image',
+      label: 'View Image',
+      className: 'pid-table__actions',
+      render: (candidate) => {
+        const imageUrl = safeExternalHttpUrl(candidate.image_url);
+
+        return (
+          <a
+            className={`pid-chip-button${imageUrl ? '' : ' pid-chip-button--disabled'}`}
+            href={imageUrl || undefined}
+            target={imageUrl ? '_blank' : undefined}
+            rel={imageUrl ? 'noopener noreferrer' : undefined}
+            aria-disabled={imageUrl ? undefined : 'true'}
+            tabIndex={imageUrl ? undefined : -1}
+            title={imageUrl ? 'Open candidate image in a new tab' : 'No image URL available'}
+          >
+            View Image
+          </a>
+        );
+      },
+      width: '120px',
+    },
   ];
 
   const searchColumns = [
@@ -2972,9 +3060,14 @@ function DebugReportsPage({ onNotify }) {
     },
   ];
 
-  function setLoadedReport(nextReport, source) {
+  function setLoadedReport(nextReport, source, originalPayload = null) {
     setReport(redactDebugPreview(nextReport));
     setReportSource(source);
+    setOriginalRequestPayload(
+      originalPayload && typeof originalPayload === 'object' && Object.keys(originalPayload).length > 0
+        ? redactDebugPreview(originalPayload)
+        : null,
+    );
     setActiveTab('summary');
     setSearchQuery('');
     setError('');
@@ -3002,7 +3095,7 @@ function DebugReportsPage({ onNotify }) {
 
       if (mountedRef.current && !controller.signal.aborted && reportLoadControllerRef.current === controller) {
         setSelectedRunId(String(runId));
-        setLoadedReport(nextReport, `Debug run #${runId}`);
+        setLoadedReport(nextReport, `Debug run #${runId}`, result?.request_payload ?? null);
       }
     } catch (err) {
       if (mountedRef.current && err.name !== 'AbortError' && reportLoadControllerRef.current === controller) {
@@ -3513,10 +3606,15 @@ function DebugFlowPage({ onNotify }) {
             <span>Command-backed</span>
           </div>
           <form className="pid-config-form" onSubmit={submitDebugRun}>
-            <label className="pid-config-form__full">
-              <span>Request JSON</span>
-              <textarea value={requestJson} onChange={(event) => setRequestJson(event.target.value)} rows={14} disabled={actionLoading} />
-            </label>
+            <div className="pid-config-form__full">
+              <label>
+                <span>Request JSON</span>
+                <textarea value={requestJson} onChange={(event) => setRequestJson(event.target.value)} rows={14} disabled={actionLoading} />
+              </label>
+              <small className="pid-config-form__hint">
+                Required: <code>client_id</code>, <code>erp_model_color_id</code>, <code>brand</code>. The package also reads <code>supplier</code>, <code>supplier_sku</code>, <code>model_code</code>, <code>color_code</code>, <code>color_name</code>, <code>category</code>, <code>description</code>, <code>ean</code>, <code>season</code>, <code>material</code>, and any keys nested under <code>metadata</code>. Description (or <code>name</code>/<code>title</code>) is used as a fallback search term when <code>model_code</code> is missing.
+              </small>
+            </div>
             <label>
               <span>Max candidates</span>
               <input value={options.max_candidates} inputMode="numeric" onChange={(event) => updateOption('max_candidates', event.target.value)} disabled={actionLoading} />

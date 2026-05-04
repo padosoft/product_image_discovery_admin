@@ -9,7 +9,9 @@
         window.PID_ADMIN = {
             apiBase: @json($apiBase),
             packageApiBase: @json($packageApiBase),
-            appName: @json($appName)
+            appName: @json($appName),
+            logoutUrl: @json($logoutUrl),
+            csrfToken: @json($csrfToken)
         };
     </script>
     @if (! app()->environment('testing') || file_exists(public_path('build/manifest.json')))
