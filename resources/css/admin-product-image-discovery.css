@@ -434,7 +434,6 @@ textarea {
   background: var(--pid-surface);
   color: var(--pid-muted);
   cursor: not-allowed;
-  pointer-events: none;
 }
 
 .pid-panel__header {

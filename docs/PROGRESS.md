@@ -5,7 +5,7 @@
 - Started `task/admin-auth-login` from `main`. Goal: unblock `pid-admin.debug_run_middleware=auth` endpoints (`/admin/product-image-discovery/debug-runs`, `POST /admin/product-image-discovery/requests`) that returned 401 because the app shipped no login flow, no user seeder, and no `route('login')`.
 - Added `App\Http\Controllers\Auth\LoginController` (showLogin/login/logout) and a Blade view `resources/views/auth/login.blade.php` reusing the admin CSS tokens for visual coherence.
 - Registered `GET /login` (named `login` so Laravel's `auth` middleware redirects guests correctly), `POST /login` with `throttle:5,1`, and `POST /logout`.
-- Added an artisan command `pid-admin:create-user {email} {--name=Admin} {--password=}` that `updateOrCreate`s a `users` row, hashes via `Hash::make`, and prints a generated password once when `--password` is omitted.
+- Added an artisan command `pid-admin:create-user {email} {--name=Admin} {--password=}` that `firstOrNew`s a `users` row, lets the `password` => `hashed` cast on `App\Models\User` handle hashing, validates the email argument with `filter_var`, and prints a generated password once when the user is new and `--password` is omitted (so re-running for an existing user without `--password` leaves the existing hash untouched).
 - Seeded a demo operator (`admin@demo.test` / `password`) inside `ProductImageDiscoveryDemoSeeder::seedSupportRecords()` so `pid-admin:seed-demo` makes the auth flow usable offline without manual setup.
 - Added a CSRF-protected Logout `<form>` to the React shell `Topbar` and minimal scoped `.pid-topbar__logout` styles in `admin-product-image-discovery.css`; existing topbar status pills and theme toggle untouched.
 - Updated `README.md` with a new Login section listing endpoints, demo credentials, and the artisan helper.
@@ -40,6 +40,11 @@
   - README Quickstart step 8 documents the two sections.
 - Copilot Code Review third pass returned one inline comment on the candidate-rows tie-breaker. Addressed in a follow-up commit on the same branch:
   - `resources/js/admin-product-image-discovery/App.jsx` — `debugReportCandidateRows()` no longer collapses every `_row_id` to `String(...).localeCompare(...)`. Numeric ids (DB primary keys, set when `candidate.id` is a number) are now compared numerically (`a - b`), so equal-score candidates sort intuitively (`2` before `10`) instead of lexicographically (`10` before `2`). The string fallback only kicks in for non-numeric ids — the `candidate-<index>` strings produced when `candidate.id` is missing — keeping the secondary sort deterministic in both branches.
+- Copilot Code Review fourth pass returned three inline comments. All addressed in a follow-up commit on the same branch:
+  - `tests/Feature/AuthTest.php` — dropped the unused `Illuminate\Support\Facades\Auth` import.
+  - `resources/css/admin-product-image-discovery.css` — removed `pointer-events: none` from `.pid-chip-button--disabled`. The disabled state is already enforced by omitting `href` (and now also by setting `tabIndex=-1` on the anchor when there is no URL), so dropping `pointer-events: none` lets the `title` tooltip surface on hover and keeps text selection / context menu working without making the chip clickable.
+  - `resources/js/admin-product-image-discovery/App.jsx` — added `tabIndex={-1}` to the disabled `View URL` / `View Image` chips so they stay out of the keyboard tab order alongside the existing `aria-disabled="true"` attribute.
+  - `docs/PROGRESS.md` — corrected the stale `pid-admin:create-user` bullet to reflect what the command actually does (`firstOrNew` + the `password=>hashed` cast + `filter_var` email validation, no explicit `Hash::make`, password only set on new users when `--password` is omitted).
 
 ## 2026-05-02
 

@@ -3003,6 +3003,7 @@ function DebugReportsPage({ onNotify }) {
             target={sourceUrl ? '_blank' : undefined}
             rel={sourceUrl ? 'noopener noreferrer' : undefined}
             aria-disabled={sourceUrl ? undefined : 'true'}
+            tabIndex={sourceUrl ? undefined : -1}
             title={sourceUrl ? 'Open candidate source page in a new tab' : 'No source page URL available'}
           >
             View URL
@@ -3025,6 +3026,7 @@ function DebugReportsPage({ onNotify }) {
             target={imageUrl ? '_blank' : undefined}
             rel={imageUrl ? 'noopener noreferrer' : undefined}
             aria-disabled={imageUrl ? undefined : 'true'}
+            tabIndex={imageUrl ? undefined : -1}
             title={imageUrl ? 'Open candidate image in a new tab' : 'No image URL available'}
           >
             View Image
