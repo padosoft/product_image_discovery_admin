@@ -32,7 +32,8 @@ final class AuthTest extends TestCase
     {
         $this->createUser();
 
-        $beforeToken = csrf_token();
+        $this->get('/login')->assertOk();
+        $beforeSessionId = $this->app['session']->getId();
 
         $response = $this->post('/login', [
             'email' => 'op@example.test',
@@ -42,7 +43,7 @@ final class AuthTest extends TestCase
         $response->assertRedirect('/admin/product-image-discovery');
         $this->assertAuthenticatedAs(User::query()->where('email', 'op@example.test')->firstOrFail());
 
-        $this->assertNotSame($beforeToken, csrf_token());
+        $this->assertNotSame($beforeSessionId, $this->app['session']->getId());
     }
 
     public function test_login_redirects_back_to_intended_admin_url(): void
