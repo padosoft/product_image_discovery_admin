@@ -34,23 +34,25 @@ Artisan::command('pid-admin:create-user {email} {--name= : Display name (default
         return Command::INVALID;
     }
 
-    $providedName = $this->option('name');
-    $hasProvidedName = is_string($providedName) && $providedName !== '';
-    $providedPassword = $this->option('password');
-    $hasProvidedPassword = is_string($providedPassword) && $providedPassword !== '';
+    $rawName = $this->option('name');
+    $trimmedName = is_string($rawName) ? trim($rawName) : '';
+    $hasProvidedName = $trimmedName !== '';
+
+    $rawPassword = $this->option('password');
+    $hasProvidedPassword = is_string($rawPassword) && trim($rawPassword) !== '';
 
     $user = User::query()->firstOrNew(['email' => $email]);
     $isNewUser = ! $user->exists;
     $generatedPassword = null;
 
     if ($hasProvidedName) {
-        $user->name = $providedName;
+        $user->name = $trimmedName;
     } elseif ($isNewUser) {
         $user->name = 'Admin';
     }
 
     if ($hasProvidedPassword) {
-        $user->password = $providedPassword;
+        $user->password = $rawPassword;
     } elseif ($isNewUser) {
         $generatedPassword = Str::random(16);
         $user->password = $generatedPassword;

@@ -56,6 +56,8 @@
 - Copilot Code Review eighth pass returned two inline comments, both on stale `docs/PROGRESS.md` entries. Addressed in a follow-up commit on the same branch:
   - The bullet describing `pid-admin:create-user` still showed the old signature `{--name=Admin}`; updated to `{--name=}` and explained that the command only writes `name` when the option is explicitly provided (and only falls back to `'Admin'` when creating a new user), to match the shipped command in `routes/console.php`.
   - The second-pass bullet about the new `AuthTest` suite still claimed the login test "regenerates the CSRF token". Updated to say it regenerates the session id, with a forward reference to the seventh-pass entry that documents the actual `$this->app['session']->getId()` assertion.
+- Copilot Code Review ninth pass returned one inline comment on `pid-admin:create-user` whitespace handling. Addressed in a follow-up commit on the same branch:
+  - `routes/console.php` — `--name` is now trimmed before use, and a whitespace-only `--name` (e.g. `--name=" "`) is treated as not-provided, falling back to the existing create-only `'Admin'` default. `--password` is **not** trimmed (a password can legitimately contain leading/trailing whitespace) but a `--password` that becomes empty after `trim()` is also treated as not-provided, falling back to the existing create-only `Str::random(16)` generator. Existing users keep their stored display name and password hash on no-op runs.
 
 ## 2026-05-02
 
