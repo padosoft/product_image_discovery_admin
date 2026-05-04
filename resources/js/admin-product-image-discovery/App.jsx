@@ -2823,7 +2823,7 @@ function debugReportCandidateRows(report, filters = {}) {
     .filter((candidate) => !filters.verified || candidate._verified);
 }
 
-function reportSectionValue(report, activeTab, candidateRows) {
+function reportSectionValue(report, activeTab, candidateRows, originalRequestPayload = null) {
   if (!report) {
     return null;
   }
@@ -2833,7 +2833,10 @@ function reportSectionValue(report, activeTab, candidateRows) {
   }
 
   if (activeTab === 'request') {
-    return report.request ?? null;
+    return {
+      package_request_summary: report.request ?? null,
+      original_request_payload: originalRequestPayload ?? null,
+    };
   }
 
   if (activeTab === 'search') {
@@ -2886,6 +2889,7 @@ function DebugReportsPage({ onNotify }) {
   const [pasteValue, setPasteValue] = useState('');
   const [report, setReport] = useState(null);
   const [reportSource, setReportSource] = useState('');
+  const [originalRequestPayload, setOriginalRequestPayload] = useState(null);
   const [activeTab, setActiveTab] = useState('summary');
   const [searchQuery, setSearchQuery] = useState('');
   const [filters, setFilters] = useState({
@@ -2937,7 +2941,7 @@ function DebugReportsPage({ onNotify }) {
   const availableRuns = useMemo(() => runs.filter((run) => run.report_available), [runs]);
   const allCandidateRows = useMemo(() => debugReportCandidateRows(report), [report]);
   const candidateRows = useMemo(() => debugReportCandidateRows(report, filters), [report, filters]);
-  const activeValue = useMemo(() => reportSectionValue(report, activeTab, candidateRows), [report, activeTab, candidateRows]);
+  const activeValue = useMemo(() => reportSectionValue(report, activeTab, candidateRows, originalRequestPayload), [report, activeTab, candidateRows, originalRequestPayload]);
   const searchRows = useMemo(
     () => flattenReportValue(activeValue, '$', { query: searchQuery, maxRows: 80, maxDepth: 10, maxNodes: 500 }),
     [activeValue, searchQuery],
@@ -3040,9 +3044,14 @@ function DebugReportsPage({ onNotify }) {
     },
   ];
 
-  function setLoadedReport(nextReport, source) {
+  function setLoadedReport(nextReport, source, originalPayload = null) {
     setReport(redactDebugPreview(nextReport));
     setReportSource(source);
+    setOriginalRequestPayload(
+      originalPayload && typeof originalPayload === 'object' && Object.keys(originalPayload).length > 0
+        ? redactDebugPreview(originalPayload)
+        : null,
+    );
     setActiveTab('summary');
     setSearchQuery('');
     setError('');
@@ -3070,7 +3079,7 @@ function DebugReportsPage({ onNotify }) {
 
       if (mountedRef.current && !controller.signal.aborted && reportLoadControllerRef.current === controller) {
         setSelectedRunId(String(runId));
-        setLoadedReport(nextReport, `Debug run #${runId}`);
+        setLoadedReport(nextReport, `Debug run #${runId}`, result?.request_payload ?? null);
       }
     } catch (err) {
       if (mountedRef.current && err.name !== 'AbortError' && reportLoadControllerRef.current === controller) {

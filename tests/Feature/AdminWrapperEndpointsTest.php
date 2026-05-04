@@ -282,6 +282,9 @@ final class AdminWrapperEndpointsTest extends TestCase
             ->assertOk()
             ->assertJsonPath('data.report.request.erp_model_color_id', 'HERNO-PI002223D-CAMMELLO')
             ->assertJsonPath('data.report.search.provider', 'fake-debug-admin')
+            ->assertJsonPath('data.request_payload.client_id', 1)
+            ->assertJsonPath('data.request_payload.erp_model_color_id', 'HERNO-PI002223D-CAMMELLO')
+            ->assertJsonPath('data.request_payload.brand', 'Herno')
             ->assertJsonMissing(['request-secret']);
     }
 
@@ -318,7 +321,9 @@ final class AdminWrapperEndpointsTest extends TestCase
         $this->getJson('/admin/product-image-discovery/debug-runs/'.$run->getKey().'/report')
             ->assertOk()
             ->assertJsonPath('data.report_available', false)
-            ->assertJsonPath('data.report', null);
+            ->assertJsonPath('data.report', null)
+            ->assertJsonPath('data.request_payload.client_id', 1)
+            ->assertJsonPath('data.request_payload.erp_model_color_id', 'HERNO-EMPTY');
     }
 
     public function test_debug_payload_redactor_preserves_safe_credential_status_flags(): void

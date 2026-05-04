@@ -31,6 +31,13 @@
   - New `.pid-config-form__hint` style (muted, 12px) and inline `code` chips, reusing the existing `--pid-mono` and `--pid-surface-2` tokens so nothing new is invented.
   - README Quickstart step 7 now documents the required/optional field split and the search-term fallback.
   - New vitest case `debug page exposes optional package fields in the default payload and the hint` parses the textarea value and asserts the new keys are present, then asserts the hint contains the field names. Covers regression on both the default constant and the rendered hint.
+- Debug Reports `Request` tab visibility: the package emits a slim `summarizeRequest()` (`id`, `client_id`, `erp_model_color_id`, `brand`, `model_code`, `color_name`, `status`, `final_score`, candidate pointers, `rejection_reason`) and intentionally hides `ean`, `description`, `supplier`, `category`, `season`, `material`, plus anything in `raw_payload`. Operators using the debug flow to verify what actually arrived at the package were forced to inspect the `request_payload` column directly. Now:
+  - `AdminDebugRunController::report()` adds `request_payload` (already redacted via `DebugPayloadRedactor`) alongside `report` in the response. No package change.
+  - `DebugReportsPage` keeps `originalRequestPayload` as separate React state, populated only when `loadServerReport()` receives a backend response. Pasted/uploaded reports leave it `null`. `setLoadedReport` accepts a third optional argument, redacted again client-side via `redactDebugPreview` for defence-in-depth.
+  - `reportSectionValue(report, activeTab='request', ...)` now returns `{ package_request_summary: report.request, original_request_payload: ... }` so the existing `JsonViewer` renders both side by side without restructuring the inspector.
+  - Extended the `loads stored debug reports` vitest case with a `request_payload` on the mocked `/debug-runs/9/report` response, then click `Request` tab and assert the inspector contains `package_request_summary`, `original_request_payload`, the description string, the ean, and the metadata marker.
+  - Extended `AdminWrapperEndpointsTest` with `data.request_payload.*` assertions on both the populated-report path and the no-report path, so the contract is locked from the backend side too.
+  - README Quickstart step 8 documents the two sections.
 
 ## 2026-05-02
 

@@ -75,6 +75,7 @@ final class AdminDebugRunController extends Controller
     {
         $reportPayload = $debugRun->getAttribute('report_payload');
         $reportAvailable = is_array($reportPayload) && $reportPayload !== [];
+        $rawRequestPayload = $debugRun->getAttribute('request_payload');
 
         return response()->json([
             'data' => [
@@ -82,6 +83,7 @@ final class AdminDebugRunController extends Controller
                 'status' => $debugRun->getAttribute('status'),
                 'report' => $reportAvailable ? DebugPayloadRedactor::redact($reportPayload) : null,
                 'report_available' => $reportAvailable,
+                'request_payload' => DebugPayloadRedactor::redact(is_array($rawRequestPayload) ? $rawRequestPayload : []),
             ],
         ]);
     }

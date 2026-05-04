@@ -217,6 +217,11 @@ The demo `fake-demo` provider is intentionally first in priority so out-of-the-b
 
 Open `http://127.0.0.1:8000/admin/product-image-discovery/reports`, click **Open** on the latest run.
 
+The **Request** tab shows two sections:
+
+- `package_request_summary` — the slim summary the package emits in the report (id, status, brand, model_code, color_name, scores, candidate pointers).
+- `original_request_payload` — the full JSON you submitted to the debug flow, redacted. This is the place to verify that `description`, `ean`, `metadata`, and any other optional field actually arrived at the package.
+
 In the **Candidates** tab the table is sorted by `final_score` desc — the top row is the best match. Each row exposes:
 
 - `View URL` — opens `source_page_url` in a new tab (the page Brave found)

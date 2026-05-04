@@ -1245,6 +1245,15 @@ describe('admin product image discovery shell', () => {
             status: 'succeeded',
             report: reportPayload,
             report_available: true,
+            request_payload: {
+              client_id: 1,
+              brand: 'THE NORTH FACE',
+              description: 'THE NORTH FACE Summit Jacket',
+              ean: '198266164373',
+              model_code: 'NF0A8DDYG6L1',
+              erp_model_color_id: 'REPORT-COLOR',
+              metadata: { from: 'admin-debug-flow' },
+            },
           },
         }));
       }
@@ -1321,6 +1330,16 @@ describe('admin product image discovery shell', () => {
     fireEvent.click(screen.getAllByRole('button', { name: 'Path' })[0]);
 
     await waitFor(() => expect(writeText).toHaveBeenCalledWith(expect.stringContaining('mismatches')));
+
+    fireEvent.change(screen.getByLabelText('Search JSON'), { target: { value: '' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Request' }));
+
+    const inspector = screen.getByRole('region', { name: 'Debug report inspector' });
+    expect(inspector).toHaveTextContent('package_request_summary');
+    expect(inspector).toHaveTextContent('original_request_payload');
+    expect(inspector).toHaveTextContent('THE NORTH FACE Summit Jacket');
+    expect(inspector).toHaveTextContent('198266164373');
+    expect(inspector).toHaveTextContent('admin-debug-flow');
   });
 
   it('keeps the request detail drawer open while loading selected request data', async () => {
