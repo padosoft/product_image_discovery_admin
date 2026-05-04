@@ -3,20 +3,11 @@
     "description": "Laravel admin demo application for padosoft/product-image-discovery.",
     "type": "project",
     "license": "Apache-2.0",
-    "repositories": [
-        {
-            "type": "path",
-            "url": "../product_image_discovery",
-            "options": {
-                "symlink": true
-            }
-        }
-    ],
     "require": {
         "php": "^8.3",
         "laravel/framework": "^13.0",
         "laravel/sanctum": "^4.2",
-        "padosoft/product-image-discovery": "dev-main"
+        "padosoft/product-image-discovery": "^0.1.3"
     },
     "require-dev": {
         "mockery/mockery": "^1.6",

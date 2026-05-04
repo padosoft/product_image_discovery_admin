@@ -4,7 +4,7 @@
         "Read more about it at https://getcomposer.org/doc/01-basic-usage.md#installing-dependencies",
         "This file is @generated automatically"
     ],
-    "content-hash": "cad86bef524596b4d8c67c839451a207",
+    "content-hash": "ec3d42b97b8935b65abea752c10a160a",
     "packages": [
         {
             "name": "aws/aws-crt-php",
@@ -2759,11 +2759,17 @@
         },
         {
             "name": "padosoft/product-image-discovery",
-            "version": "dev-main",
-            "dist": {
-                "type": "path",
-                "url": "../product_image_discovery",
+            "version": "v0.1.3",
+            "source": {
+                "type": "git",
+                "url": "https://github.com/padosoft/product_image_discovery.git",
                 "reference": "ab4a8b89f6e500e1871a39b11497b591df688f56"
+            },
+            "dist": {
+                "type": "zip",
+                "url": "https://api.github.com/repos/padosoft/product_image_discovery/zipball/ab4a8b89f6e500e1871a39b11497b591df688f56",
+                "reference": "ab4a8b89f6e500e1871a39b11497b591df688f56",
+                "shasum": ""
             },
             "require": {
                 "illuminate/bus": "^13.0",
@@ -2801,12 +2807,7 @@
                     "Padosoft\\ProductImageDiscovery\\Database\\Seeders\\": "database/seeders/"
                 }
             },
-            "autoload-dev": {
-                "psr-4": {
-                    "Padosoft\\ProductImageDiscovery\\Tests\\": "tests/",
-                    "Tests\\": "tests/"
-                }
-            },
+            "notification-url": "https://packagist.org/downloads/",
             "license": [
                 "Apache-2.0"
             ],
@@ -2828,10 +2829,11 @@
                 "sanctum",
                 "scraping"
             ],
-            "transport-options": {
-                "symlink": true,
-                "relative": true
-            }
+            "support": {
+                "issues": "https://github.com/padosoft/product_image_discovery/issues",
+                "source": "https://github.com/padosoft/product_image_discovery/tree/v0.1.3"
+            },
+            "time": "2026-04-30T15:55:53+00:00"
         },
         {
             "name": "phpoption/phpoption",
@@ -8064,9 +8066,7 @@
     ],
     "aliases": [],
     "minimum-stability": "stable",
-    "stability-flags": {
-        "padosoft/product-image-discovery": 20
-    },
+    "stability-flags": {},
     "prefer-stable": true,
     "prefer-lowest": false,
     "platform": {
