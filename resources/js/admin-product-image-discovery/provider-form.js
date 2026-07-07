@@ -2,8 +2,13 @@ import { parseIntegerInput } from './form-utils';
 
 export const PROVIDER_DRIVERS = [
   'brave',
-  'serpapi',
-  'google_custom_search',
+  'tavily',
+  'exa',
+  'firecrawl',
+  'websearchapi',
+  'duckduckgo',
+  'searchapi',
+  'youcom',
   'fake',
 ];
 

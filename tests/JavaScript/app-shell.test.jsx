@@ -556,9 +556,9 @@ describe('admin product image discovery shell', () => {
     await waitFor(() => expect(updatedPayload).toMatchObject({ name: 'Brave Updated' }));
     await waitFor(() => expect(screen.queryByRole('region', { name: 'Provider test result' })).not.toBeInTheDocument());
 
-    fireEvent.change(within(providerForm).getByLabelText('Code'), { target: { value: 'serpapi-client' } });
-    fireEvent.change(within(providerForm).getByLabelText('Name'), { target: { value: 'SerpAPI Client' } });
-    fireEvent.change(within(providerForm).getByLabelText('Driver'), { target: { value: 'serpapi' } });
+    fireEvent.change(within(providerForm).getByLabelText('Code'), { target: { value: 'tavily-client' } });
+    fireEvent.change(within(providerForm).getByLabelText('Name'), { target: { value: 'Tavily Client' } });
+    fireEvent.change(within(providerForm).getByLabelText('Driver'), { target: { value: 'tavily' } });
     fireEvent.change(within(providerForm).getByLabelText('API key action'), { target: { value: 'replace' } });
     fireEvent.change(within(providerForm).getByLabelText('API key value'), { target: { value: 'secret-key' } });
     fireEvent.change(within(providerForm).getByLabelText('API secret action'), { target: { value: 'clear' } });
@@ -567,9 +567,9 @@ describe('admin product image discovery shell', () => {
     fireEvent.click(within(providerForm).getByRole('button', { name: 'Create provider' }));
 
     await waitFor(() => expect(createdPayload).toMatchObject({
-      code: 'serpapi-client',
-      name: 'SerpAPI Client',
-      driver: 'serpapi',
+      code: 'tavily-client',
+      name: 'Tavily Client',
+      driver: 'tavily',
       api_key: 'secret-key',
       api_secret: '',
       priority: 100,
