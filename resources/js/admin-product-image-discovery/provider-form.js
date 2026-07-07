@@ -2,10 +2,29 @@ import { parseIntegerInput } from './form-utils';
 
 export const PROVIDER_DRIVERS = [
   'brave',
-  'serpapi',
-  'google_custom_search',
+  'tavily',
+  'exa',
+  'firecrawl',
+  'websearchapi',
+  'duckduckgo',
+  'searchapi',
+  'youcom',
   'fake',
 ];
+
+export function isRegisteredDriver(driver) {
+  return PROVIDER_DRIVERS.includes(driver);
+}
+
+export function driverSelectOptions(currentDriver) {
+  const options = PROVIDER_DRIVERS.map((driver) => ({ value: driver, label: driver }));
+
+  if (currentDriver && !isRegisteredDriver(currentDriver)) {
+    options.unshift({ value: currentDriver, label: `${currentDriver} (not registered)` });
+  }
+
+  return options;
+}
 
 export const PROVIDER_SECRET_MODES = [
   { value: 'keep', label: 'Keep current value' },

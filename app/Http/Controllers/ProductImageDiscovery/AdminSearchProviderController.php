@@ -14,11 +14,11 @@ use Illuminate\Support\Str;
 use Padosoft\ProductImageDiscovery\Http\Concerns\ResolvesProductImageDiscovery;
 use Padosoft\ProductImageDiscovery\Http\Requests\UpsertProductImageSearchProviderRequest;
 use Padosoft\ProductImageDiscovery\Http\Resources\ProductImageDiscoverySearchProviderResource;
-use Padosoft\ProductImageDiscovery\Services\Search\Data\ProductImageSearchQueryData;
-use Padosoft\ProductImageDiscovery\Services\Search\Data\SearchProviderDefinition;
-use Padosoft\ProductImageDiscovery\Services\Search\SearchProviderConfigRepositoryInterface;
-use Padosoft\ProductImageDiscovery\Services\Search\SearchProviderFactoryInterface;
-use Padosoft\ProductImageDiscovery\Services\Search\SearchProviderManager;
+use Padosoft\LaravelAiSearchProviders\Contracts\SearchProviderConfigRepositoryInterface;
+use Padosoft\LaravelAiSearchProviders\Contracts\SearchProviderFactoryInterface;
+use Padosoft\LaravelAiSearchProviders\Data\SearchProviderDefinition;
+use Padosoft\LaravelAiSearchProviders\Data\SearchQueryData as ProductImageSearchQueryData;
+use Padosoft\LaravelAiSearchProviders\SearchProviderManager;
 use ReflectionClass;
 use ReflectionException;
 

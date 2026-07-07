@@ -1,7 +1,10 @@
 import { describe, expect, it } from 'vitest';
 import {
   DEFAULT_PROVIDER_FORM,
+  PROVIDER_DRIVERS,
   buildProviderPayload,
+  driverSelectOptions,
+  isRegisteredDriver,
   providerToForm,
   redactProviderPayloadPreview,
 } from '../../resources/js/admin-product-image-discovery/provider-form';
@@ -82,5 +85,21 @@ describe('provider form helpers', () => {
       driver: 'fake',
       priority: '1e2',
     })).toMatchObject({ ok: false, error: 'Priority must be a whole number.' });
+  });
+
+  it('flags drivers missing from the registered list', () => {
+    expect(isRegisteredDriver('brave')).toBe(true);
+    expect(isRegisteredDriver('serpapi')).toBe(false);
+    expect(isRegisteredDriver('')).toBe(false);
+  });
+
+  it('keeps unknown drivers visible in the select options without touching the registered list', () => {
+    expect(driverSelectOptions('tavily')).toEqual(PROVIDER_DRIVERS.map((driver) => ({ value: driver, label: driver })));
+    expect(driverSelectOptions('')).toEqual(PROVIDER_DRIVERS.map((driver) => ({ value: driver, label: driver })));
+
+    const withLegacy = driverSelectOptions('serpapi');
+
+    expect(withLegacy[0]).toEqual({ value: 'serpapi', label: 'serpapi (not registered)' });
+    expect(withLegacy.slice(1).map((option) => option.value)).toEqual(PROVIDER_DRIVERS);
   });
 });
