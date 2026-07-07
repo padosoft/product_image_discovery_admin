@@ -12,6 +12,20 @@ export const PROVIDER_DRIVERS = [
   'fake',
 ];
 
+export function isRegisteredDriver(driver) {
+  return PROVIDER_DRIVERS.includes(driver);
+}
+
+export function driverSelectOptions(currentDriver) {
+  const options = PROVIDER_DRIVERS.map((driver) => ({ value: driver, label: driver }));
+
+  if (currentDriver && !isRegisteredDriver(currentDriver)) {
+    options.unshift({ value: currentDriver, label: `${currentDriver} (not registered)` });
+  }
+
+  return options;
+}
+
 export const PROVIDER_SECRET_MODES = [
   { value: 'keep', label: 'Keep current value' },
   { value: 'replace', label: 'Replace value' },

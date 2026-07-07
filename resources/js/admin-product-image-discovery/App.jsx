@@ -30,9 +30,10 @@ import {
 } from './settings-form';
 import {
   DEFAULT_PROVIDER_FORM,
-  PROVIDER_DRIVERS,
   PROVIDER_SECRET_MODES,
   buildProviderPayload,
+  driverSelectOptions,
+  isRegisteredDriver,
   providerToForm,
   redactProviderPayloadPreview,
 } from './provider-form';
@@ -2031,8 +2032,11 @@ function ProvidersPage({ onNotify }) {
             <label>
               <span>Driver</span>
               <select value={form.driver} onChange={(event) => updateForm('driver', event.target.value)} disabled={actionLoading}>
-                {PROVIDER_DRIVERS.map((driver) => <option key={driver} value={driver}>{driver}</option>)}
+                {driverSelectOptions(form.driver).map((option) => <option key={option.value} value={option.value}>{option.label}</option>)}
               </select>
+              {form.driver && !isRegisteredDriver(form.driver)
+                ? <small className="pid-muted">Driver “{form.driver}” is not a registered driver: pick one from the list before saving.</small>
+                : null}
             </label>
             <label>
               <span>State</span>
