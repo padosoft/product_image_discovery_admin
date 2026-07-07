@@ -485,10 +485,10 @@ final class AdminWrapperEndpointsTest extends TestCase
     public function test_admin_configuration_wrappers_support_provider_and_trusted_source_crud_without_secret_exposure(): void
     {
         $providerId = $this->postJson('/admin/product-image-discovery/search-providers', [
-            'code' => 'serpapi-client',
-            'name' => 'SerpAPI Client',
-            'driver' => 'serpapi',
-            'base_url' => 'https://serpapi.com',
+            'code' => 'tavily-client',
+            'name' => 'Tavily Client',
+            'driver' => 'tavily',
+            'base_url' => 'https://api.tavily.com',
             'api_key' => 'secret-key',
             'api_secret' => 'secret-secret',
             'config' => ['supports_image_search' => true],
@@ -498,7 +498,7 @@ final class AdminWrapperEndpointsTest extends TestCase
             'is_active' => true,
         ])
             ->assertCreated()
-            ->assertJsonPath('data.code', 'serpapi-client')
+            ->assertJsonPath('data.code', 'tavily-client')
             ->assertJsonPath('data.has_api_key', true)
             ->assertJsonPath('data.has_api_secret', true)
             ->assertJsonMissing(['secret-key'])
@@ -512,10 +512,10 @@ final class AdminWrapperEndpointsTest extends TestCase
         $this->assertNotSame('secret-key', $rawApiKey);
 
         $this->putJson('/admin/product-image-discovery/search-providers/'.$providerId, [
-            'code' => 'serpapi-client',
-            'name' => 'SerpAPI Client Updated',
-            'driver' => 'serpapi',
-            'base_url' => 'https://serpapi.com',
+            'code' => 'tavily-client',
+            'name' => 'Tavily Client Updated',
+            'driver' => 'tavily',
+            'base_url' => 'https://api.tavily.com',
             'api_secret' => '',
             'config' => ['supports_image_search' => true, 'max_results_per_request' => 20],
             'priority' => 16,

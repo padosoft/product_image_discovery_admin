@@ -71,7 +71,7 @@ describe('admin product image discovery shell', () => {
             no_candidates_found: 3,
           },
           provider_status: [
-            { code: 'serpapi', driver: 'serpapi', active: true, has_api_key: true },
+            { code: 'tavily', driver: 'tavily', active: true, has_api_key: true },
           ],
         }),
       )
@@ -453,10 +453,10 @@ describe('admin product image discovery shell', () => {
         data: [
           {
             id: 6,
-            code: 'google_custom_search',
-            name: 'Google Custom Search',
-            driver: 'google_custom_search',
-            base_url: 'https://customsearch.googleapis.com',
+            code: 'exa',
+            name: 'Exa Search',
+            driver: 'exa',
+            base_url: 'https://api.exa.ai',
             config: { supports_image_search: true },
             priority: 30,
             timeout_seconds: 15,
@@ -542,7 +542,7 @@ describe('admin product image discovery shell', () => {
     const providerForm = providerHeading.closest('section');
     expect(providerHeading).toBeVisible();
     expect(await screen.findByRole('table', { name: 'Product image discovery search providers' })).toHaveTextContent('brave');
-    expect(screen.getByRole('table', { name: 'Product image discovery search providers' })).toHaveTextContent('google_custom_search');
+    expect(screen.getByRole('table', { name: 'Product image discovery search providers' })).toHaveTextContent('exa');
     const braveRow = screen.getByRole('row', { name: /brave/i });
     fireEvent.click(within(braveRow).getByRole('button', { name: 'Test' }));
 
