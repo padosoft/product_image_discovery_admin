@@ -814,3 +814,8 @@
 - Tests: `AdminAuthGuardTest`; `TestCase` now authenticates by default (`$authenticateByDefault`). Playwright/e2e keep `web` only via env.
 - Known pre-existing failures: 3 `test_admin_search_provider_test_*` tests (installed package lacks `SearchProviderDefinition`).
 - Added `auth.session` to the admin group and `/password/change`: password changes log out other sessions and remember-me cookies (verified live with two cookie jars). `/health` stays behind auth; uptime checks should use `/up`.
+
+## 2026-10-07
+
+- Required `padosoft/laravel-ai-price-intelligence:^1.8` (resolved v1.9.0) and committed `composer.json` + `composer.lock`. The lock needs PHP 8.4 (symfony/console 8.x): on macOS run composer through Herd `php84`. Its migrations load automatically, so the deploy must run `php artisan migrate`.
+- Added `pid-admin:create-api-user`, `pid-admin:create-api-token` and `pid-admin:create-price-key` in `routes/console.php` to replace the tinker one-liners for Gescat credentials (technical user, read/write Sanctum token, Price Intelligence tenant + scopeless `pi_` key). Covered by `tests/Feature/ApiCredentialCommandsTest.php`; full PHPUnit suite green (65 tests).

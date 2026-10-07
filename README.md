@@ -165,6 +165,17 @@ php artisan pid-admin:create-user you@example.com --name="You" --password=secret
 # omit --password to receive a generated one (printed once)
 ```
 
+API credentials for an external client (e.g. Gescat) are created with three commands; each secret is printed once:
+
+```bash
+# 1. technical user that only owns API tokens (skipped if it already exists)
+php artisan pid-admin:create-api-user gescat-api@surfacesrl.com --name="Gescat API"
+# 2. non-expiring Sanctum token with product-image-discovery:read + :write
+php artisan pid-admin:create-api-token gescat-api@surfacesrl.com --name=gescat
+# 3. Price Intelligence tenant (created or reused) + pi_ API key without extra scopes
+php artisan pid-admin:create-price-key gescat --tenant-name=Gescat
+```
+
 ### 4. Build the frontend and start the server
 
 ```bash
