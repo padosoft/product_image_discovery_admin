@@ -103,6 +103,7 @@ final class ProductImageDiscoveryDemoSeeder extends Seeder
             [
                 'name' => 'PID Admin Demo',
                 'password' => 'password',
+                'must_change_password' => false,
             ],
         );
     }

@@ -53,14 +53,20 @@ Artisan::command('pid-admin:create-user {email} {--name= : Display name (default
 
     if ($hasProvidedPassword) {
         $user->password = $rawPassword;
+        $user->must_change_password = true;
     } elseif ($isNewUser) {
         $generatedPassword = Str::random(16);
         $user->password = $generatedPassword;
+        $user->must_change_password = true;
     }
 
     $user->save();
 
     $this->info(sprintf('User %s saved (id=%d).', $user->getAttribute('email'), $user->getKey()));
+
+    if ($user->getAttribute('must_change_password')) {
+        $this->line('The user must change the password at the first login.');
+    }
 
     if ($generatedPassword !== null) {
         $this->warn('Generated password (shown once): '.$generatedPassword);

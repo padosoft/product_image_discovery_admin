@@ -86,6 +86,18 @@ export function normalizeApiError(response, payload) {
   return new ApiError(message, response.status, payload);
 }
 
+function redirectOnAuthFailure(status, payload) {
+  if (typeof window === 'undefined') {
+    return;
+  }
+
+  if (status === 401) {
+    window.location.assign('/login');
+  } else if (status === 409 && payload?.code === 'password_change_required') {
+    window.location.assign('/password/change');
+  }
+}
+
 async function executeAdminFetch(path, options = {}) {
   const controller = options.signal ? null : new AbortController();
   const signal = options.signal ?? controller?.signal;
@@ -112,6 +124,8 @@ async function executeAdminFetch(path, options = {}) {
   });
 
   const payload = await readResponsePayload(response);
+
+  redirectOnAuthFailure(response.status, payload);
 
   return { response, payload };
 }

@@ -137,7 +137,7 @@ APP_URL=http://127.0.0.1:8000
 DB_CONNECTION=sqlite
 DB_DATABASE=/absolute/path/to/database/database.sqlite   # or leave default
 SESSION_DRIVER=file
-PID_ADMIN_ROUTE_MIDDLEWARE=web
+PID_ADMIN_ROUTE_MIDDLEWARE=web,auth
 PID_ADMIN_DEBUG_RUN_MIDDLEWARE=auth
 ```
 
@@ -178,7 +178,7 @@ Leave `php artisan serve` running. For frontend hot reload during development ru
 
 Open `http://127.0.0.1:8000/login`, log in with `admin@demo.test` / `password`, and you'll land on `http://127.0.0.1:8000/admin/product-image-discovery`.
 
-The admin shell (Blade + React) uses the configured `web` middleware, but `/debug-runs` and `POST /requests` sit behind `auth` by default, which is why the login step is required before they respond. The Logout button lives in the topbar.
+The whole admin shell (Blade + React) and its JSON endpoints sit behind `web,auth` by default (`PID_ADMIN_ROUTE_MIDDLEWARE`), so guests are redirected to `/login`. The Logout button lives in the topbar.
 
 ### 6. Configure a real search provider (Brave)
 
@@ -275,7 +275,7 @@ If `php` is not on PATH, this Windows/Herd workstation uses:
 
 ## Login
 
-Debug-run endpoints (`POST /admin/product-image-discovery/debug-runs`, `POST /admin/product-image-discovery/requests`) sit behind the `auth` middleware controlled by `pid-admin.debug_run_middleware`. The admin shell itself runs under `web` only, but operators must sign in before the debug and request-creation surfaces respond.
+Debug-run endpoints (`POST /admin/product-image-discovery/debug-runs`, `POST /admin/product-image-discovery/requests`) sit behind the `auth` middleware controlled by `pid-admin.debug_run_middleware`. The rest of the admin shell is also behind `auth` through `PID_ADMIN_ROUTE_MIDDLEWARE=web,auth`.
 
 The app ships with three minimal endpoints, registered outside the admin prefix:
 
@@ -302,7 +302,7 @@ php artisan pid-admin:create-user me@example.com --password=secret
 
 The admin topbar exposes a Logout button that submits a CSRF-protected `POST /logout`.
 
-To bypass auth in CI or short-lived local smoke tests, leave `PID_ADMIN_DEBUG_RUN_MIDDLEWARE` empty. The PHPUnit suite already does this in `phpunit.xml`.
+To bypass auth in CI or short-lived local smoke tests, set `PID_ADMIN_ROUTE_MIDDLEWARE=web` and leave `PID_ADMIN_DEBUG_RUN_MIDDLEWARE` empty (Playwright does this). PHPUnit keeps `web,auth` and acts as a signed-in user by default via `Tests\TestCase::$authenticateByDefault`.
 
 ## Demo Data
 
@@ -401,3 +401,12 @@ The project history and non-obvious setup lessons are tracked in:
 ## License
 
 Apache-2.0. See [LICENSE](LICENSE).
+
+## Auth and forced password change
+
+- The whole admin (`/admin/product-image-discovery/...`, plus `/admin` which redirects to it) requires login via `PID_ADMIN_ROUTE_MIDDLEWARE=web,auth`. Guests navigating pages are redirected to `/login`; JSON requests (`Accept: application/json`) get `401`, and the React shell redirects to `/login` on `401`.
+- `php artisan pid-admin:create-user {email}` always sets `users.must_change_password = true`, both on create and when re-run with `--password` on an existing user. There is no opt-out. At the next login the user is redirected to `/password/change` (min. 8 characters, different from the current one); admin JSON endpoints answer `409 password_change_required` until the password is changed.
+- The admin group also runs `auth.session`: when a user's password changes (from `/password/change` or a `create-user --password` reset), every other session and remember-me cookie of that user is logged out; the session that changed it stays signed in.
+- `/admin/product-image-discovery/health` is an authenticated diagnostics page (environment, debug flag, configured keys, providers). For external uptime monitoring use Laravel's public `/up` endpoint.
+- The demo user seeded locally (`admin@demo.test`) is not forced to change password.
+- Run `php artisan migrate` to add the `must_change_password` column. Package API routes (`/api/product-image-discovery`) are not affected.
