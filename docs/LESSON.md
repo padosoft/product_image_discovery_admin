@@ -139,3 +139,7 @@
 - Toolchain slice: on this Windows machine, Vite/Vitest were failing in the `esbuild` service path with `spawn EPERM`. Upgrading to Vite 8 and Vitest 4 was necessary but not sufficient.
 - Toolchain slice: Vite 8 still hits a Windows `execFile` realpath path during config bootstrap. A small preload that neutralizes `net use` calls lets the CLI boot here.
 - Toolchain slice: Vitest 4 defaulted to the `forks` pool, which still spawned child processes and failed. For this repo, `pool: 'threads'` is the stable setting.
+
+- `Route::prefix()->middleware(a)->middleware(b)` on a RouteRegistrar replaces the first list instead of merging; pass a single merged array (this silently dropped `web,auth` from the admin group).
+- `shouldRenderJsonWhen` forcing JSON on a path prefix turns the `auth` redirect into a JSON 401 for browser navigation; exclude `AuthenticationException` unless the client expects JSON.
+- Testing `auth.session` with `actingAs`: the guard keeps the in-memory user (old password hash), so call `$this->app['auth']->forgetGuards()` to simulate a fresh request before asserting the logout.

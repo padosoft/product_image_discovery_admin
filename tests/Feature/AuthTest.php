@@ -12,6 +12,8 @@ final class AuthTest extends TestCase
 {
     use RefreshDatabase;
 
+    protected bool $authenticateByDefault = false;
+
     public function test_guest_sees_login_form(): void
     {
         $this->get('/login')

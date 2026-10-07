@@ -39,6 +39,7 @@ export default defineConfig({
       QUEUE_CONNECTION: 'sync',
       PRODUCT_IMAGE_DISCOVERY_ROUTE_MIDDLEWARE: 'api',
       PID_ADMIN_DEBUG_RUN_MIDDLEWARE: '',
+      PID_ADMIN_ROUTE_MIDDLEWARE: 'web',
     },
   },
   projects: [

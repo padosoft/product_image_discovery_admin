@@ -69,4 +69,39 @@ describe('api client helpers', () => {
       payload: { message: 'Slow down' },
     });
   });
+
+  it.each([
+    [401, { message: 'Unauthenticated.' }, '/login'],
+    [409, { message: 'Password change required.', code: 'password_change_required' }, '/password/change'],
+  ])('redirects the browser on auth failure %i', async (status, payload, target) => {
+    const assign = vi.fn();
+    vi.stubGlobal('location', { ...window.location, origin: window.location.origin, assign });
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue({
+      ok: false,
+      status,
+      headers: { get: () => 'application/json' },
+      json: vi.fn().mockResolvedValue(payload),
+    }));
+    window.PID_ADMIN = { apiBase: '/admin/product-image-discovery' };
+
+    await expect(pidFetch('/health')).rejects.toBeInstanceOf(ApiError);
+    expect(assign).toHaveBeenCalledWith(target);
+    vi.unstubAllGlobals();
+  });
+
+  it('does not redirect on unrelated 409 conflicts', async () => {
+    const assign = vi.fn();
+    vi.stubGlobal('location', { ...window.location, origin: window.location.origin, assign });
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue({
+      ok: false,
+      status: 409,
+      headers: { get: () => 'application/json' },
+      json: vi.fn().mockResolvedValue({ message: 'Conflict' }),
+    }));
+    window.PID_ADMIN = { apiBase: '/admin/product-image-discovery' };
+
+    await expect(pidFetch('/requests/1/retry')).rejects.toBeInstanceOf(ApiError);
+    expect(assign).not.toHaveBeenCalled();
+    vi.unstubAllGlobals();
+  });
 });

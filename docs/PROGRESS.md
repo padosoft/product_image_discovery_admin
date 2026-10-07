@@ -805,3 +805,12 @@
   - `npm run build`
   - `npm run e2e`
   - `C:\\Users\\lopad\\.config\\herd\\bin\\php84\\php.exe vendor\\bin\\phpunit --configuration phpunit.xml`
+
+## 2026-10-06 - Admin auth guard and forced password change
+
+- Default `PID_ADMIN_ROUTE_MIDDLEWARE` is now `web,auth`; `/admin` redirects to the admin home; `AuthenticationException` renders JSON only for JSON requests so guests are redirected to `/login`.
+- Added `users.must_change_password`, `EnsurePasswordChanged` middleware, `/password/change` page and controller; `pid-admin:create-user` always forces the change.
+- `api.js` redirects to `/login` on 401 and to `/password/change` on 409 `password_change_required`.
+- Tests: `AdminAuthGuardTest`; `TestCase` now authenticates by default (`$authenticateByDefault`). Playwright/e2e keep `web` only via env.
+- Known pre-existing failures: 3 `test_admin_search_provider_test_*` tests (installed package lacks `SearchProviderDefinition`).
+- Added `auth.session` to the admin group and `/password/change`: password changes log out other sessions and remember-me cookies (verified live with two cookie jars). `/health` stays behind auth; uptime checks should use `/up`.

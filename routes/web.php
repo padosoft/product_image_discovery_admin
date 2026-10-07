@@ -2,7 +2,9 @@
 
 declare(strict_types=1);
 
+use App\Http\Controllers\Auth\ChangePasswordController;
 use App\Http\Controllers\Auth\LoginController;
+use App\Http\Middleware\EnsurePasswordChanged;
 use App\Http\Controllers\ProductImageDiscovery\AdminCandidateImageController;
 use App\Http\Controllers\ProductImageDiscovery\AdminDashboardSummaryController;
 use App\Http\Controllers\ProductImageDiscovery\AdminDebugRunController;
@@ -32,8 +34,22 @@ Route::get('login', [LoginController::class, 'showLogin'])->name('login');
 Route::post('login', [LoginController::class, 'login'])->middleware('throttle:5,1');
 Route::post('logout', [LoginController::class, 'logout'])->name('logout');
 
+Route::middleware(['web', 'auth', 'auth.session'])->group(function (): void {
+    Route::get('password/change', [ChangePasswordController::class, 'show'])->name('password.change');
+    Route::post('password/change', [ChangePasswordController::class, 'update'])
+        ->middleware('throttle:5,1')
+        ->name('password.update');
+});
+
+if ($adminPrefix !== 'admin') {
+    Route::get('admin', static fn (): RedirectResponse => redirect('/'.$adminPrefix))
+        ->middleware(['web', 'auth'])
+        ->name('admin.redirect');
+}
+
 Route::prefix($adminPrefix)
-    ->middleware(config('pid-admin.route_middleware', ['web']))
+    // `auth.session` logs out every other session (and remember-me cookie) once the password hash changes.
+    ->middleware([...config('pid-admin.route_middleware', ['web', 'auth']), 'auth.session', EnsurePasswordChanged::class])
     ->name('pid-admin.')
     ->group(function (): void {
         Route::get('dashboard-summary', AdminDashboardSummaryController::class)->name('dashboard-summary');
