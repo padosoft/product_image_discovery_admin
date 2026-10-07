@@ -7,6 +7,7 @@
         "php": "^8.3",
         "laravel/framework": "^13.0",
         "laravel/sanctum": "^4.2",
+        "padosoft/laravel-ai-price-intelligence": "^1.8",
         "padosoft/product-image-discovery": "^1.1"
     },
     "require-dev": {
