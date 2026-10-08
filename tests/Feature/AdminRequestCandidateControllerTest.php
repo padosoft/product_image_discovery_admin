@@ -43,6 +43,48 @@ final class AdminRequestCandidateControllerTest extends TestCase
             ->assertJsonPath('data.2.id', $low->getKey());
     }
 
+    public function test_request_candidates_list_the_latest_search_run_unless_all_runs_is_requested(): void
+    {
+        $requestRecord = $this->createDiscoveryRequest([
+            'status' => 'no_candidates_found',
+            'raw_payload' => ['context' => ['search' => ['run' => 2]]],
+        ]);
+        $old = $this->createCandidate($requestRecord, ['search_run' => 1, 'final_score' => 95]);
+        $current = $this->createCandidate($requestRecord, ['search_run' => 2, 'final_score' => 40]);
+        $url = '/admin/product-image-discovery/requests/'.$requestRecord->getKey().'/candidates';
+
+        $this->getJson($url)
+            ->assertOk()
+            ->assertJsonCount(1, 'data')
+            ->assertJsonPath('data.0.id', $current->getKey())
+            ->assertJsonPath('data.0.search_run', 2);
+
+        $this->getJson($url.'?all_runs=1')
+            ->assertOk()
+            ->assertJsonCount(2, 'data')
+            ->assertJsonPath('data.0.id', $old->getKey());
+    }
+
+    public function test_candidate_reject_ignores_candidates_of_earlier_search_runs(): void
+    {
+        $requestRecord = $this->createDiscoveryRequest([
+            'status' => 'manual_review',
+            'final_score' => 70,
+            'raw_payload' => ['context' => ['search' => ['run' => 2]]],
+        ]);
+        $this->createCandidate($requestRecord, ['search_run' => 1, 'final_score' => 95]);
+        $current = $this->createCandidate($requestRecord, ['search_run' => 2, 'final_score' => 70]);
+        $requestRecord->forceFill(['best_candidate_id' => $current->getKey()])->save();
+
+        $this->postJson('/admin/product-image-discovery/requests/'.$requestRecord->getKey().'/candidates/'.$current->getKey().'/reject', [
+            'reason' => 'WRONG_COLOR',
+            'notes' => 'Beige variant.',
+        ])
+            ->assertOk()
+            ->assertJsonPath('request.status', 'rejected')
+            ->assertJsonPath('request.best_candidate', null);
+    }
+
     public function test_candidate_approve_updates_request_and_candidate(): void
     {
         $requestRecord = $this->createDiscoveryRequest([

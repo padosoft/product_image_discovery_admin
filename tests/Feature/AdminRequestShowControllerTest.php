@@ -58,4 +58,34 @@ final class AdminRequestShowControllerTest extends TestCase
             ->assertJsonPath('data.best_candidate.id', $bestCandidate->getKey())
             ->assertJsonPath('candidates.0.id', $selectedCandidate->getKey());
     }
+
+    public function test_request_detail_lists_only_candidates_of_the_latest_search_run(): void
+    {
+        $requestRecord = ProductImageDiscoveryRequest::query()->create([
+            'client_id' => 1,
+            'erp_model_id' => 'CHLOE-001',
+            'erp_model_color_id' => '790715',
+            'brand' => 'Chloé',
+            'status' => 'no_candidates_found',
+            'raw_payload' => ['context' => ['search' => ['run' => 3]]],
+        ]);
+
+        foreach ([2, 3] as $searchRun) {
+            ProductImageDiscoveryCandidate::query()->create([
+                'request_id' => $requestRecord->getKey(),
+                'search_run' => $searchRun,
+                'client_id' => 1,
+                'source_domain' => 'cdn.example.com',
+                'source_page_url' => 'https://cdn.example.com/run-'.$searchRun.'.html',
+                'image_url' => 'https://cdn.example.com/run-'.$searchRun.'.jpg',
+                'status' => 'low_score_rejected',
+            ]);
+        }
+
+        $this->getJson('/admin/product-image-discovery/requests/'.$requestRecord->getKey())
+            ->assertOk()
+            ->assertJsonPath('data.search_run', 3)
+            ->assertJsonCount(1, 'candidates')
+            ->assertJsonPath('candidates.0.search_run', 3);
+    }
 }

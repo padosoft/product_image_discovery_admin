@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Http\Controllers\ProductImageDiscovery;
 
+use App\Support\ProductImageDiscovery\LatestSearchRun;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Routing\Controller;
 use Padosoft\ProductImageDiscovery\Http\Resources\ProductImageDiscoveryCandidateResource;
@@ -19,12 +20,13 @@ final class AdminRequestShowController extends Controller
         }
 
         $record = ProductImageDiscoveryRequest::query()
-            ->with(['bestCandidate', 'selectedCandidate', 'candidates'])
+            ->with(['bestCandidate', 'selectedCandidate'])
             ->findOrFail($request);
+        $candidates = LatestSearchRun::scope($record->candidates(), $record)->get();
 
         return response()->json([
             'data' => (new ProductImageDiscoveryRequestResource($record))->resolve(),
-            'candidates' => ProductImageDiscoveryCandidateResource::collection($record->candidates)
+            'candidates' => ProductImageDiscoveryCandidateResource::collection($candidates)
                 ->resolve(),
         ]);
     }

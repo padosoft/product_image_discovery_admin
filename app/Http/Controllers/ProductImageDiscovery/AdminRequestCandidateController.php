@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Http\Controllers\ProductImageDiscovery;
 
+use App\Support\ProductImageDiscovery\LatestSearchRun;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -28,7 +29,10 @@ final class AdminRequestCandidateController extends Controller
         }
 
         $record = ProductImageDiscoveryRequest::query()->findOrFail($request);
-        $candidates = $record->candidates()
+        $candidates = request()->boolean('all_runs')
+            ? $record->candidates()
+            : LatestSearchRun::scope($record->candidates(), $record);
+        $candidates = $candidates
             ->orderByDesc('final_score')
             ->orderBy('id')
             ->paginate(max(1, min((int) request('per_page', 25), 100)));
@@ -108,7 +112,8 @@ final class AdminRequestCandidateController extends Controller
             ]);
             $candidateRecord->save();
 
-            $otherCandidatesQuery = ProductImageDiscoveryCandidate::query()
+            // Candidates of earlier search runs must not keep the request in review or become best.
+            $otherCandidatesQuery = LatestSearchRun::scope(ProductImageDiscoveryCandidate::query(), $record)
                 ->where('request_id', $record->getKey())
                 ->whereKeyNot($candidateRecord->getKey())
                 ->where('status', '!=', 'rejected')
