@@ -9,6 +9,7 @@
         "laravel/framework": "^13.0",
         "laravel/sanctum": "^4.2",
         "padosoft/laravel-ai-price-intelligence": "^1.8",
+        "padosoft/laravel-ai-price-intelligence-admin": "^1.2",
         "padosoft/product-image-discovery": "^1.1"
     },
     "require-dev": {
@@ -45,5 +46,10 @@
         }
     },
     "minimum-stability": "stable",
-    "prefer-stable": true
+    "prefer-stable": true,
+    "repositories": [{
+        "name": "price-intelligence-admin",
+        "type": "vcs",
+        "url": "https://github.com/padosoft/laravel-ai-price-intelligence-admin"
+    }]
 }

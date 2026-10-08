@@ -28,6 +28,7 @@ Professional Laravel admin console for [`padosoft/product-image-discovery`](http
 - [Production On Laravel Cloud](#production-on-laravel-cloud)
 - [Security Model](#security-model)
 - [Admin Routes](#admin-routes)
+- [Price Intelligence Panel](#price-intelligence-panel)
 - [Relationship To The Package](#relationship-to-the-package)
 - [Process Docs](#process-docs)
 - [License](#license)
@@ -418,6 +419,7 @@ Checklist for a working pipeline (image discovery + price intelligence):
 8. **AI (optional)**: `PRODUCT_IMAGE_DISCOVERY_AI_ENABLED=true`, `PRODUCT_IMAGE_DISCOVERY_AI_PROVIDER` (`regolo`, `anthropic`, `openai`, `openrouter`), the matching key (`REGOLO_API_KEY`, `ANTHROPIC_API_KEY`, ...) and `PRODUCT_IMAGE_DISCOVERY_AI_VISION_MODEL`. Price intelligence uses the LLM only with `PI_LLM_DRIVER=laravel-ai` plus `PI_LLM_PROVIDER`/`PI_LLM_MODEL`.
 9. **Client credentials**: `pid-admin:create-api-user`, `pid-admin:create-api-token`, `pid-admin:create-price-key` (see Login). Image discovery uses `Authorization: Bearer <token>`; price intelligence uses `X-Api-Key: pi_...` under `/api/v1`.
 10. **Outbound HTTPS** from workers to search APIs, image hosts, AI providers and competitor sites.
+11. **Price intelligence panel**: `APP_URL` must be the public URL (e.g. `https://image-discovery.surfacesrl.com`) so the panel's browser calls are recognized as same-domain, and the `gescat` tenant must exist.
 
 ## Security Model
 
@@ -448,6 +450,17 @@ The package API remains available at:
 ```text
 /api/product-image-discovery/...
 ```
+
+## Price Intelligence Panel
+
+The web panel of [`padosoft/laravel-ai-price-intelligence-admin`](https://github.com/padosoft/laravel-ai-price-intelligence-admin) is mounted at `/admin/price-intelligence` and linked from the console sidebar (**Modules → Price Intelligence**). The link appears only when the package is installed. It is a React SPA that only calls the price-intelligence API under `/api/v1`: it adds one route and no tables.
+
+- **Install**: the package is not on Packagist; `composer.json` pulls it from GitHub through a `vcs` repository.
+- **Assets**: GitHub archives ship without the built SPA, so the build is committed in `public/vendor/price-intelligence-admin`. After every `composer update padosoft/laravel-ai-price-intelligence-admin` run `npm run build:price-intelligence-admin` and commit the result.
+- **Login**: same session as the console (`web`, `auth`, `auth.session`, forced password change), then the `price-intelligence:admin` gate, granted to every console user.
+- **API access**: `/api/v1` adds Sanctum's `EnsureFrontendRequestsAreStateful`, so same-domain browser requests carry the session and the CSRF token. `APP_URL`'s host is always a stateful domain; add others with `SANCTUM_STATEFUL_DOMAINS`. Machine clients (Gescat) keep using `X-Api-Key` and stay stateless.
+- **Tenant**: single tenant. Session users work on the tenant with code `PRICE_INTELLIGENCE_ADMIN_TENANT` (default `gescat`, created by `pid-admin:create-price-key gescat`). If that tenant does not exist the panel API answers 401.
+- **Realtime**: `PRICE_INTELLIGENCE_ADMIN_REALTIME=polling` by default (every 15s); `sse` keeps a PHP worker busy per open page.
 
 ## Relationship To The Package
 

@@ -1,0 +1,26 @@
+<!doctype html>
+<html lang="en" data-theme="dark">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>price-intel · admin</title>
+    <script type="module" crossorigin src="./assets/index-Dw7FzKfm.js"></script>
+    <link rel="stylesheet" crossorigin href="./assets/index-CAaxxEsq.css">
+  </head>
+  <body>
+    <div id="root"></div>
+    <script>
+      // Dev fallback for the runtime config Blade injects in production.
+      window.__PI_ADMIN__ = window.__PI_ADMIN__ || {
+        apiBaseUrl: '/api/v1',
+        auth: { mode: 'cookie' },
+        // English-first for the standalone demo (matches the prototype copy); the host
+        // injects the tenant's locale in production. Toggle IT/EN from the topbar.
+        locale: 'en',
+        csrfCookie: 'XSRF-TOKEN',
+        realtime: { driver: 'sse' },
+        useMocks: true,
+      };
+    </script>
+  </body>
+</html>

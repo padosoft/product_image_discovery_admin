@@ -11,7 +11,9 @@
             packageApiBase: @json($packageApiBase),
             appName: @json($appName),
             logoutUrl: @json($logoutUrl),
-            csrfToken: @json($csrfToken)
+            csrfToken: @json($csrfToken),
+            {{-- Null when padosoft/laravel-ai-price-intelligence-admin is not installed: the sidebar hides the module link. --}}
+            priceIntelligenceUrl: @json(Route::has('price-intelligence-admin.panel') ? route('price-intelligence-admin.panel') : null)
         };
     </script>
     @if (! app()->environment('testing') || file_exists(public_path('build/manifest.json')))

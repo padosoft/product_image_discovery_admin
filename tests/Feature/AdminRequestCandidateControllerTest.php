@@ -5,6 +5,8 @@ declare(strict_types=1);
 namespace Tests\Feature;
 
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\Bus;
+use Padosoft\ProductImageDiscovery\Jobs\IngestProductImageDiscoveryJob;
 use Padosoft\ProductImageDiscovery\Models\ProductImageDiscoveryCandidate;
 use Padosoft\ProductImageDiscovery\Models\ProductImageDiscoveryRequest;
 use Tests\TestCase;
@@ -255,6 +257,8 @@ final class AdminRequestCandidateControllerTest extends TestCase
 
     public function test_request_retry_requeues_the_request(): void
     {
+        Bus::fake();
+
         $requestRecord = $this->createDiscoveryRequest([
             'status' => 'failed',
             'attempts' => 2,
@@ -277,6 +281,35 @@ final class AdminRequestCandidateControllerTest extends TestCase
             'request_id' => $requestRecord->getKey(),
             'event_type' => 'request_retry_requested',
         ]);
+        Bus::assertDispatched(IngestProductImageDiscoveryJob::class);
+    }
+
+    public function test_request_retry_clears_completed_phases_and_dispatches_ingest(): void
+    {
+        Bus::fake();
+
+        $requestRecord = $this->createDiscoveryRequest([
+            'status' => 'no_candidates_found',
+            'attempts' => 1,
+            'raw_payload' => [
+                'name' => 'Wool gabardine shorts',
+                'context' => [
+                    'ingest' => ['payload_hash' => 'abc'],
+                    'search' => ['completed_at' => '2026-10-08T08:00:00+00:00'],
+                    'extract' => ['completed_at' => '2026-10-08T08:01:00+00:00'],
+                ],
+            ],
+        ]);
+
+        $this->postJson('/admin/product-image-discovery/requests/'.$requestRecord->getKey().'/retry')
+            ->assertOk()
+            ->assertJsonPath('request.status', 'queued');
+
+        $rawPayload = $requestRecord->fresh()->raw_payload;
+        $this->assertSame('Wool gabardine shorts', $rawPayload['name']);
+        $this->assertSame([], $rawPayload['context']);
+
+        Bus::assertDispatched(IngestProductImageDiscoveryJob::class);
     }
 
     public function test_request_retry_rejects_non_retryable_statuses(): void

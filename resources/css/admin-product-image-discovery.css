@@ -193,6 +193,10 @@ textarea {
   box-shadow: inset 2px 0 0 var(--pid-accent);
 }
 
+a.pid-nav__item {
+  text-decoration: none;
+}
+
 .pid-nav__icon {
   display: grid;
   width: 28px;
@@ -767,6 +771,23 @@ textarea {
 .pid-drawer__backdrop {
   position: absolute;
   inset: 0;
+}
+
+/* The panel is a fixed-height column: only the body scrolls, and overscroll stays inside it. */
+.pid-drawer__panel {
+  display: flex;
+  flex-direction: column;
+}
+
+.pid-drawer__header {
+  flex: none;
+}
+
+.pid-drawer__body {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  overscroll-behavior: contain;
 }
 
 .pid-drawer__body,

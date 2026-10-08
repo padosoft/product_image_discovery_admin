@@ -1,6 +1,20 @@
-import React from 'react';
+import React, { useEffect } from 'react';
 
 export function Drawer({ open, title, onClose, children }) {
+  // Lock the page behind the drawer so the wheel scrolls the panel, not the list underneath.
+  useEffect(() => {
+    if (!open) {
+      return undefined;
+    }
+
+    const previousOverflow = document.body.style.overflow;
+    document.body.style.overflow = 'hidden';
+
+    return () => {
+      document.body.style.overflow = previousOverflow;
+    };
+  }, [open]);
+
   if (!open) {
     return null;
   }
