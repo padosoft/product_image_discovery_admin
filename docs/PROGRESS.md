@@ -819,3 +819,11 @@
 
 - Required `padosoft/laravel-ai-price-intelligence:^1.8` (resolved v1.9.0) and committed `composer.json` + `composer.lock`. The lock needs PHP 8.4 (symfony/console 8.x): on macOS run composer through Herd `php84`. Its migrations load automatically, so the deploy must run `php artisan migrate`.
 - Added `pid-admin:create-api-user`, `pid-admin:create-api-token` and `pid-admin:create-price-key` in `routes/console.php` to replace the tinker one-liners for Gescat credentials (technical user, read/write Sanctum token, Price Intelligence tenant + scopeless `pi_` key). Covered by `tests/Feature/ApiCredentialCommandsTest.php`; full PHPUnit suite green (65 tests).
+
+## 2026-10-08
+
+- Branch `m-ad-fix-queue-config`: queue names for both packages are now env-driven. `config/product-image-discovery.php` reads `PRODUCT_IMAGE_DISCOVERY_QUEUE` (all stages) and `PRODUCT_IMAGE_DISCOVERY_QUEUE_<STAGE>`; new `config/price-intelligence.php` overrides only the `queues` key (shallow `mergeConfigFrom`) with `PRICE_INTELLIGENCE_QUEUE` / `PRICE_INTELLIGENCE_QUEUE_<LANE>`. Defaults unchanged. Added README "Queues" section with the per-stage profile from the package code (verify calls the AI vision model, quality only reads image headers, fetch/enhance/description have no job) and the recommended light/api split for Laravel Cloud. Covered by `tests/Feature/QueueRoutingTest.php`.
+- Production readiness audit (package code + Laravel Cloud docs), same branch:
+  - Published `config/ai.php` from laravel/ai and added the `regolo` provider (registered by padosoft/laravel-ai-regolo, missing from laravel/ai defaults) plus `ai.providers.regolo` in `config/product-image-discovery.php`: before this, `PRODUCT_IMAGE_DISCOVERY_AI_PROVIDER=regolo` silently skipped AI verification ("missing an API key").
+  - Required `aws/aws-sdk-php` explicitly: Laravel Cloud managed queues refuse to deploy without it in `composer.json` (it was only transitive via laravel/ai).
+  - README: rewrote the queue guidance for managed queues (one queue name each, no `--timeout`, Flex 90s job cap), documented that local storage is enough (nothing reads downloaded files back), and added a "Production On Laravel Cloud" checklist.

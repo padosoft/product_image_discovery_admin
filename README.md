@@ -24,6 +24,8 @@ Professional Laravel admin console for [`padosoft/product-image-discovery`](http
 - [Demo Data](#demo-data)
 - [Testing](#testing)
 - [CI](#ci)
+- [Queues](#queues)
+- [Production On Laravel Cloud](#production-on-laravel-cloud)
 - [Security Model](#security-model)
 - [Admin Routes](#admin-routes)
 - [Relationship To The Package](#relationship-to-the-package)
@@ -358,6 +360,64 @@ GitHub Actions runs the same release gate on pushes and pull requests:
 - `npm run build`
 - `npm run e2e:ci`
 - upload Playwright traces/screenshots on failure
+
+## Queues
+
+Pipeline jobs from `padosoft/product-image-discovery` and `padosoft/laravel-ai-price-intelligence` are dispatched on dedicated queues, **not** on `default`. A worker that only listens to `default` never runs them: requests stay `queued`.
+
+Queue names come from config and can be changed from the environment without touching code:
+
+| Env var | Effect |
+|---|---|
+| `PRODUCT_IMAGE_DISCOVERY_QUEUE` | routes every image-discovery stage to one queue |
+| `PRODUCT_IMAGE_DISCOVERY_QUEUE_<STAGE>` | overrides one stage (`INGEST`, `SEARCH`, `EXTRACT`, `VERIFY`, `DOWNLOAD`, `QUALITY`) |
+| `PRICE_INTELLIGENCE_QUEUE` | routes every price-intelligence lane to one queue |
+| `PRICE_INTELLIGENCE_QUEUE_<LANE>` | overrides one lane (`DISCOVERY`, `SCRAPE`, `ENRICH`, `AI`, `NOTIFICATIONS`) |
+
+Without env vars the defaults are the historical names (`image-discovery-<stage>`, `pi-<lane>`). `FETCH`, `ENHANCE` and `DESCRIPTION` exist in the map but the package has no job for them yet.
+
+What each image-discovery stage actually does (package v1.1):
+
+| Stage | Work | Profile |
+|---|---|---|
+| ingest | DB upsert, dispatches search | light |
+| search | external search provider, up to 8 sequential queries | external API, rate-limited |
+| extract | turns search results into candidates (DB only, no HTML fetch) | light |
+| verify | one job per candidate; calls the AI vision model when `PRODUCT_IMAGE_DISCOVERY_AI_ENABLED=true` (timeout 45s), otherwise pure scoring | external API when AI is on, light otherwise |
+| download | `Http::get()->body()` of the image, stored on `PRODUCT_IMAGE_DISCOVERY_STORAGE_DISK` | light (a few MB in memory) |
+| quality | `getimagesize()` header read, no pixel decoding | light |
+
+Recommended setup on Laravel Cloud managed queues. Each managed queue serves exactly one queue name, so route the stages to the names you actually created:
+
+```dotenv
+# one managed queue (cheapest): everything on it. Use the exact name shown in Cloud.
+PRODUCT_IMAGE_DISCOVERY_QUEUE=default
+PRICE_INTELLIGENCE_QUEUE=default
+
+# optional second managed queue, only when search/AI hit rate limits
+PRODUCT_IMAGE_DISCOVERY_QUEUE_SEARCH=image-discovery-api
+PRODUCT_IMAGE_DISCOVERY_QUEUE_VERIFY=image-discovery-api
+```
+
+- `image-discovery-api` (if created): small workers with a low max worker count; the cap keeps search/AI calls under provider rate limits. With AI disabled, verify belongs on the main queue.
+- Managed queues take no `--timeout` flag. Flex workers cap a job at 90 seconds: keep `PRODUCT_IMAGE_DISCOVERY_AI_TIMEOUT` well below it (default 45).
+- No large-memory workers are needed: no stage decodes image pixels.
+- Downloaded files are optional. Nothing reads them back (quality uses search metadata, the API exposes the remote `image_url`, the admin preview falls back to it), so `PRODUCT_IMAGE_DISCOVERY_STORAGE_DISK=local` works even on ephemeral worker disks. Use object storage only if the files must be kept.
+
+## Production On Laravel Cloud
+
+Checklist for a working pipeline (image discovery + price intelligence):
+
+1. **Database**: MySQL or Postgres attached to the environment (SQLite is not supported in production).
+2. **Deploy command**: `php artisan migrate --force` (the packages auto-load their migrations).
+3. **Queues**: at least one managed queue plus the `*_QUEUE` env vars above. `aws/aws-sdk-php` is required in `composer.json` for managed queues.
+4. **Scheduler**: enable it on the App cluster. Price intelligence runs `piprice:run-due` every minute and `piprice:aggregates:daily` at 02:30.
+5. **Cache**: a shared store (`CACHE_STORE=database`, or an attached Valkey/Redis). The scheduler uses cache locks (`withoutOverlapping`), which do not work across instances with `file`.
+6. **`APP_KEY`**: set once and never rotated casually: search-provider API keys are stored encrypted with it.
+7. **Search providers**: run `php artisan db:seed --force` **once** to create the default provider rows (all inactive). Never put it in the deploy commands: re-running it resets every default provider to `is_active=false` and silently disables search. Activate at least one image-capable driver (brave, tavily, exa, firecrawl, searchapi) with its API key from the admin Settings page. With no active provider every request ends in `no_candidates_found`. Never run `pid-admin:seed-demo` in production.
+8. **AI (optional)**: `PRODUCT_IMAGE_DISCOVERY_AI_ENABLED=true`, `PRODUCT_IMAGE_DISCOVERY_AI_PROVIDER` (`regolo`, `anthropic`, `openai`, `openrouter`), the matching key (`REGOLO_API_KEY`, `ANTHROPIC_API_KEY`, ...) and `PRODUCT_IMAGE_DISCOVERY_AI_VISION_MODEL`. Price intelligence uses the LLM only with `PI_LLM_DRIVER=laravel-ai` plus `PI_LLM_PROVIDER`/`PI_LLM_MODEL`.
+9. **Client credentials**: `pid-admin:create-api-user`, `pid-admin:create-api-token`, `pid-admin:create-price-key` (see Login). Image discovery uses `Authorization: Bearer <token>`; price intelligence uses `X-Api-Key: pi_...` under `/api/v1`.
+10. **Outbound HTTPS** from workers to search APIs, image hosts, AI providers and competitor sites.
 
 ## Security Model
 
