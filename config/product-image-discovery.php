@@ -29,16 +29,19 @@ return [
     'jobs' => [
         'ingest' => IngestProductImageDiscoveryJob::class,
     ],
+    // Queue per pipeline stage. PRODUCT_IMAGE_DISCOVERY_QUEUE routes every stage to one queue,
+    // PRODUCT_IMAGE_DISCOVERY_QUEUE_<STAGE> overrides a single stage. fetch/enhance/description
+    // have no job in the package yet and are kept only for forward compatibility.
     'queues' => [
-        'ingest' => 'image-discovery-ingest',
-        'search' => 'image-discovery-search',
-        'fetch' => 'image-discovery-fetch',
-        'extract' => 'image-discovery-extract',
-        'verify' => 'image-discovery-verify',
-        'download' => 'image-discovery-download',
-        'quality' => 'image-discovery-quality',
-        'enhance' => 'image-discovery-enhance',
-        'description' => 'image-discovery-description',
+        'ingest' => env('PRODUCT_IMAGE_DISCOVERY_QUEUE_INGEST', env('PRODUCT_IMAGE_DISCOVERY_QUEUE', 'image-discovery-ingest')),
+        'search' => env('PRODUCT_IMAGE_DISCOVERY_QUEUE_SEARCH', env('PRODUCT_IMAGE_DISCOVERY_QUEUE', 'image-discovery-search')),
+        'fetch' => env('PRODUCT_IMAGE_DISCOVERY_QUEUE_FETCH', env('PRODUCT_IMAGE_DISCOVERY_QUEUE', 'image-discovery-fetch')),
+        'extract' => env('PRODUCT_IMAGE_DISCOVERY_QUEUE_EXTRACT', env('PRODUCT_IMAGE_DISCOVERY_QUEUE', 'image-discovery-extract')),
+        'verify' => env('PRODUCT_IMAGE_DISCOVERY_QUEUE_VERIFY', env('PRODUCT_IMAGE_DISCOVERY_QUEUE', 'image-discovery-verify')),
+        'download' => env('PRODUCT_IMAGE_DISCOVERY_QUEUE_DOWNLOAD', env('PRODUCT_IMAGE_DISCOVERY_QUEUE', 'image-discovery-download')),
+        'quality' => env('PRODUCT_IMAGE_DISCOVERY_QUEUE_QUALITY', env('PRODUCT_IMAGE_DISCOVERY_QUEUE', 'image-discovery-quality')),
+        'enhance' => env('PRODUCT_IMAGE_DISCOVERY_QUEUE_ENHANCE', env('PRODUCT_IMAGE_DISCOVERY_QUEUE', 'image-discovery-enhance')),
+        'description' => env('PRODUCT_IMAGE_DISCOVERY_QUEUE_DESCRIPTION', env('PRODUCT_IMAGE_DISCOVERY_QUEUE', 'image-discovery-description')),
     ],
     'storage' => [
         'disk' => env('PRODUCT_IMAGE_DISCOVERY_STORAGE_DISK', 'local'),
@@ -76,6 +79,10 @@ return [
             'openrouter' => [
                 'api_key' => env('OPENROUTER_API_KEY'),
                 'base_url' => env('OPENROUTER_URL', env('OPENROUTER_BASE_URL', 'https://openrouter.ai/api/v1')),
+            ],
+            'regolo' => [
+                'api_key' => env('REGOLO_API_KEY'),
+                'base_url' => env('REGOLO_URL', env('REGOLO_BASE_URL', 'https://api.regolo.ai/v1')),
             ],
         ],
     ],

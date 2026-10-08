@@ -143,3 +143,7 @@
 - `Route::prefix()->middleware(a)->middleware(b)` on a RouteRegistrar replaces the first list instead of merging; pass a single merged array (this silently dropped `web,auth` from the admin group).
 - `shouldRenderJsonWhen` forcing JSON on a path prefix turns the `auth` redirect into a JSON 401 for browser navigation; exclude `AuthenticationException` unless the client expects JSON.
 - Testing `auth.session` with `actingAs`: the guard keeps the in-memory user (old password hash), so call `$this->app['auth']->forgetGuards()` to simulate a fresh request before asserting the logout.
+
+- Pipeline jobs never run on `default`: product-image-discovery uses `image-discovery-<stage>` and price-intelligence uses `pi-<lane>`. A worker listening only to `default` leaves requests stuck in `queued`. Route them with `PRODUCT_IMAGE_DISCOVERY_QUEUE` / `PRICE_INTELLIGENCE_QUEUE` (see README "Queues"). An app `config/price-intelligence.php` must stay partial: `mergeConfigFrom` is shallow, so only the top-level keys it defines replace the package ones.
+- `ProductImageDiscoveryDefaultsSeeder` uses `updateOrInsert` with `is_active=false` on providers: re-running `db:seed` disables every configured default search provider. Run it once, never from deploy commands.
+- Laravel Cloud managed queues: one queue name per managed queue, `QUEUE_CONNECTION=cloud` injected, no worker `--timeout`, Flex jobs capped at 90s, `aws/aws-sdk-php` must be in `composer.json`. The framework (13.19+) wires the `cloud` connection itself (`Illuminate\Foundation\Cloud`).

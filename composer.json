@@ -5,6 +5,7 @@
     "license": "Apache-2.0",
     "require": {
         "php": "^8.3",
+        "aws/aws-sdk-php": "^3.339",
         "laravel/framework": "^13.0",
         "laravel/sanctum": "^4.2",
         "padosoft/laravel-ai-price-intelligence": "^1.8",
