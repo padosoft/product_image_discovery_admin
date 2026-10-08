@@ -131,6 +131,23 @@ const navGroups = [
   },
 ];
 
+// Sections served by other packages: full page links, shown only when the host injects their URL
+// (window.PID_ADMIN.*Url is null when the package is not installed).
+function externalNavItems() {
+  const adminGlobals = (typeof window !== 'undefined' && window.PID_ADMIN) ? window.PID_ADMIN : {};
+  const items = [
+    {
+      id: 'price-intelligence',
+      label: 'Price Intelligence',
+      meta: 'Competitor matches, product content and prices',
+      icon: 'price',
+      href: adminGlobals.priceIntelligenceUrl,
+    },
+  ];
+
+  return items.filter((item) => typeof item.href === 'string' && item.href !== '');
+}
+
 const pageIndex = Object.fromEntries(
   navGroups.flatMap((group) => group.items.map((item) => [item.id, item])),
 );
@@ -237,6 +254,13 @@ function ShellIcon({ name }) {
           <path d="M12 4 6 6.5v5.2c0 3.8 2.1 6.5 6 7.8 3.9-1.3 6-4 6-7.8V6.5Z" />
           <path d="M9.5 12h5" />
           <path d="M12 9.5v5" />
+        </svg>
+      );
+    case 'price':
+      return (
+        <svg {...sharedProps}>
+          <path d="M4 12.5V5h7.5L20 13.5 13.5 20Z" />
+          <circle cx="8.5" cy="8.5" r="1.25" />
         </svg>
       );
     case 'moon':
@@ -597,6 +621,8 @@ function httpStatusTone(status) {
 }
 
 function Sidebar({ page, onPage }) {
+  const modules = externalNavItems();
+
   return (
     <aside className="pid-sidebar" aria-label="Product image discovery sidebar" data-testid="pid-shell-sidebar">
       <div className="pid-brand">
@@ -630,6 +656,22 @@ function Sidebar({ page, onPage }) {
             ))}
           </section>
         ))}
+        {modules.length > 0 && (
+          <section className="pid-nav__group">
+            <h2>Modules</h2>
+            {modules.map((item) => (
+              <a key={item.id} className="pid-nav__item" href={item.href} aria-label={`${item.label} module`}>
+                <span className="pid-nav__icon" aria-hidden="true">
+                  <ShellIcon name={item.icon} />
+                </span>
+                <span className="pid-nav__copy">
+                  <span className="pid-nav__label">{item.label}</span>
+                  <span className="pid-nav__meta">{item.meta}</span>
+                </span>
+              </a>
+            ))}
+          </section>
+        )}
       </nav>
     </aside>
   );

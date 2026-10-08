@@ -4,7 +4,7 @@
         "Read more about it at https://getcomposer.org/doc/01-basic-usage.md#installing-dependencies",
         "This file is @generated automatically"
     ],
-    "content-hash": "90fb5385e900aa1e1b4efc1ec7708704",
+    "content-hash": "ebbc79a53a65ee616535834b31d248f2",
     "packages": [
         {
             "name": "aws/aws-crt-php",
@@ -2949,6 +2949,87 @@
                 "source": "https://github.com/padosoft/laravel-ai-price-intelligence"
             },
             "time": "2026-07-24T14:00:07+00:00"
+        },
+        {
+            "name": "padosoft/laravel-ai-price-intelligence-admin",
+            "version": "v1.2.0",
+            "source": {
+                "type": "git",
+                "url": "https://github.com/padosoft/laravel-ai-price-intelligence-admin.git",
+                "reference": "7dce142d06f8b77876512471982de1b19e07a029"
+            },
+            "dist": {
+                "type": "zip",
+                "url": "https://api.github.com/repos/padosoft/laravel-ai-price-intelligence-admin/zipball/7dce142d06f8b77876512471982de1b19e07a029",
+                "reference": "7dce142d06f8b77876512471982de1b19e07a029",
+                "shasum": ""
+            },
+            "require": {
+                "illuminate/contracts": "^11.0 || ^12.0 || ^13.0",
+                "illuminate/routing": "^11.0 || ^12.0 || ^13.0",
+                "illuminate/support": "^11.0 || ^12.0 || ^13.0",
+                "laravel/sanctum": "^4.0",
+                "padosoft/laravel-ai-price-intelligence": "^1.5",
+                "php": "^8.3"
+            },
+            "require-dev": {
+                "larastan/larastan": "^3.0",
+                "laravel/pint": "^1.18",
+                "orchestra/testbench": "^9.0 || ^10.0",
+                "phpunit/phpunit": "^11.0"
+            },
+            "type": "library",
+            "extra": {
+                "laravel": {
+                    "providers": [
+                        "Padosoft\\PriceIntelligenceAdmin\\PriceIntelligenceAdminServiceProvider"
+                    ]
+                }
+            },
+            "autoload": {
+                "psr-4": {
+                    "Padosoft\\PriceIntelligenceAdmin\\": "src/"
+                }
+            },
+            "autoload-dev": {
+                "psr-4": {
+                    "Padosoft\\PriceIntelligenceAdmin\\Tests\\": "tests/"
+                }
+            },
+            "scripts": {
+                "test": [
+                    "vendor/bin/phpunit"
+                ],
+                "lint": [
+                    "vendor/bin/pint"
+                ],
+                "analyse": [
+                    "vendor/bin/phpstan analyse --memory-limit=1G"
+                ]
+            },
+            "license": [
+                "Apache-2.0"
+            ],
+            "authors": [
+                {
+                    "name": "Lorenzo Padovani",
+                    "email": "lorenzo.padovani@padosoft.com"
+                }
+            ],
+            "description": "Web admin panel (React 19 + Vite + Tailwind 4) for padosoft/laravel-ai-price-intelligence — competitor price & product intelligence.",
+            "keywords": [
+                "admin",
+                "competitor-monitoring",
+                "ecommerce",
+                "laravel",
+                "price-intelligence",
+                "react"
+            ],
+            "support": {
+                "source": "https://github.com/padosoft/laravel-ai-price-intelligence-admin/tree/v1.2.0",
+                "issues": "https://github.com/padosoft/laravel-ai-price-intelligence-admin/issues"
+            },
+            "time": "2026-07-24T13:52:35+00:00"
         },
         {
             "name": "padosoft/laravel-ai-regolo",

@@ -7,6 +7,7 @@ namespace App\Http\Controllers\ProductImageDiscovery;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Routing\Controller;
+use Illuminate\Support\Facades\Bus;
 use Illuminate\Support\Facades\DB;
 use Padosoft\ProductImageDiscovery\Enums\ProductImageDiscoveryRequestStatus;
 use Padosoft\ProductImageDiscovery\Http\Resources\ProductImageDiscoveryRequestResource;
@@ -38,11 +39,20 @@ final class AdminRequestRetryController extends Controller
                 ], 409);
             }
 
+            // The package keeps its search/extract guards in raw_payload.context: clear them or the
+            // re-dispatched pipeline returns early and the request stays queued forever.
+            $rawPayload = $record->getAttribute('raw_payload');
+
+            if (is_array($rawPayload) && is_array($rawPayload['context'] ?? null)) {
+                unset($rawPayload['context']['ingest'], $rawPayload['context']['search'], $rawPayload['context']['extract']);
+            }
+
             $record->fill([
                 'status' => 'queued',
                 'rejection_reason' => null,
                 'last_error' => null,
                 'attempts' => ((int) $record->getAttribute('attempts')) + 1,
+                'raw_payload' => $rawPayload,
             ]);
             $record->save();
 
@@ -64,6 +74,13 @@ final class AdminRequestRetryController extends Controller
 
         if ($result instanceof JsonResponse) {
             return $result;
+        }
+
+        // Dispatch after the commit so the worker never reads the pre-retry state.
+        $ingestJob = config('product-image-discovery.jobs.ingest');
+
+        if (is_string($ingestJob) && class_exists($ingestJob)) {
+            Bus::dispatch(new $ingestJob($result->getKey()));
         }
 
         return response()->json([

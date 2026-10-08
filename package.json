@@ -5,6 +5,7 @@
   "scripts": {
     "dev": "node -r ./scripts/no-net-use.cjs ./node_modules/vite/bin/vite.js",
     "build": "node -r ./scripts/no-net-use.cjs ./node_modules/vite/bin/vite.js build",
+    "build:price-intelligence-admin": "node ./scripts/build-price-intelligence-admin.mjs",
     "phpunit": "node scripts/run-php.mjs vendor/bin/phpunit --configuration phpunit.xml",
     "test": "node -r ./scripts/no-net-use.cjs ./node_modules/vitest/vitest.mjs run",
     "test:watch": "node -r ./scripts/no-net-use.cjs ./node_modules/vitest/vitest.mjs",

@@ -1,5 +1,13 @@
 # Lessons
 
+## 2026-10-08
+
+- product-image-discovery keeps its pipeline guards in `raw_payload.context` (no dedicated column). Any admin action that wants to re-run a request must clear `context.ingest|search|extract` and dispatch `config('product-image-discovery.jobs.ingest')` with the request id; just setting `status=queued` does nothing.
+- `Sanctum::currentApplicationUrlWithPort()` returns `",host:port"` (made for concatenating into the `SANCTUM_STATEFUL_DOMAINS` default string). Used as an array element it must be `ltrim`med, or APP_URL never matches a Referer and every session call to `/api/v1` is a 401. Feature tests with `actingAs()` do not catch this: verify with a real login and a `Referer` header.
+- `padosoft/laravel-ai-price-intelligence-admin` is installed from GitHub without `resources/dist`; its built SPA lives in `public/vendor/price-intelligence-admin` and must be rebuilt (`npm run build:price-intelligence-admin`) after each package update.
+- `npm run e2e:ci` fails on every test (login page instead of the shell) when a local `.env` exists: `artisan serve` gives `.env` values precedence over the `PID_ADMIN_ROUTE_MIDDLEWARE=web` set by `playwright.config.js`. Move `.env` aside (or run in a clean checkout) before the Playwright gate.
+- `QUEUE_CONNECTION=sync` in `phpunit.xml`: a controller that dispatches pipeline jobs runs the whole pipeline inside the test. Use `Bus::fake()` when the test only checks the request state.
+
 ## 2026-05-04
 
 - The admin shell ships with `pid-admin.debug_run_middleware=auth` by default, but the repo had no login route, no user seeder, and no `route('login')`. A Laravel app behind `auth` will redirect guests to the named `login` route; if you ship the auth middleware default, you must also ship a route named `login`, or guest hits surface as 401/exception instead of a usable redirect.

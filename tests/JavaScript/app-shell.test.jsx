@@ -57,6 +57,17 @@ describe('admin product image discovery shell', () => {
     delete window.PID_ADMIN;
   });
 
+  it('links the price intelligence module only when the host provides its url', async () => {
+    window.PID_ADMIN.priceIntelligenceUrl = 'http://pid-admin.test/admin/price-intelligence';
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue(mockJsonResponse({ data: [] })));
+
+    render(<App />);
+
+    expect(await screen.findByRole('link', { name: 'Price Intelligence module' }))
+      .toHaveAttribute('href', 'http://pid-admin.test/admin/price-intelligence');
+    expect(screen.getByRole('heading', { name: 'Modules' })).toBeVisible();
+  });
+
   it('renders the shell, exposes accessible navigation labels, and toggles theme', async () => {
     const setTimeoutSpy = vi.spyOn(window, 'setTimeout');
     const fetchMock = vi
@@ -100,6 +111,7 @@ describe('admin product image discovery shell', () => {
 
     expect(await screen.findByRole('navigation', { name: 'Product image discovery sections' })).toBeVisible();
     expect(screen.getByRole('button', { name: 'Overview section' })).toHaveAttribute('aria-current', 'page');
+    expect(screen.queryByRole('link', { name: 'Price Intelligence module' })).not.toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'Switch to dark theme' })).toBeVisible();
 
     fireEvent.click(screen.getByRole('button', { name: 'Switch to dark theme' }));
