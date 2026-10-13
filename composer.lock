@@ -2854,16 +2854,16 @@
         },
         {
             "name": "padosoft/laravel-ai-price-intelligence",
-            "version": "v1.9.0",
+            "version": "v1.10.0",
             "source": {
                 "type": "git",
                 "url": "https://github.com/padosoft/laravel-ai-price-intelligence.git",
-                "reference": "7cf281d2c5ab78df953ffdef47c5eeb5adb28240"
+                "reference": "07e3f60313aceec75e4cb73065dc28e327fbddfd"
             },
             "dist": {
                 "type": "zip",
-                "url": "https://api.github.com/repos/padosoft/laravel-ai-price-intelligence/zipball/7cf281d2c5ab78df953ffdef47c5eeb5adb28240",
-                "reference": "7cf281d2c5ab78df953ffdef47c5eeb5adb28240",
+                "url": "https://api.github.com/repos/padosoft/laravel-ai-price-intelligence/zipball/07e3f60313aceec75e4cb73065dc28e327fbddfd",
+                "reference": "07e3f60313aceec75e4cb73065dc28e327fbddfd",
                 "shasum": ""
             },
             "require": {
@@ -2948,7 +2948,7 @@
                 "issues": "https://github.com/padosoft/laravel-ai-price-intelligence/issues",
                 "source": "https://github.com/padosoft/laravel-ai-price-intelligence"
             },
-            "time": "2026-07-24T14:00:07+00:00"
+            "time": "2026-10-13T13:29:49+00:00"
         },
         {
             "name": "padosoft/laravel-ai-price-intelligence-admin",
