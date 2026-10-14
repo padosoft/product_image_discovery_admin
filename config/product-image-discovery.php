@@ -46,6 +46,15 @@ return [
     'storage' => [
         'disk' => env('PRODUCT_IMAGE_DISCOVERY_STORAGE_DISK', 'local'),
     ],
+    'search' => [
+        // When every candidate of a run is rejected, search again with the next query family
+        // (ean, supplier_sku, model_code, description) before sending the request to manual_review.
+        'escalation' => [
+            'enabled' => env('PRODUCT_IMAGE_DISCOVERY_SEARCH_ESCALATION', true),
+            // Steps per run, the first search included: one per family at most.
+            'max_steps' => (int) env('PRODUCT_IMAGE_DISCOVERY_SEARCH_MAX_STEPS', 4),
+        ],
+    ],
     'debug' => [
         'stop_on_first_good' => env('PRODUCT_IMAGE_DISCOVERY_DEBUG_STOP_ON_FIRST_GOOD', true),
         'good_score_threshold' => (int) env('PRODUCT_IMAGE_DISCOVERY_DEBUG_GOOD_SCORE_THRESHOLD', 65),
