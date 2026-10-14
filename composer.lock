@@ -3180,16 +3180,16 @@
         },
         {
             "name": "padosoft/product-image-discovery",
-            "version": "v1.3.0",
+            "version": "v1.4.0",
             "source": {
                 "type": "git",
                 "url": "https://github.com/padosoft/product_image_discovery.git",
-                "reference": "57716762984e0bf1793465c3f57b663b1d0b1f36"
+                "reference": "0c8f4ea92864d976164429570a278e42b4c3b7e9"
             },
             "dist": {
                 "type": "zip",
-                "url": "https://api.github.com/repos/padosoft/product_image_discovery/zipball/57716762984e0bf1793465c3f57b663b1d0b1f36",
-                "reference": "57716762984e0bf1793465c3f57b663b1d0b1f36",
+                "url": "https://api.github.com/repos/padosoft/product_image_discovery/zipball/0c8f4ea92864d976164429570a278e42b4c3b7e9",
+                "reference": "0c8f4ea92864d976164429570a278e42b4c3b7e9",
                 "shasum": ""
             },
             "require": {
@@ -3254,9 +3254,9 @@
             ],
             "support": {
                 "issues": "https://github.com/padosoft/product_image_discovery/issues",
-                "source": "https://github.com/padosoft/product_image_discovery/tree/v1.3.0"
+                "source": "https://github.com/padosoft/product_image_discovery/tree/v1.4.0"
             },
-            "time": "2026-10-14T08:25:58+00:00"
+            "time": "2026-10-14T11:16:18+00:00"
         },
         {
             "name": "phpoption/phpoption",
