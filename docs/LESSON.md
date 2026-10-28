@@ -1,5 +1,16 @@
 # Lessons
 
+## 2026-10-28
+
+- The outer `product_image_discovery_admin` folder holds an older copy of the app with its own `artisan`: `schedule:work` or `queue:work` started there run the wrong code (in the joint test the callback retries were never queued). Start both from the inner folder and check with `lsof -a -p <pid> -d cwd`.
+- `laravel-ai-search-providers` registers a `fake` driver: a `product_image_search_providers` row with `driver=fake` and `config.image_results` / `config.web_results` feeds both the PID search and the PI discovery (they share the table), which is enough to drive the real pipelines locally without provider keys.
+- To follow package jobs from the app without changing the packages, put a marker in the hidden Context (`Context::addHidden`) before the call that queues them: Laravel serializes it into every job payload (`illuminate:log:context`), hydrates it on `JobProcessing` and carries it into the jobs those jobs queue, so `JobProcessed`/`JobFailed` listeners can read it with `Context::getHidden`. Listeners must never throw: an exception in a `JobProcessed` listener makes the worker mark a successful job as failed.
+- The admin panel mounts the package store action (`ProductImageDiscoveryRequestController@store`) a second time under `/admin`: `RouteCollection::getByAction()` returns whichever was registered last. Pick package routes by URI + method, not by action.
+- Middleware added to a package route in an `$app->booted()` callback is kept by `route:cache` (the cache is built from a booted app); with cached routes the callback must not touch the routes again.
+- Laravel Cloud managed queues (SQS) refuse delays over 15 minutes and the sync queue ignores delays: schedule long retries in the database and queue them from a scheduled command.
+- `$a + $b` keeps the left keys: `forceFill($attributes + ['last_error' => ...])` silently keeps the old `last_error`. Use `array_merge` for overrides.
+- `Http::fake()` stubs registered later do not override earlier ones (the first match wins): fake once with a closure that reads a test property when tests need different answers.
+
 ## 2026-10-08
 
 - product-image-discovery keeps its pipeline guards in `raw_payload.context` (no dedicated column). Any admin action that wants to re-run a request must clear `context.ingest|search|extract` and dispatch `config('product-image-discovery.jobs.ingest')` with the request id; just setting `status=queued` does nothing.

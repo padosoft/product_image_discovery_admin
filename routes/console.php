@@ -2,9 +2,17 @@
 
 declare(strict_types=1);
 
+use App\Callbacks\CallbackAttempt;
+use App\Callbacks\CallbackDeliverer;
+use App\Callbacks\CallbackPayload;
+use App\Callbacks\CallbackTargets;
+use App\Callbacks\ProductFinderCallbacks;
+use App\Models\CallbackEvent;
 use App\Models\User;
 use Database\Seeders\ProductImageDiscoveryDemoSeeder;
+use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Artisan;
+use Illuminate\Support\Facades\Schedule;
 use Illuminate\Support\Str;
 use Padosoft\PriceIntelligence\Models\ApiKey;
 use Padosoft\PriceIntelligence\Models\Tenant;
@@ -165,3 +173,78 @@ Artisan::command('pid-admin:create-price-key {code : Tenant code, reused if it a
 
     return Command::SUCCESS;
 })->purpose('Create (or reuse) a Price Intelligence tenant and issue an API key for it');
+
+Artisan::command('callbacks:ping {url : Callback URL of the client, e.g. https://<gescat-host>/api/ai-product-enrichment/callbacks/events}', function (CallbackTargets $targets, CallbackDeliverer $deliverer): int {
+    $url = trim((string) $this->argument('url'));
+
+    if (config('callbacks.secrets_invalid') === true) {
+        $this->error('PRODUCT_FINDER_CALLBACK_SECRETS is not valid JSON: it must be an object like {"host": "secret"}. Fix it, then clear or rebuild the config cache.');
+
+        return Command::INVALID;
+    }
+
+    if (! $targets->allows($url)) {
+        $this->error('The URL must be https and its host must be listed in PRODUCT_FINDER_CALLBACK_SECRETS.');
+
+        return Command::INVALID;
+    }
+
+    $eventId = (string) Str::uuid();
+    $body = CallbackPayload::encode($eventId, 'ping', Carbon::now(), '', 'ping', '', 'completed');
+    $result = $deliverer->send($url, $eventId, $body);
+
+    $this->line(sprintf('Event %s sent to %s', $eventId, $url));
+
+    if ($result->outcome === CallbackAttempt::DELIVERED) {
+        $this->info(sprintf('Delivered: HTTP %d.', $result->status));
+
+        return Command::SUCCESS;
+    }
+
+    $this->error(sprintf('Not delivered: %s.', $result->status !== null ? 'HTTP '.$result->status : $result->error));
+
+    if ($result->status === 401) {
+        $this->warn('Signature or timestamp refused: check that both sides use the same secret and that the clocks are in sync.');
+    }
+
+    return Command::FAILURE;
+})->purpose('Send a signed ping callback to check the URL, the secret and the signature');
+
+Artisan::command('callbacks:run-due', function (CallbackDeliverer $deliverer, ProductFinderCallbacks $productFinder): int {
+    $queued = $deliverer->dispatchDue();
+    $fired = $productFinder->sweepStaleScrapes();
+
+    if ($queued > 0 || $fired > 0) {
+        $this->info(sprintf('Queued %d callback attempt(s); sent %d scrape callback(s) without waiting for attributes.', $queued, $fired));
+    }
+
+    return Command::SUCCESS;
+})->purpose('Queue the callback retries that are due');
+
+Artisan::command('callbacks:list {--status= : pending, delivered or undelivered} {--limit=20}', function (): int {
+    $events = CallbackEvent::query()
+        ->when($this->option('status'), fn ($query, $status) => $query->where('delivery_status', $status))
+        ->orderByDesc('id')
+        ->limit(max(1, (int) $this->option('limit')))
+        ->get();
+
+    $this->table(
+        ['id', 'event', 'resource', 'status', 'correlation_id', 'delivery', 'attempts', 'last HTTP', 'last error', 'next attempt'],
+        $events->map(fn (CallbackEvent $event): array => [
+            $event->getKey(),
+            $event->event,
+            $event->resource_type.' '.$event->resource_id,
+            $event->status,
+            $event->correlation_id,
+            $event->delivery_status,
+            $event->attempts,
+            $event->last_response_status ?? '-',
+            $event->last_error ?? '-',
+            $event->next_attempt_at?->toDateTimeString() ?? '-',
+        ])->all(),
+    );
+
+    return Command::SUCCESS;
+})->purpose('List the latest callbacks and their delivery state');
+
+Schedule::command('callbacks:run-due')->everyMinute()->withoutOverlapping();

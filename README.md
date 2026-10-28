@@ -25,6 +25,7 @@ Professional Laravel admin console for [`padosoft/product-image-discovery`](http
 - [Testing](#testing)
 - [CI](#ci)
 - [Queues](#queues)
+- [Completion Callbacks](#completion-callbacks)
 - [Production On Laravel Cloud](#production-on-laravel-cloud)
 - [Security Model](#security-model)
 - [Admin Routes](#admin-routes)
@@ -405,6 +406,38 @@ PRODUCT_IMAGE_DISCOVERY_QUEUE_VERIFY=image-discovery-api
 - No large-memory workers are needed: no stage decodes image pixels.
 - Downloaded files are optional. Nothing reads them back (quality uses search metadata, the API exposes the remote `image_url`, the admin preview falls back to it), so `PRODUCT_IMAGE_DISCOVERY_STORAGE_DISK=local` works even on ephemeral worker disks. Use object storage only if the files must be kept.
 
+## Completion Callbacks
+
+Clients can be notified when a phase ends instead of polling. The callback only says "resource X finished phase Y"; the client reads the result with the GET endpoints it already uses (notify-then-fetch). The contract is shared with Gescat (`docs/ai-product-enrichment/contratto-callback-product-finder.md` in the Gescat repo).
+
+A start call asks for a callback with two extra body fields:
+
+```json
+{"callback_url": "https://<client-host>/api/ai-product-enrichment/callbacks/events", "correlation_id": "<client request uuid>"}
+```
+
+| Start call | Event | `resource` | `status` | `data` |
+|---|---|---|---|---|
+| `POST /api/product-image-discovery/requests` | `image_discovery.finished` | `image_discovery_request` | the request status (`ready_to_publish`, `published`, `no_candidates_found`, `manual_review`, `rejected`, `failed`) | `candidates_count` |
+| `POST /api/v1/targets/{id}/discover:now` | `product_finder.discovery.finished` | `monitoring_target` | `completed` / `failed` | `confirmed_count` (also 0) |
+| `POST /api/v1/targets/{id}/scrape:now` | `product_finder.scrape.finished` | `monitoring_target` | `completed` / `failed` | `scraped_count` |
+
+- `failed` events add `data.error_code` (stable, e.g. `timeout`, `scraper_blocked`, `search_failed`) and a short `data.error_message`; never exception text.
+- Image discovery fires once the request has an outcome and no candidate of its latest search run is still `candidate`, `verified_match` or `downloaded`. A re-POST of the same article (`client_id` + `erp_model_color_id`) supersedes the pending callback: only the latest start call is notified, with its own `correlation_id` and URL; a re-POST without `callback_url` cancels it. When a package job fails for good, the request becomes `failed` (retryable) instead of staying in `searching`/`verifying`.
+- Scrape fires when every queued scrape job finished and no new snapshot is still waiting for its category attributes (`attributes_status=pending`), at most `PRODUCT_FINDER_CALLBACK_ATTRIBUTES_WAIT_MINUTES` (30) later.
+- `discover:now` / `scrape:now` without `callback_url` (e.g. from the panel) do not touch a pending callback. Without `callback_url` nothing changes compared to before.
+
+**Security.** `callback_url` must be `https`, without credentials, and its host must have a secret in `PRODUCT_FINDER_CALLBACK_SECRETS` (JSON `{"host": "secret"}`, `host:port` for a non-443 port): the map is the allow-list, checked at the start call (`422`), and each host verifies with its own secret. Redirects are not followed. A value that is not a JSON object (a quoting mistake, typically) refuses every callback: it is logged as an error, without the value, and `callbacks:ping` says so.
+
+**Request.** `POST` with `Content-Type: application/json`, `X-ProductFinder-Event-Id` (same in every retry), `X-ProductFinder-Timestamp` (unix seconds of the attempt) and `X-ProductFinder-Signature: v2=<hex HMAC-SHA256(secret, timestamp + "." + raw body)>`. Body: `{event_id, event, occurred_at, correlation_id, resource: {type, id}, status, data}`.
+
+**Delivery.** A queued job sends the event after the commit that wrote the final state (10 s timeout). `2xx` is delivered; `401`, `408`, `429` (honouring `Retry-After`), `5xx` and network errors are retried after 1 min, 5 min, 15 min, 1 h, 3 h, 6 h; other answers (`400`, `404`, ...) are not retried. `401` is logged as an alert (secret or clock out of sync), `400` as an error. Retries are queued by `callbacks:run-due`, scheduled every minute, so the scheduler must run.
+
+```bash
+php artisan callbacks:ping https://<client-host>/api/ai-product-enrichment/callbacks/events   # signed ping, prints the HTTP status
+php artisan callbacks:list --status=undelivered                                             # outbox and delivery state
+```
+
 ## Production On Laravel Cloud
 
 Checklist for a working pipeline (image discovery + price intelligence):
@@ -412,7 +445,7 @@ Checklist for a working pipeline (image discovery + price intelligence):
 1. **Database**: MySQL or Postgres attached to the environment (SQLite is not supported in production).
 2. **Deploy command**: `php artisan migrate --force` (the packages auto-load their migrations).
 3. **Queues**: at least one managed queue plus the `*_QUEUE` env vars above. `aws/aws-sdk-php` is required in `composer.json` for managed queues.
-4. **Scheduler**: enable it on the App cluster. Price intelligence runs `piprice:run-due` every minute and `piprice:aggregates:daily` at 02:30.
+4. **Scheduler**: enable it on the App cluster. Price intelligence runs `piprice:run-due` every minute and `piprice:aggregates:daily` at 02:30; callback retries run through `callbacks:run-due` every minute.
 5. **Cache**: a shared store (`CACHE_STORE=database`, or an attached Valkey/Redis). The scheduler uses cache locks (`withoutOverlapping`), which do not work across instances with `file`.
 6. **`APP_KEY`**: set once and never rotated casually: search-provider API keys are stored encrypted with it.
 7. **Search providers**: run `php artisan db:seed --force` **once** to create the default provider rows (all inactive). Never put it in the deploy commands: re-running it resets every default provider to `is_active=false` and silently disables search. Activate at least one image-capable driver (brave, tavily, exa, firecrawl, searchapi) with its API key from the admin Settings page. With no active provider every request ends in `no_candidates_found`. Never run `pid-admin:seed-demo` in production.
@@ -421,6 +454,7 @@ Checklist for a working pipeline (image discovery + price intelligence):
 9. **Client credentials**: `pid-admin:create-api-user`, `pid-admin:create-api-token`, `pid-admin:create-price-key` (see Login). Image discovery uses `Authorization: Bearer <token>`; price intelligence uses `X-Api-Key: pi_...` under `/api/v1`.
 10. **Outbound HTTPS** from workers to search APIs, image hosts, AI providers and competitor sites.
 11. **Price intelligence panel**: `APP_URL` must be the public URL (e.g. `https://image-discovery.surfacesrl.com`) so the panel's browser calls are recognized as same-domain, and the `gescat` tenant must exist.
+12. **Completion callbacks (optional)**: run the migrations (tables `callback_launches`, `callback_events`) and set `PRODUCT_FINDER_CALLBACK_SECRETS` with one `host => secret` entry per client site, the secret equal to that site's `AI_ENRICHMENT_PRODUCT_FINDER_CALLBACK_SECRET`. Check each site with `php artisan callbacks:ping <url>`.
 
 ## Security Model
 
