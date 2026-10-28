@@ -13,7 +13,8 @@ permissions:
 jobs:
   test:
     name: PHP, Node, and browser gates
-    runs-on: ubuntu-latest
+    # Pinned: ubuntu-latest moved to 26.04, which Playwright 1.59 cannot install browsers on.
+    runs-on: ubuntu-24.04
     timeout-minutes: 25
 
     defaults:
